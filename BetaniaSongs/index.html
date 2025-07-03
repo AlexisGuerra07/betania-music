@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Equipo de Alabanza Betania V4 - Sistema Completo</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#079b82">
+    <meta name="description" content="Sistema de gestión musical para equipo de alabanza con acordes interactivos y transposición automática">
+</head>
+<body class="light-mode">
+    <header>
+        <img id="logo" src="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPGNpcmNsZSBjeD0iMzAiIGN5PSIzMCIgcj0iMzAiIGZpbGw9IiMwNzliODIiLz4KPHN2ZyB4PSIxNSIgeT0iMTUiIHdpZHRoPSIzMCIgaGVpZ2h0PSIzMCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJ3aGl0ZSI+CjxwYXRoIGQ9Ik0xMiAzdjEwLjU1Yy0uNTktLjM0LTEuMjctLjU1LTItLjU1LTIuMjEgMC00IDEuNzktNCA0czEuNzkgNCA0IDQgNC0xLjc5IDQtNFY3aDRWM2gtNnoiLz4KPC9zdmc+Cjwvc3ZnPgo=" alt="Logo Betania">                  
+        <div class="title">
+            <h1>Equipo de Alabanza Betania V4</h1>
+            <p>Sistema Completo | Editor Avanzado | Transposición Total | Modo Performance</p>
+        </div>
+                 
+        <div class="main-select">
+            <select id="section-select">
+                <option value="canciones">🎵 Canciones</option>
+                <option value="setlist">📋 Mi Setlist</option>
+                <option value="grabaciones">🎙️ Grabaciones</option>
+                <option value="herramientas">🛠️ Herramientas</option>
+                <option value="add-song">➕ Añadir Canción</option>
+            </select>
+                         
+            <div class="dark-mode-toggle">
+                <label for="dark-mode">🌙 Modo Oscuro</label>
+                <input type="checkbox" id="dark-mode">
+            </div>
+        </div>
+    </header>
+
+    <!-- Indicador de guardado -->
+    <div id="save-indicator" class="save-indicator">
+        ✅ Cambios guardados
+    </div>
+
+    <div class="container">
+        <aside>
+            <input type="text" id="search" placeholder="🔍 Buscar canciones...">
+                         
+            <select id="order-select">
+                <option value="title">📝 Ordenar por título</option>
+                <option value="key">🎼 Ordenar por tonalidad</option>
+                <option value="artist">👤 Ordenar por artista</option>
+            </select>
+                         
+            <ul id="song-list">
+                <!-- Lista de canciones se genera dinámicamente -->
+            </ul>
+                         
+            <button id="add-to-setlist">➕ Añadir al Setlist</button>
+        </aside>
+
+        <main id="main-content">
+            <h2>🎵 Sistema de Alabanza Betania V4</h2>
+            <div class="welcome-content">
+                <p><strong>✅ SISTEMA COMPLETO!</strong> Editor avanzado con transposición total</p>
+                
+                <div class="feature-showcase">
+                    <h3>🎸 Funcionalidades Implementadas:</h3>
+                    
+                    <div class="chord-example">
+                        <div class="chord-line-example">C            Am           F             G</div>
+                        <div class="lyric-line-example">Sublime gracia del Señor que a un infeliz salvó</div>
+                        <div class="chord-line-example">Am                       F</div>
+                        <div class="lyric-line-example">Perdido me encontró, ciego me hizo ver</div>
+                    </div>
+                    
+                    <div class="features-grid">
+                        <div class="feature-item">✅ <strong>Editor completo de acordes y letras</strong></div>
+                        <div class="feature-item">✅ <strong>Transposición en todas las tonalidades</strong></div>
+                        <div class="feature-item">✅ <strong>Rueda tonal completa (12 tonalidades)</strong></div>
+                        <div class="feature-item">✅ <strong>Diagramas SVG interactivos</strong></div>
+                        <div class="feature-item">✅ <strong>Modo performance optimizado</strong></div>
+                        <div class="feature-item">✅ <strong>Sistema de setlist avanzado</strong></div>
+                        <div class="feature-item">✅ <strong>Guardado automático local</strong></div>
+                        <div class="feature-item">✅ <strong>Interfaz móvil responsiva</strong></div>
+                    </div>
+                </div>
+                
+                <div class="instructions">
+                    <h4>🚀 Instrucciones de Uso:</h4>
+                    <ol>
+                        <li><strong>Selecciona una canción</strong> de la lista lateral</li>
+                        <li><strong>Usa ♭/♯</strong> para transponer en tiempo real</li>
+                        <li><strong>Activa "✏️ Editar"</strong> para modificar acordes y letras</li>
+                        <li><strong>Haz clic en acordes</strong> para ver diagramas de guitarra</li>
+                        <li><strong>Añade canciones al setlist</strong> para presentaciones</li>
+                    </ol>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script src="script.js"></script>
+    
+    <!-- Service Worker Registration -->
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('./sw.js')
+                    .then((registration) => {
+                        console.log('✅ SW registrado:', registration.scope);
+                    })
+                    .catch((error) => {
+                        console.log('❌ SW falló:', error);
+                    });
+            });
+        }
+    </script>
+</body>
+</html>
