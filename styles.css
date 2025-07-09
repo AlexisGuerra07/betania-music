@@ -79,18 +79,44 @@ body.light-mode {
    MODO OSCURO (Verde Betania)
    ========================= */
 body.dark-mode {
-    --bg-primary: var(--green-dark);
-    --bg-secondary: var(--green-medium);
-    --bg-tertiary: var(--dark-card);
-    --text-primary: var(--text-light);
-    --text-secondary: #ccc;
-    --border-color: rgba(255,255,255,0.1);
-    --shadow-light: 0 2px 8px rgba(0,0,0,0.3);
-    --shadow-medium: 0 4px 12px rgba(0,0,0,0.4);
-    --shadow-heavy: 0 8px 24px rgba(0,0,0,0.5);
-    --accent-primary: var(--accent-teal);
-    --accent-hover: var(--green-light);
-    --card-hover: rgba(255,255,255,0.05);
+    background: #062e26;
+    color: #e0f7ef;
+}
+
+body.dark-mode header {
+    background: #079b82;
+    color: #fff;
+}
+
+body.dark-mode .container,
+body.dark-mode aside,
+body.dark-mode main {
+    background: #09483d;
+    color: #e0f7ef;
+}
+
+body.dark-mode .feature-item {
+    background: #0b5e4a;
+    color: #b8ffe6;
+}
+
+body.dark-mode .save-indicator {
+    background: #079b82;
+    color: #fff;
+}
+
+body.dark-mode input,
+body.dark-mode select,
+body.dark-mode button {
+    background: #0b5e4a;
+    color: #e0f7ef;
+    border-color: #079b82;
+}
+
+body.dark-mode .chord-line-example,
+body.dark-mode .lyric-line-example {
+    background: transparent;
+    color: #b8ffe6;
 }
 
 /* =========================
@@ -111,8 +137,8 @@ header {
 }
 
 body.dark-mode header {
-    background: var(--green-dark);
-    border-bottom: 1px solid rgba(255,255,255,0.1);
+    background: #079b82;
+    color: #fff;
 }
 
 #logo {
@@ -187,19 +213,113 @@ body.dark-mode .main-select select {
     border-color: rgba(255,255,255,0.2);
 }
 
+/* =========================
+   🌙 TOGGLE MODO OSCURO CORREGIDO
+   ========================= */
 .dark-mode-toggle {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 12px;
     font-size: 14px;
     color: var(--text-secondary);
+    user-select: none;
 }
 
-.dark-mode-toggle input {
-    width: 44px;
-    height: 24px;
+/* Etiqueta del toggle */
+.toggle-label {
+    font-weight: 500;
+    transition: color 0.3s ease;
+}
+
+/* Contenedor del interruptor personalizado */
+.toggle-switch {
+    position: relative;
+    display: inline-block;
+    width: 52px;
+    height: 28px;
     cursor: pointer;
-    accent-color: var(--accent-primary);
+}
+
+/* Input checkbox oculto */
+.toggle-switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+    position: absolute;
+}
+
+/* Fondo del toggle (slider) */
+.toggle-slider {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: var(--drive-gray-300);
+    border-radius: 28px;
+    transition: all 0.3s ease;
+    cursor: pointer;
+    box-shadow: inset 0 2px 4px rgba(0,0,0,0.1);
+}
+
+/* Círculo deslizante */
+.toggle-slider:before {
+    content: "";
+    position: absolute;
+    height: 22px;
+    width: 22px;
+    left: 3px;
+    bottom: 3px;
+    background: white;
+    border-radius: 50%;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+}
+
+/* Estados del toggle activo */
+.toggle-switch input:checked + .toggle-slider {
+    background: var(--accent-teal);
+    box-shadow: inset 0 2px 4px rgba(7, 155, 130, 0.3);
+}
+
+.toggle-switch input:checked + .toggle-slider:before {
+    transform: translateX(24px);
+    background: #ffffff;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+}
+
+/* Estados hover */
+.toggle-switch:hover .toggle-slider {
+    box-shadow: inset 0 2px 4px rgba(0,0,0,0.15), 0 0 0 3px rgba(26, 115, 232, 0.1);
+}
+
+.toggle-switch input:checked:hover + .toggle-slider {
+    background: #02866e;
+    box-shadow: inset 0 2px 4px rgba(7, 155, 130, 0.4), 0 0 0 3px rgba(7, 155, 130, 0.2);
+}
+
+/* Estados focus para accesibilidad */
+.toggle-switch input:focus + .toggle-slider {
+    outline: 2px solid var(--accent-primary);
+    outline-offset: 2px;
+}
+
+/* Animación de pulso al hacer clic */
+.toggle-switch:active .toggle-slider:before {
+    width: 26px;
+}
+
+/* Estilos para modo oscuro del toggle */
+body.dark-mode .toggle-label {
+    color: #e0f7ef;
+}
+
+body.dark-mode .toggle-slider {
+    background: rgba(255,255,255,0.2);
+}
+
+body.dark-mode .toggle-switch input:checked + .toggle-slider {
+    background: var(--green-light);
 }
 
 /* =========================
@@ -468,7 +588,7 @@ body.dark-mode .chord-example {
 }
 
 body.dark-mode .chord-line-example {
-    color: var(--accent-teal);
+    color: #b8ffe6;
 }
 
 .lyric-line-example {
@@ -501,7 +621,8 @@ body.dark-mode .chord-line-example {
 }
 
 body.dark-mode .feature-item {
-    background: rgba(255,255,255,0.05);
+    background: #0b5e4a;
+    color: #b8ffe6;
     border-left: 4px solid var(--accent-teal);
 }
 
@@ -1065,6 +1186,23 @@ body.dark-mode .chord-diagram .chord-info {
         min-width: 120px;
         padding: 10px 16px;
     }
+
+    /* 📱 Toggle responsive para móvil */
+    .toggle-switch {
+        width: 46px;
+        height: 24px;
+    }
+    
+    .toggle-slider:before {
+        height: 18px;
+        width: 18px;
+        left: 3px;
+        bottom: 3px;
+    }
+    
+    .toggle-switch input:checked + .toggle-slider:before {
+        transform: translateX(22px);
+    }
 }
 
 @media (max-width: 600px) {
@@ -1096,6 +1234,27 @@ body.dark-mode .chord-diagram .chord-info {
     .line-input {
         font-size: 13px;
         padding: 10px 12px;
+    }
+
+    /* 📱 Toggle más pequeño para móviles pequeños */
+    .dark-mode-toggle {
+        flex-direction: column;
+        gap: 8px;
+        text-align: center;
+    }
+    
+    .toggle-switch {
+        width: 42px;
+        height: 22px;
+    }
+    
+    .toggle-slider:before {
+        height: 16px;
+        width: 16px;
+    }
+    
+    .toggle-switch input:checked + .toggle-slider:before {
+        transform: translateX(20px);
     }
 }
 
