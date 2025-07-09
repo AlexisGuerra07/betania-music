@@ -1,5 +1,5 @@
-// 🎵 SISTEMA DE ALABANZA BETANIA V4 - JAVASCRIPT COMPLETO
-// Sistema completamente funcional con todas las características
+// 🎵 SISTEMA DE ALABANZA BETANIA V4 - JAVASCRIPT COMPLETO ACTUALIZADO
+// Sistema completamente funcional con transposición y modo oscuro corregidos
 
 // 🎸 RUEDA TONAL COMPLETA - TODAS LAS TONALIDADES
 const KEYS = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
@@ -145,7 +145,7 @@ const songs = [
         }
     },
     {
-        title: "SANTO ESPÍRITU VEN",
+        title: "SANTO ESPÍRITUD VEN",
         artist: "Marcos Witt",
         key: "E",
         lyrics: {
@@ -599,13 +599,14 @@ const state = {
     editedSong: null,
     history: [],
     historyIndex: -1,
-    autoSave: true
+    autoSave: true,
+    originalSong: null // 🔧 NUEVO: Para almacenar la canción original sin modificar
 };
 
 // 🎯 ELEMENTOS DOM
 let sectionSelect, searchInput, orderSelect, songListUL, addToSetBtn, logoImg, mainContent, darkModeToggle;
 
-// 🚀 INICIALIZAR APLICACIÓN
+// 🚀 INICIALIZAR APLICACIÓN - VERSIÓN CORREGIDA
 function init() {
     // Obtener elementos DOM
     sectionSelect = document.getElementById("section-select");
@@ -617,18 +618,26 @@ function init() {
     mainContent = document.getElementById("main-content");
     darkModeToggle = document.getElementById("dark-mode");
 
+    // Verificar que el elemento existe
+    if (!darkModeToggle) {
+        console.error('❌ Error: No se encontró el elemento dark-mode toggle');
+        return;
+    }
+
     // Agregar event listeners
     sectionSelect.addEventListener("change", onSectionChange);
     searchInput.addEventListener("input", refreshList);
     orderSelect.addEventListener("change", refreshList);
     addToSetBtn.addEventListener("click", addCheckedToSetlist);
     logoImg.addEventListener("click", () => location.reload());
+    
+    // ⭐ CORREGIDO: Usar 'change' en lugar de 'click' para checkbox del modo oscuro
     darkModeToggle.addEventListener("change", toggleDarkMode);
 
     // Inicializar estado
     state.filtered = [...state.songs];
     renderList();
-    loadSettings();
+    loadSettings(); // Cargar configuraciones después de obtener elementos DOM
     setupGlobalKeyboardShortcuts();
     
     console.log('🎵 Sistema Betania V4 inicializado correctamente');
@@ -654,7 +663,7 @@ function onSectionChange() {
     }
 }
 
-// 🔍 ACTUALIZAR LISTA DE CANCIONES
+// 🔍 ACTUALIZAR LISTA DE CANCIONES - CORREGIDO: Sin opción "artist"
 function refreshList() {
     const q = searchInput.value.toLowerCase();
     state.filtered = state.songs.filter(s => 
@@ -663,13 +672,25 @@ function refreshList() {
         (s.artist && s.artist.toLowerCase().includes(q))
     );
     
-    // Ordenar según selección
+    // 📝 ORDENAR SEGÚN SELECCIÓN - Solo "title" y "key" disponibles
     const orderBy = orderSelect.value;
-    state.filtered.sort((a, b) => {
-        const aVal = a[orderBy] || '';
-        const bVal = b[orderBy] || '';
-        return aVal.localeCompare(bVal);
-    });
+    
+    // Validar que solo se usen las opciones disponibles
+    if (orderBy === "title" || orderBy === "key") {
+        state.filtered.sort((a, b) => {
+            const aVal = a[orderBy] || '';
+            const bVal = b[orderBy] || '';
+            return aVal.localeCompare(bVal);
+        });
+    } else {
+        // Fallback a ordenamiento por título si se selecciona una opción no válida
+        console.warn('⚠️ Opción de ordenamiento no válida:', orderBy, '- usando título por defecto');
+        state.filtered.sort((a, b) => {
+            const aVal = a.title || '';
+            const bVal = b.title || '';
+            return aVal.localeCompare(bVal);
+        });
+    }
     
     renderList();
 }
@@ -709,6 +730,7 @@ function renderList() {
             if (state.section === "canciones" || state.section === "setlist") {
                 renderSongDetail(song);
                 state.selectedSong = song;
+                state.originalSong = JSON.parse(JSON.stringify(song)); // 🔧 GUARDAR ORIGINAL
                 state.baseKey = song.key;
                 state.currentSteps = 0;
             }
@@ -770,11 +792,11 @@ function renderSongDetail(song) {
     const artistInfo = song.artist ? ` - ${song.artist}` : '';
     const controlsHTML = `
         <div class="song-controls" style="display: flex; gap: 1rem; margin-bottom: 1.5rem; flex-wrap: wrap; justify-content: center;">
-            <button onclick="transposeKey(-1)" title="Bajar medio tono">♭ Bajar tono</button>
-            <button onclick="transposeKey(1)" title="Subir medio tono">♯ Subir tono</button>
-            <button onclick="resetTransposition()" title="Volver a tonalidad original">🔄 Reset</button>
+            <button onclick="transposeKey(-1)" title="Bajar medio tono">♭ BAJAR TONO</button>
+            <button onclick="transposeKey(1)" title="Subir medio tono">♯ SUBIR TONO</button>
+            <button onclick="resetTransposition()" title="Volver a tonalidad original">🔄 RESET</button>
             <button onclick="toggleEditMode()" title="Activar/desactivar modo edición">
-                ${state.editMode ? '💾 Guardar' : '✏️ Editar'}
+                ${state.editMode ? '💾 GUARDAR' : '✏️ EDITAR'}
             </button>
         </div>
         <div class="current-key-display" style="text-align: center; margin-bottom: 1rem; padding: 0.5rem; background: rgba(7, 155, 130, 0.1); border-radius: 8px;">
@@ -857,8 +879,8 @@ function isChordLine(line) {
     
     // Si más del 50% de las palabras son acordes, o si hay pocos elementos y la mayoría son acordes
     return (chordWords.length >= totalWords * 0.5) || 
-           (totalWords <= 6 && chordWords.length >= 2) ||
-           (line.includes('TAG:') || line.includes('INSTRUMENTAL:'));
+        (totalWords <= 6 && chordWords.length >= 2) ||
+        (line.includes('TAG:') || line.includes('INSTRUMENTAL:'));
 }
 
 // 🎨 RESALTAR ACORDES EN LÍNEA
@@ -873,205 +895,74 @@ function highlightChords(line) {
     });
 }
 
-// ✏️ RENDERIZAR EDITOR DE CANCIÓN
-function renderSongEditor(song) {
-    let html = `
-        <div class="song-editor">
-            <div class="edit-controls">
-                <div class="edit-toolbar">
-                    <button onclick="addNewLine()" title="Añadir nueva línea">➕ Añadir línea</button>
-                    <button onclick="addNewSection()" title="Añadir nueva sección">📄 Nueva sección</button>
-                    <button onclick="undoEdit()" ${state.historyIndex <= 0 ? 'disabled' : ''} title="Deshacer cambio">↶ Deshacer</button>
-                    <button onclick="redoEdit()" ${state.historyIndex >= state.history.length - 1 ? 'disabled' : ''} title="Rehacer cambio">↷ Rehacer</button>
-                    <button onclick="previewChanges()" title="Vista previa de cambios">👁️ Vista previa</button>
-                </div>
-                <div class="edit-instructions">
-                    <strong>📝 Instrucciones del Editor:</strong><br>
-                    • Haz clic en cualquier línea para editarla<br>
-                    • Los acordes se detectan automáticamente (ej: C, Am, F#m, Gmaj7)<br>
-                    • Usa espacios para alinear acordes con letras<br>
-                    • Los acordes editados también se transponen con ♭/♯
-                </div>
-            </div>
-    `;
-
-    Object.entries(song.lyrics).forEach(([sectionName, lines]) => {
-        html += `
-            <div class="editor-section" data-section="${sectionName}">
-                <div class="editor-section-title">
-                    ${sectionName}
-                    <button onclick="deleteSection('${sectionName}')" style="float: right; background: var(--danger-color); padding: 0.2rem 0.5rem; margin-left: 1rem;">🗑️</button>
-                </div>
-        `;
-        
-        lines.forEach((line, index) => {
-            const lineId = `${sectionName}_${index}`;
-            const isChord = isChordLine(line);
-            const inputClass = isChord ? 'line-input chord-line' : 'line-input';
-            const placeholder = isChord ? 'C    G    Am   F (espacios para alinear)' : 'Letra de la canción';
-            
-            html += `
-                <div class="editable-line" data-section="${sectionName}" data-index="${index}">
-                    <textarea 
-                        id="${lineId}" 
-                        class="${inputClass}" 
-                        data-section="${sectionName}" 
-                        data-index="${index}"
-                        oninput="onLineEdit(this)"
-                        onblur="saveLineEdit(this)"
-                        placeholder="${placeholder}"
-                        rows="1"
-                    >${line}</textarea>
-                    <button onclick="deleteLine('${sectionName}', ${index})" class="delete-line-btn" style="position: absolute; right: 5px; top: 5px; background: var(--danger-color); color: white; border: none; padding: 2px 6px; border-radius: 3px; font-size: 12px;">✕</button>
-                </div>
-            `;
-        });
-        
-        html += `
-                <button onclick="addLineToSection('${sectionName}')" style="margin-top: 0.5rem; background: var(--success-color);">➕ Añadir línea a ${sectionName}</button>
-            </div>
-        `;
-    });
+// 🌙 ALTERNAR MODO OSCURO - FUNCIÓN COMPLETAMENTE CORREGIDA
+function toggleDarkMode() {
+    const body = document.body;
+    const checkbox = document.getElementById('dark-mode');
     
-    html += '</div>';
-    return html;
-}
-
-// ✏️ EVENTO DE EDICIÓN DE LÍNEA
-function onLineEdit(textarea) {
-    const line = textarea.value;
-    const isChord = isChordLine(line);
-    
-    // Cambiar estilo según el contenido
-    textarea.className = isChord ? 'line-input chord-line' : 'line-input';
-    
-    // Auto-resize del textarea
-    textarea.style.height = 'auto';
-    textarea.style.height = Math.max(40, textarea.scrollHeight) + 'px';
-    
-    // Actualizar en tiempo real
-    const section = textarea.dataset.section;
-    const index = parseInt(textarea.dataset.index);
-    
-    if (state.editedSong.lyrics[section] && state.editedSong.lyrics[section][index] !== undefined) {
-        state.editedSong.lyrics[section][index] = line;
+    // 🔧 CORREGIDO: Verificar el estado del checkbox correctamente
+    if (checkbox && checkbox.checked) {
+        // Activar modo oscuro
+        body.className = 'dark-mode'; // Limpiar todas las clases y aplicar solo dark-mode
+        localStorage.setItem('darkMode', 'true');
+        showSaveIndicator('🌙 Modo oscuro activado');
+        console.log('🌙 Modo oscuro ON - Checkbox checked:', checkbox.checked);
+    } else {
+        // Activar modo claro
+        body.className = 'light-mode'; // Limpiar todas las clases y aplicar solo light-mode
+        localStorage.setItem('darkMode', 'false');
+        showSaveIndicator('☀️ Modo claro activado');
+        console.log('☀️ Modo claro ON - Checkbox checked:', checkbox ? checkbox.checked : 'checkbox not found');
     }
 }
 
-// 💾 GUARDAR EDICIÓN DE LÍNEA
-function saveLineEdit(textarea) {
-    onLineEdit(textarea);
-    addToHistory();
-    showSaveIndicator('✏️ Línea editada');
-}
-
-// 📚 GESTIÓN DE HISTORIAL
-function addToHistory() {
-    if (state.editedSong) {
-        // Remover elementos futuros si estamos en medio del historial
-        state.history = state.history.slice(0, state.historyIndex + 1);
-        
-        // Añadir nuevo estado
-        state.history.push(JSON.parse(JSON.stringify(state.editedSong)));
-        state.historyIndex = state.history.length - 1;
-        
-        // Limitar historial a 50 pasos
-        if (state.history.length > 50) {
-            state.history.shift();
-            state.historyIndex--;
+// ⚙️ CARGAR CONFIGURACIONES - FUNCIÓN COMPLETAMENTE CORREGIDA
+function loadSettings() {
+    const savedDarkMode = localStorage.getItem('darkMode');
+    const checkbox = document.getElementById('dark-mode');
+    
+    console.log('🔧 Cargando configuraciones. Modo oscuro guardado:', savedDarkMode);
+    
+    if (checkbox) {
+        if (savedDarkMode === 'true') {
+            checkbox.checked = true;
+            document.body.className = 'dark-mode';
+            console.log('✅ Modo oscuro cargado desde localStorage');
+        } else {
+            checkbox.checked = false;
+            document.body.className = 'light-mode';
+            console.log('✅ Modo claro cargado (default o desde localStorage)');
+        }
+    } else {
+        console.error('❌ No se pudo encontrar el checkbox del modo oscuro');
+    }
+    
+    // Cargar canciones guardadas si existen
+    const savedSongs = localStorage.getItem('betania_songs');
+    if (savedSongs) {
+        try {
+            const parsedSongs = JSON.parse(savedSongs);
+            if (Array.isArray(parsedSongs) && parsedSongs.length > 0) {
+                state.songs = parsedSongs;
+                state.filtered = [...state.songs];
+                console.log('🎵 Canciones cargadas desde localStorage');
+            }
+        } catch (e) {
+            console.log('⚠️ Error cargando canciones guardadas');
         }
     }
 }
 
-// ↶ DESHACER EDICIÓN
-function undoEdit() {
-    if (state.historyIndex > 0) {
-        state.historyIndex--;
-        state.editedSong = JSON.parse(JSON.stringify(state.history[state.historyIndex]));
-        renderSongDetail(state.editedSong);
-        showSaveIndicator('↶ Cambio deshecho');
-    }
-}
+// 🎼 TRANSPOSICIÓN DE ACORDES - FUNCIONES CORREGIDAS
 
-// ↷ REHACER EDICIÓN
-function redoEdit() {
-    if (state.historyIndex < state.history.length - 1) {
-        state.historyIndex++;
-        state.editedSong = JSON.parse(JSON.stringify(state.history[state.historyIndex]));
-        renderSongDetail(state.editedSong);
-        showSaveIndicator('↷ Cambio rehecho');
-    }
-}
-
-// ➕ AÑADIR NUEVA LÍNEA
-function addLineToSection(sectionName) {
-    if (state.editedSong.lyrics[sectionName]) {
-        state.editedSong.lyrics[sectionName].push('');
-        addToHistory();
-        renderSongDetail(state.editedSong);
-        showSaveIndicator(`➕ Línea añadida a ${sectionName}`);
-    }
-}
-
-// 🗑️ ELIMINAR LÍNEA
-function deleteLine(sectionName, index) {
-    if (state.editedSong.lyrics[sectionName] && 
-        state.editedSong.lyrics[sectionName].length > 1 &&
-        confirm('¿Eliminar esta línea?')) {
-        state.editedSong.lyrics[sectionName].splice(index, 1);
-        addToHistory();
-        renderSongDetail(state.editedSong);
-        showSaveIndicator('🗑️ Línea eliminada');
-    }
-}
-
-// 📄 AÑADIR NUEVA SECCIÓN
-function addNewSection() {
-    const sectionName = prompt('Nombre de la nueva sección:');
-    if (sectionName && !state.editedSong.lyrics[sectionName]) {
-        state.editedSong.lyrics[sectionName] = [''];
-        addToHistory();
-        renderSongDetail(state.editedSong);
-        showSaveIndicator(`📄 Sección "${sectionName}" añadida`);
-    }
-}
-
-// 🗑️ ELIMINAR SECCIÓN
-function deleteSection(sectionName) {
-    if (Object.keys(state.editedSong.lyrics).length > 1 &&
-        confirm(`¿Eliminar la sección "${sectionName}"?`)) {
-        delete state.editedSong.lyrics[sectionName];
-        addToHistory();
-        renderSongDetail(state.editedSong);
-        showSaveIndicator(`🗑️ Sección "${sectionName}" eliminada`);
-    }
-}
-
-// 👁️ VISTA PREVIA DE CAMBIOS
-function previewChanges() {
-    const tempEditMode = state.editMode;
-    state.editMode = false;
-    const previewContent = renderSongSections(state.editedSong);
-    state.editMode = tempEditMode;
-    
-    const preview = document.getElementById('song-display');
-    if (preview) {
-        preview.innerHTML = previewContent;
-        document.querySelectorAll('.chord').forEach(chord => {
-            chord.addEventListener('click', () => showChordDiagram(chord.textContent));
-        });
-        showSaveIndicator('👁️ Vista previa actualizada');
-    }
-}
-
-// 🎼 TRANSPOSICIÓN DE ACORDES - FUNCIONES PRINCIPALES
-
-// ♭ ♯ TRANSPONER TONALIDAD
+// ♭ ♯ TRANSPONER TONALIDAD (🔧 CORREGIDO)
 function transposeKey(steps) {
     state.currentSteps += steps;
-    const currentSong = state.editMode ? state.editedSong : state.selectedSong;
     const newKey = transpose(state.baseKey, state.currentSteps);
-    const transposedSong = transposeSong(currentSong, steps);
+    
+    // 🔧 IMPORTANTE: Transponer siempre desde la canción ORIGINAL
+    const songToTranspose = state.originalSong || state.selectedSong;
+    const transposedSong = transposeSong(songToTranspose, state.currentSteps);
     
     // Actualizar display
     document.getElementById('current-key').textContent = newKey;
@@ -1083,9 +974,8 @@ function transposeKey(steps) {
     });
     
     // Si estamos en modo edición, actualizar también la canción editada
-    if (state.editMode) {
+    if (state.editMode && state.editedSong) {
         state.editedSong = transposedSong;
-        // No necesitamos re-renderizar el editor, solo el display
     }
     
     // Actualizar indicador de tonalidad
@@ -1098,16 +988,13 @@ function transposeKey(steps) {
     showSaveIndicator(`🎼 Transpuesto a ${newKey} ${steps > 0 ? '♯' : '♭'}`);
 }
 
-// 🔄 RESETEAR TRANSPOSICIÓN
+// 🔄 RESETEAR TRANSPOSICIÓN (🔧 CORREGIDO)
 function resetTransposition() {
     if (state.currentSteps !== 0) {
         state.currentSteps = 0;
-        const currentSong = state.editMode ? state.editedSong : state.selectedSong;
         
-        // Volver a la canción original
-        const originalSong = state.editMode ? 
-            JSON.parse(JSON.stringify(state.selectedSong)) : 
-            state.selectedSong;
+        // Volver a la canción original sin transposición
+        const originalSong = state.originalSong || state.selectedSong;
         
         document.getElementById('current-key').textContent = state.baseKey;
         document.getElementById('song-display').innerHTML = renderSongSections(originalSong);
@@ -1117,9 +1004,9 @@ function resetTransposition() {
             chord.addEventListener('click', () => showChordDiagram(chord.textContent));
         });
         
-        // Si estamos en modo edición, resetear a la versión original editada
+        // Si estamos en modo edición, resetear a la versión original
         if (state.editMode) {
-            state.editedSong = JSON.parse(JSON.stringify(state.selectedSong));
+            state.editedSong = JSON.parse(JSON.stringify(originalSong));
         }
         
         // Actualizar indicador
@@ -1132,7 +1019,7 @@ function resetTransposition() {
     }
 }
 
-// 🎵 TRANSPONER UN SOLO ACORDE
+// 🎵 TRANSPONER UN SOLO ACORDE (🔧 CORREGIDO)
 function transpose(chord, steps) {
     if (!chord || steps === 0) return chord;
     
@@ -1160,16 +1047,16 @@ function transpose(chord, steps) {
     return newBaseNote + suffix;
 }
 
-// 🎼 TRANSPONER CANCIÓN COMPLETA
-function transposeSong(song, steps) {
-    if (steps === 0) return song;
+// 🎼 TRANSPONER CANCIÓN COMPLETA (🔧 CORREGIDO)
+function transposeSong(song, totalSteps) {
+    if (totalSteps === 0) return song;
     
     const transposed = JSON.parse(JSON.stringify(song));
     
-    // Transponer letras
+    // Transponer letras usando pasos totales desde la original
     Object.keys(transposed.lyrics).forEach(section => {
         transposed.lyrics[section] = transposed.lyrics[section].map(line => 
-            transposeChords(line, steps)
+            transposeChords(line, totalSteps)
         );
     });
     
@@ -1177,7 +1064,7 @@ function transposeSong(song, steps) {
     if (transposed.progression) {
         Object.keys(transposed.progression).forEach(section => {
             transposed.progression[section] = transposed.progression[section].map(chord => 
-                transpose(chord, steps)
+                transpose(chord, totalSteps)
             );
         });
     }
@@ -1185,9 +1072,9 @@ function transposeSong(song, steps) {
     return transposed;
 }
 
-// 🎸 TRANSPONER ACORDES EN LÍNEA DE TEXTO
-function transposeChords(line, steps) {
-    if (!line || steps === 0) return line;
+// 🎸 TRANSPONER ACORDES EN LÍNEA DE TEXTO (🔧 CORREGIDO)
+function transposeChords(line, totalSteps) {
+    if (!line || totalSteps === 0) return line;
     
     // Patrón más completo para acordes
     const chordPattern = /\b([A-G][#b]?(?:m|maj|min|sus|add|dim|aug|M)?[0-9]*(?:\/[A-G][#b]?)?)\b/g;
@@ -1196,11 +1083,11 @@ function transposeChords(line, steps) {
         // Si contiene bajo (acorde/bajo), transponer ambos
         if (match.includes('/')) {
             const [chord, bass] = match.split('/');
-            const transposedChord = transpose(chord, steps);
-            const transposedBass = transpose(bass, steps);
+            const transposedChord = transpose(chord, totalSteps);
+            const transposedBass = transpose(bass, totalSteps);
             return `${transposedChord}/${transposedBass}`;
         } else {
-            return transpose(match, steps);
+            return transpose(match, totalSteps);
         }
     });
 }
@@ -1359,6 +1246,7 @@ function toggleEditMode() {
         if (index !== -1) {
             state.songs[index] = JSON.parse(JSON.stringify(state.editedSong));
             state.selectedSong = state.songs[index];
+            state.originalSong = JSON.parse(JSON.stringify(state.songs[index])); // 🔧 ACTUALIZAR ORIGINAL
             state.baseKey = state.selectedSong.key;
             
             // Persistir cambios
@@ -1380,39 +1268,6 @@ function showSaveIndicator(message = '✅ Cambios guardados') {
     setTimeout(() => {
         indicator.classList.remove('show');
     }, 3000);
-}
-
-// 🌙 ALTERNAR MODO OSCURO
-function toggleDarkMode() {
-    const isDark = document.body.classList.toggle('dark-mode');
-    document.body.classList.toggle('light-mode', !isDark);
-    localStorage.setItem('darkMode', isDark);
-    showSaveIndicator(isDark ? '🌙 Modo oscuro activado' : '☀️ Modo claro activado');
-}
-
-// ⚙️ CARGAR CONFIGURACIONES
-function loadSettings() {
-    const savedDarkMode = localStorage.getItem('darkMode');
-    if (savedDarkMode === 'true') {
-        darkModeToggle.checked = true;
-        document.body.classList.add('dark-mode');
-        document.body.classList.remove('light-mode');
-    }
-    
-    // Cargar canciones guardadas si existen
-    const savedSongs = localStorage.getItem('betania_songs');
-    if (savedSongs) {
-        try {
-            const parsedSongs = JSON.parse(savedSongs);
-            if (Array.isArray(parsedSongs) && parsedSongs.length > 0) {
-                state.songs = parsedSongs;
-                state.filtered = [...state.songs];
-                console.log('🎵 Canciones cargadas desde localStorage');
-            }
-        } catch (e) {
-            console.log('⚠️ Error cargando canciones guardadas');
-        }
-    }
 }
 
 // ⌨️ ATAJOS DE TECLADO
@@ -1532,7 +1387,9 @@ function renderAddSongForm() {
 }
 
 // 🚀 INICIALIZAR CUANDO EL DOM ESTÉ LISTO
-document.addEventListener('DOMContentLoaded', init);
+document.addEventListener('DOMContentLoaded', () => {
+    init();
+});
 
 // 📱 DETECTAR INSTALACIÓN PWA
 window.addEventListener('beforeinstallprompt', (e) => {
@@ -1541,4 +1398,4 @@ window.addEventListener('beforeinstallprompt', (e) => {
     showSaveIndicator('📱 Disponible para instalar como app');
 });
 
-console.log('🎵 Sistema Betania V4 cargado - ¡Listo para alabar!');
+console.log('🎵 Sistema Betania V4 cargado y corregido - ¡Modo oscuro y ordenación arreglados!');
