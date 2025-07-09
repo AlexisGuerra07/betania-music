@@ -11,7 +11,7 @@
 </head>
 <body class="light-mode">
     <header>
-        <img id="logo" src="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPGNpcmNsZSBjeD0iMzAiIGN5PSIzMCIgcj0iMzAiIGZpbGw9IiMwNzliODIiLz4KPHN2ZyB4PSIxNSIgeT0iMTUiIHdpZHRoPSIzMCIgaGVpZ2h0PSIzMCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJ3aGl0ZSI+CjxwYXRoIGQ9Ik0xMiAzdjEwLjU1Yy0uNTktLjM0LTEuMjctLjU1LTItLjU1LTIuMjEgMC00IDEuNzktNCA0czEuNzkgNCA0IDQgNC0xLjc5IDQtNFY3aDRWM2gtNnoiLz4KPC9zdmc+Cjwvc3ZnPgo=" alt="Logo Betania">                  
+        <img id="logo" src="logo.png" alt="Logo" style="height: 48px; width: 48px; border-radius: 50%;">                  
         <div class="title">
             <h1>Equipo de Alabanza Betania V4</h1>
             <p>Sistema Completo | Editor Avanzado | Transposición Total | Modo Performance</p>
@@ -26,9 +26,13 @@
                 <option value="add-song">➕ Añadir Canción</option>
             </select>
                          
+            <!-- 🌙 INTERRUPTOR DE MODO OSCURO CORREGIDO - Removido label y mejorado el toggle -->
             <div class="dark-mode-toggle">
-                <label for="dark-mode">🌙 Modo Oscuro</label>
-                <input type="checkbox" id="dark-mode">
+                <span class="toggle-label">🌙 Modo Oscuro</span>
+                <label class="toggle-switch" for="dark-mode">
+                    <input type="checkbox" id="dark-mode">
+                    <span class="toggle-slider"></span>
+                </label>
             </div>
         </div>
     </header>
@@ -42,10 +46,11 @@
         <aside>
             <input type="text" id="search" placeholder="🔍 Buscar canciones...">
                          
+            <!-- 📝 SELECTOR DE ORDENACIÓN MODIFICADO - Removida opción "por artista" -->
             <select id="order-select">
                 <option value="title">📝 Ordenar por título</option>
                 <option value="key">🎼 Ordenar por tonalidad</option>
-                <option value="artist">👤 Ordenar por artista</option>
+                <!-- ❌ REMOVIDO: <option value="artist">👤 Ordenar por artista</option> -->
             </select>
                          
             <ul id="song-list">
