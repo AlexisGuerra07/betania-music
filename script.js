@@ -7,6 +7,7 @@ const FLAT_KEYS = ["C", "Db", "D", "Eb", "E", "F", "Gb", "G", "Ab", "A", "Bb", "
 
 // 🎵 BASE DE DATOS COMPLETA DE CANCIONES
 const songs = [
+    
     {
         title: "ENTRELAZADOS",
         artist: "Betania Worship",
@@ -44,6 +45,61 @@ const songs = [
                 "En ti encuentro paz",
                 "E",
                 "En ti encuentro todo lo que el mundo no me puede dar"
+            ]
+        }
+    }, // <--- CIERRA CORRECTAMENTE EL OBJETO DE ENTRELAZADOS Y SEPARA LOS OBJETOS
+    {
+        title: "SEA LA LUZ",
+        artist: "Artista", // Cambia por el nombre del artista
+        key: "A",
+        lyrics: {
+            "INTRO": [
+                "D-F#m - A-C#m",
+                "D-F#m - A - B"
+            ],
+            "ESTROFA": [
+                "   A                              Em",
+                "Cristo, eres la luz de mundo",
+                "                             D                                    D",
+                "Eres el sol de justicia, Que nunca deja de brillar",
+                "   A                               Em",
+                "Cristo, tu luz no avergüenza",
+                "                            D                                       A",
+                "Tu luz nunca condena, solo muestra tu gloria"
+            ],
+            "PRE CORO": [
+                "            F#m                   A            D",
+                "Esta generación se expone a tu luz",
+                "         F#m               A               D.          E",
+                "Y cada nación responde a tu voz"
+            ],
+            "CORO": [
+                "          D",
+                "//Sea la luz, en este lugar",
+                "A/C#    D",
+                "Sea la luz y todo se ordena",
+                "E     F#m              A       C#m",
+                "Sea la luz y hágase tu voluntad//"
+            ],
+            "PUENTE": [
+                "Bm -A/C# - D",
+                "",
+                "    Bm          A/C#.             D",
+                "//Todo se ilumina cuando tú estas",
+                "Bm          A/C#.    D",
+                "Todo se ordena, todo se transforma//",
+                "",
+                "                           D",
+                "////Tu eres la luz que alumbra mi vida",
+                "A/C#     D",
+                "Eres la luz que el mundo ilumina",
+                "E     F#m                    A       C#m",
+                "Eres la luz, yo amo hacer tu voluntad ////"
+            ],
+            "FINAL": [
+                "D  F#m    A C#m",
+                "D. F#m.   A B7",
+                "D"
             ]
         }
     },
@@ -154,7 +210,7 @@ const songs = [
                 "Santo Espíritu ven, llénanos Señor",
                 "B       A              E",
                 "De tu presencia y de tu amor",
-                "C#m        A      E",
+                "E",
                 "Ven y toma control de mi ser",
                 "B  A   E",
                 "Santo Espíritu ven"
@@ -162,12 +218,353 @@ const songs = [
             CORO: [
                 "A            E",
                 "Ven, ven, ven Espíritu Santo",
-                "B                      C#m",
+                "B",
                 "Ven, ven, ven y llénanos",
                 "A           E",
                 "Con tu fuego santo",
                 "B                      E",
                 "Ven y renueva nuestro corazón"
+            ]
+        }
+    },
+    {
+        title: "ABBA (Nunca falla TTL)",
+        artist: "Tu Artista", // Cambia por el nombre del artista
+        key: "D",
+        lyrics: {
+            "ESTROFA": [
+                "D G",
+                "Escucho tu corazón",
+                "A D",
+                "Cada latido está llamando mi nombre",
+                "       G",
+                "Soy atraído otra vez por tu sangre",
+                "      D",
+                "Me siento tan mimado por ti",
+                "G",
+                "Me encuentro en tu corazón",
+                "      A      D",
+                "Decidiste aceptarme por siempre",
+                "G",
+                "Tu amor por mí es tan sorprendente",
+                "    D",
+                "Me siento tan amado por ti, mi papá"
+            ],
+            "PRECORO": [
+                "   A D",
+                "Y es tan bello saber que soy hijo",
+                "A D",
+                "Y que tengo un lugar en tu mesa",
+                "A D",
+                "No hay nada mejor que escuchar tu voz",
+                "       A       D",
+                "Diciendo \"nuestra comunión es eterna\"",
+                "              Em  A",
+                "Oh oh oh oh, oh oh oh oh",
+                "  D",
+                "Me amaste primero, con amor verdadero",
+                "   Em  A",
+                "Oh oh oh oh, oh oh oh oh",
+                "D",
+                "Y mi respuesta es adorar, mi respuesta es adorar"
+            ],
+            CORO: [
+                "Em  A9        D",
+                "ABBA, tu amor nunca falla, siempre me abraza"
+            ],
+            INSTRUMENTAL: [
+                "Em A9         D"
+            ],
+            PUENTE: [
+                "           Em.                                    A9",
+                "Abba Padre, enséñanos a ser familia",
+                "             D",
+                "Abba Padre, enséñanos a ser familia"
+            ]
+        }
+    },
+    {
+        title: "ADMIRABLE (TTL)",
+        artist: "TTL",
+        key: "Am7",
+        lyrics: {
+            "INTRO": [
+                "Am7 G  C7aug  F"
+            ],
+            "ESTROFA": [
+                "    Am7",
+                "Pagaste un alto precio",
+                "       G.                          C7aug",
+                "Y abriste el camino y  hoy",
+                "                                F",
+                "Puedo acercarme a ti",
+                "      Am7",
+                "Me diste libre acceso",
+                "    G.                             C7aug",
+                "A tu lugar secreto y tu amor",
+                "                              F",
+                "Consume todo en mí"
+            ],
+            "PRE-CORO": [
+                "                  Dm7      G",
+                "Nadie me abraza como tú",
+                "                    Em7              F",
+                "Nadie me perdona como tú",
+                "                       Dm7.                     G",
+                "Y te responderé con mi mejor perfume",
+                "                 Em7                 F",
+                "Solo tú mereces mi devoción",
+                "                      Dm7                        G",
+                "Y te responderé con toda mi obediencia",
+                "               Em7                 F",
+                "Solo tú mereces mi corazón"
+            ],
+            "CORO": [
+                "         F.                      G",
+                "Jesucristo, eres el centro",
+                "                                      Am7",
+                "No puedo dejar de mirarte",
+                "                                    Em",
+                "No puedo dejar de mirarte",
+                "         F.                         G",
+                "Jesucristo adoro tu nombre",
+                "                         Am7",
+                "Eres tan admirable, ",
+                "               Em",
+                "tan admirable",
+                "(Am7 G  C7aug  F)",
+                "OOOOH OOOH OOOHH x3"
+            ],
+            "PUENTE": [
+                "          Am7.                                  G",
+                "Y sobre toda circunstancia tú estás",
+                "         C.                         F",
+                "Eres Rey, por siempre Rey",
+                "         Am7.                             G",
+                "Sobre todo principado y potestad",
+                "        C.                         F",
+                "Eres Rey, por siempre Rey",
+                "            Am7.                                   G",
+                "//Quien fue, quien es y pronto vendrá",
+                "        C.                          F",
+                "Eres Rey, por siempre Rey//",
+                "(Am7 G  C7aug  F)",
+                "OOOHH OOOOH OOOOH x3"
+            ],
+            "CORO x2": [
+                "(Repetir CORO dos veces)"
+            ],
+            "CANTO ESPONTÁNEO": [
+                "(con acordes de OOOHH)",
+                "                               Am7.                              G",
+                "Todos los que te miraron no fueron avergonzados",
+                "                               C.                            F",
+                "Todos los que te miraron fueron alumbrados",
+                "                               Am7.                               G",
+                "Todos los que te miraron no fueron avergonzados",
+                "                   C.                         F",
+                "Todos te miramos, todos te miramos",
+                "",
+                "Misma rueda siempre: Am7 G  C7aug  F",
+                "",
+                "//Puestos los ojos en Cristo//                              ",
+                "//Corremos con paciencia //",
+                "No puedo dejar de mirarte x8"
+            ]
+        }
+    },
+    {
+        title: "AL QUE ESTÁ SENTADO",
+        artist: "",
+        key: "E",
+        lyrics: {
+            "ESTROFA": [
+                "E           C#m",
+                "Quiero conocerte, cada día mas a ti",
+                "Bsus B A",
+                "Y estar en tu presencia y adorar",
+                "C#m        Bsus",
+                "Revélanos tu gloria deseamos ir",
+                "B         A",
+                "Mucho más en ti, queremos tu presencia",
+                "B   Bsus  B",
+                "Jesús."
+            ],
+            "CORO": [
+                "E",
+                "Al que está sentado en el trono",
+                "C#m",
+                "Al que vive para siempre y siempre",
+                "F#m",
+                "//Sea la Gloria",
+                "E/G#",
+                "Sea la Honra y el Poder",
+                "A",
+                "Sea la Gloria",
+                "B   Bsus  B",
+                "Sea la Honra y el Poder//"
+            ]
+        }
+    },
+    {
+        title: "REY JUSTO (TTL)",
+        artist: "TTL",
+        key: "Am",
+        lyrics: {
+            "CORO": [
+                "Am.                          C.             F",
+                "/Toda gloria al Dios poderoso",
+                "      Dm",
+                "¿Quién no te temerá?",
+                "Am.                         C.            F",
+                "Toda gloria al Dios poderoso",
+                "        Dm",
+                "El incienso subirá/X3"
+            ],
+            "INSTRUMENTAL CORO": [
+                "(Instrumental de coro x2)"
+            ],
+            "ESTROFA": [
+                "F.       Am. Dm",
+                "Altísimo creador dueño de todo",
+                "F.               Am.  Dm",
+                "Tus juicios son fieles y justos",
+                "F.                   Am.     Dm",
+                "El que nos amó primero y último de todos",
+                "F.            Am.       Dm",
+                "Inmensurable, su reino no tendrá fin"
+            ],
+            "INSTRUMENTAL CORO 2": [
+                "(Instrumental de coro)"
+            ],
+            "ESTROFA 2": [
+                "(Repetir ESTROFA)"
+            ],
+            "INSTRUMENTAL CORO 3": [
+                "(Instrumental de coro)"
+            ],
+            "PUENTE": [
+                "     Dm.                  C.                                       F",
+                "/Y aquí permaneceremos alrededor de tu presencia",
+                "              Dm.                  C.                                               F",
+                "Sé entronado en las alabanzas de tu pueblo en toda la tierra/ X2"
+            ],
+            "CORO FINAL": [
+                "CORO x4 F G Am G F Dm"
+            ]
+        }
+    },
+    {
+        title: "AQUÍ ESTOY",
+        artist: "",
+        key: "G",
+        lyrics: {
+            "ESTROFA 1": [
+                "G        C",
+                "Tú eres el principio,",
+                "G        C",
+                "tuya es la eternidad,",
+                "Em       D",
+                "Llamaste el mundo a existencia,",
+                "C        D",
+                "me acerco a ti."
+            ],
+            "ESTROFA 2": [
+                "G        C",
+                "Moriste por mis fracasos,",
+                "G        C",
+                "llevaste mi culpa en la cruz,",
+                "Em       D",
+                "cargaste en tus hombros mi carga,",
+                "C        D",
+                "me acerco a ti."
+            ],
+            "PRECORO": [
+                "C-D-Em   C-D-Em",
+                "¿Qué puedo hacer? ¿qué puedo decir?",
+                "C   D   Em   D",
+                "Te ofrezco mi corazón completamente a ti."
+            ],
+            "ESTROFA 3": [
+                "En Tu salvación camino, tu espíritu vive en mí,",
+                "declaras en tus promesas, me acerco a ti."
+            ],
+            "PRECORO 2": [
+                "//¿Qué puedo hacer? ¿qué puedo decir?",
+                "Te ofrezco mi corazón completamente a ti.//"
+            ],
+            "CORO": [
+                "C   G   D   Em",
+                "Aquí estoy, con manos alzadas vengo,",
+                "C   G   D   Em   C",
+                "Pues tú todo lo diste por mí.",
+                "G   D   Em",
+                "Aquí estoy, mi alma a ti entrego,",
+                "C   G   D",
+                "Tuyo soy, Señor.",
+                "(x5)"
+            ]
+        }
+    },
+    {
+        title: "ÁRBOL",
+        artist: "",
+        key: "Em",
+        lyrics: {
+            "ESTROFA": [
+                "Em",
+                "Yo quiero ser firme, inamovible",
+                "C",
+                "profundizarme de raíz",
+                "G D",
+                "firme, inamovible en ti",
+                "Y yo como un árbol quiero ser",
+                "y arraigado quiero estar",
+                "junto aguas vivas",
+                "Haz llover, haz llover",
+                "abre las puertas del cielo"
+            ]
+        }
+    },
+    {
+        title: "AL QUE CABALGA",
+        artist: "Tu Artista", // Cambia por el nombre del artista
+        key: "Bm",
+        lyrics: {
+            "INTRO": [
+                "Bmx4",
+                "G      A.   Bm.    F#maj7/A"
+            ],
+            "VERSO": [
+                "G.",
+                "Con voz de mando",
+                "          A",
+                "y con trompeta desde el cielo",
+                "Bm.                               A",
+                "Los Santos se levantarán",
+                "G.                                  A",
+                "Un gran anuncio se escucha en la tierra",
+                "Bm.                                 A",
+                "El Rey ya viene a gobernar"
+            ],
+            "CORO": [
+                "Bm",
+                "Al que cabalga sobre los cielos",
+                "F#maj7/A",
+                "Le preparamos el camino en la tierra"
+            ],
+            "PUENTE 1": [
+                "Gmaj7",
+                "Sus ojos son como llamas de fuego",
+                "A",
+                "Cabellos como blanca lana",
+                " Bm                                      F#maj7/A",
+                "Y su rostro resplandece como el sol"
+            ],
+            "PUENTE 2": [
+                "Gmaj7. A. Bm. F#maj7/A",
+                "Levántate fuerte y valiente",
+                "Levántate esposo, rey y juez"
             ]
         }
     }
@@ -631,7 +1028,7 @@ function init() {
     addToSetBtn.addEventListener("click", addCheckedToSetlist);
     logoImg.addEventListener("click", () => location.reload());
     
-    // ⭐ CORREGIDO: Usar 'change' en lugar de 'click' para checkbox del modo oscuro
+    // ⭐ IMPORTANTE: Usar 'change' en lugar de 'click' para checkboxes
     darkModeToggle.addEventListener("change", toggleDarkMode);
 
     // Inicializar estado
@@ -663,7 +1060,7 @@ function onSectionChange() {
     }
 }
 
-// 🔍 ACTUALIZAR LISTA DE CANCIONES - CORREGIDO: Sin opción "artist"
+// 🔍 ACTUALIZAR LISTA DE CANCIONES
 function refreshList() {
     const q = searchInput.value.toLowerCase();
     state.filtered = state.songs.filter(s => 
@@ -672,25 +1069,13 @@ function refreshList() {
         (s.artist && s.artist.toLowerCase().includes(q))
     );
     
-    // 📝 ORDENAR SEGÚN SELECCIÓN - Solo "title" y "key" disponibles
+    // Ordenar según selección
     const orderBy = orderSelect.value;
-    
-    // Validar que solo se usen las opciones disponibles
-    if (orderBy === "title" || orderBy === "key") {
-        state.filtered.sort((a, b) => {
-            const aVal = a[orderBy] || '';
-            const bVal = b[orderBy] || '';
-            return aVal.localeCompare(bVal);
-        });
-    } else {
-        // Fallback a ordenamiento por título si se selecciona una opción no válida
-        console.warn('⚠️ Opción de ordenamiento no válida:', orderBy, '- usando título por defecto');
-        state.filtered.sort((a, b) => {
-            const aVal = a.title || '';
-            const bVal = b.title || '';
-            return aVal.localeCompare(bVal);
-        });
-    }
+    state.filtered.sort((a, b) => {
+        const aVal = a[orderBy] || '';
+        const bVal = b[orderBy] || '';
+        return aVal.localeCompare(bVal);
+    });
     
     renderList();
 }
@@ -895,61 +1280,194 @@ function highlightChords(line) {
     });
 }
 
-// 🌙 ALTERNAR MODO OSCURO - FUNCIÓN COMPLETAMENTE CORREGIDA
-function toggleDarkMode() {
-    const body = document.body;
-    const checkbox = document.getElementById('dark-mode');
+// ✏️ RENDERIZAR EDITOR DE CANCIÓN
+function renderSongEditor(song) {
+    let html = `
+        <div class="song-editor">
+            <div class="edit-controls">
+                <div class="edit-toolbar">
+                    <button onclick="addNewLine()" title="Añadir nueva línea">➕ Añadir línea</button>
+                    <button onclick="addNewSection()" title="Añadir nueva sección">📄 Nueva sección</button>
+                    <button onclick="undoEdit()" ${state.historyIndex <= 0 ? 'disabled' : ''} title="Deshacer cambio">↶ Deshacer</button>
+                    <button onclick="redoEdit()" ${state.historyIndex >= state.history.length - 1 ? 'disabled' : ''} title="Rehacer cambio">↷ Rehacer</button>
+                    <button onclick="previewChanges()" title="Vista previa de cambios">👁️ Vista previa</button>
+                </div>
+                <div class="edit-instructions">
+                    <strong>📝 Instrucciones del Editor:</strong><br>
+                    • Haz clic en cualquier línea para editarla<br>
+                    • Los acordes se detectan automáticamente (ej: C, Am, F#m, Gmaj7)<br>
+                    • Usa espacios para alinear acordes con letras<br>
+                    • Los acordes editados también se transponen con ♭/♯
+                </div>
+            </div>
+    `;
+
+    Object.entries(song.lyrics).forEach(([sectionName, lines]) => {
+        html += `
+            <div class="editor-section" data-section="${sectionName}">
+                <div class="editor-section-title">
+                    ${sectionName}
+                    <button onclick="deleteSection('${sectionName}')" style="float: right; background: var(--danger-color); padding: 0.2rem 0.5rem; margin-left: 1rem;">🗑️</button>
+                </div>
+        `;
+        
+        lines.forEach((line, index) => {
+            const lineId = `${sectionName}_${index}`;
+            const isChord = isChordLine(line);
+            const inputClass = isChord ? 'line-input chord-line' : 'line-input';
+            const placeholder = isChord ? 'C    G    Am   F (espacios para alinear)' : 'Letra de la canción';
+            
+            html += `
+                <div class="editable-line" data-section="${sectionName}" data-index="${index}">
+                    <textarea 
+                        id="${lineId}" 
+                        class="${inputClass}" 
+                        data-section="${sectionName}" 
+                        data-index="${index}"
+                        oninput="onLineEdit(this)"
+                        onblur="saveLineEdit(this)"
+                        placeholder="${placeholder}"
+                        rows="1"
+                    >${line}</textarea>
+                    <button onclick="deleteLine('${sectionName}', ${index})" class="delete-line-btn" style="position: absolute; right: 5px; top: 5px; background: var(--danger-color); color: white; border: none; padding: 2px 6px; border-radius: 3px; font-size: 12px;">✕</button>
+                </div>
+            `;
+        });
+        
+        html += `
+                <button onclick="addLineToSection('${sectionName}')" style="margin-top: 0.5rem; background: var(--success-color);">➕ Añadir línea a ${sectionName}</button>
+            </div>
+        `;
+    });
     
-    // 🔧 CORREGIDO: Verificar el estado del checkbox correctamente
-    if (checkbox && checkbox.checked) {
-        // Activar modo oscuro
-        body.className = 'dark-mode'; // Limpiar todas las clases y aplicar solo dark-mode
-        localStorage.setItem('darkMode', 'true');
-        showSaveIndicator('🌙 Modo oscuro activado');
-        console.log('🌙 Modo oscuro ON - Checkbox checked:', checkbox.checked);
-    } else {
-        // Activar modo claro
-        body.className = 'light-mode'; // Limpiar todas las clases y aplicar solo light-mode
-        localStorage.setItem('darkMode', 'false');
-        showSaveIndicator('☀️ Modo claro activado');
-        console.log('☀️ Modo claro ON - Checkbox checked:', checkbox ? checkbox.checked : 'checkbox not found');
+    html += '</div>';
+    return html;
+}
+
+// ✏️ EVENTO DE EDICIÓN DE LÍNEA
+function onLineEdit(textarea) {
+    const line = textarea.value;
+    const isChord = isChordLine(line);
+    
+    // Cambiar estilo según el contenido
+    textarea.className = isChord ? 'line-input chord-line' : 'line-input';
+    
+    // Auto-resize del textarea
+    textarea.style.height = 'auto';
+    textarea.style.height = Math.max(40, textarea.scrollHeight) + 'px';
+    
+    // Actualizar en tiempo real
+    const section = textarea.dataset.section;
+    const index = parseInt(textarea.dataset.index);
+    
+    if (state.editedSong.lyrics[section] && state.editedSong.lyrics[section][index] !== undefined) {
+        state.editedSong.lyrics[section][index] = line;
     }
 }
 
-// ⚙️ CARGAR CONFIGURACIONES - FUNCIÓN COMPLETAMENTE CORREGIDA
-function loadSettings() {
-    const savedDarkMode = localStorage.getItem('darkMode');
-    const checkbox = document.getElementById('dark-mode');
-    
-    console.log('🔧 Cargando configuraciones. Modo oscuro guardado:', savedDarkMode);
-    
-    if (checkbox) {
-        if (savedDarkMode === 'true') {
-            checkbox.checked = true;
-            document.body.className = 'dark-mode';
-            console.log('✅ Modo oscuro cargado desde localStorage');
-        } else {
-            checkbox.checked = false;
-            document.body.className = 'light-mode';
-            console.log('✅ Modo claro cargado (default o desde localStorage)');
+// 💾 GUARDAR EDICIÓN DE LÍNEA
+function saveLineEdit(textarea) {
+    onLineEdit(textarea);
+    addToHistory();
+    showSaveIndicator('✏️ Línea editada');
+}
+
+// 📚 GESTIÓN DE HISTORIAL
+function addToHistory() {
+    if (state.editedSong) {
+        // Remover elementos futuros si estamos en medio del historial
+        state.history = state.history.slice(0, state.historyIndex + 1);
+        
+        // Añadir nuevo estado
+        state.history.push(JSON.parse(JSON.stringify(state.editedSong)));
+        state.historyIndex = state.history.length - 1;
+        
+        // Limitar historial a 50 pasos
+        if (state.history.length > 50) {
+            state.history.shift();
+            state.historyIndex--;
         }
-    } else {
-        console.error('❌ No se pudo encontrar el checkbox del modo oscuro');
     }
+}
+
+// ↶ DESHACER EDICIÓN
+function undoEdit() {
+    if (state.historyIndex > 0) {
+        state.historyIndex--;
+        state.editedSong = JSON.parse(JSON.stringify(state.history[state.historyIndex]));
+        renderSongDetail(state.editedSong);
+        showSaveIndicator('↶ Cambio deshecho');
+    }
+}
+
+// ↷ REHACER EDICIÓN
+function redoEdit() {
+    if (state.historyIndex < state.history.length - 1) {
+        state.historyIndex++;
+        state.editedSong = JSON.parse(JSON.stringify(state.history[state.historyIndex]));
+        renderSongDetail(state.editedSong);
+        showSaveIndicator('↷ Cambio rehecho');
+    }
+}
+
+// ➕ AÑADIR NUEVA LÍNEA
+function addLineToSection(sectionName) {
+    if (state.editedSong.lyrics[sectionName]) {
+        state.editedSong.lyrics[sectionName].push('');
+        addToHistory();
+        renderSongDetail(state.editedSong);
+        showSaveIndicator(`➕ Línea añadida a ${sectionName}`);
+    }
+}
+
+// 🗑️ ELIMINAR LÍNEA
+function deleteLine(sectionName, index) {
+    if (state.editedSong.lyrics[sectionName] && 
+        state.editedSong.lyrics[sectionName].length > 1 &&
+        confirm('¿Eliminar esta línea?')) {
+        state.editedSong.lyrics[sectionName].splice(index, 1);
+        addToHistory();
+        renderSongDetail(state.editedSong);
+        showSaveIndicator('🗑️ Línea eliminada');
+    }
+}
+
+// 📄 AÑADIR NUEVA SECCIÓN
+function addNewSection() {
+    const sectionName = prompt('Nombre de la nueva sección:');
+    if (sectionName && !state.editedSong.lyrics[sectionName]) {
+        state.editedSong.lyrics[sectionName] = [''];
+        addToHistory();
+        renderSongDetail(state.editedSong);
+        showSaveIndicator(`📄 Sección "${sectionName}" añadida`);
+    }
+}
+
+// 🗑️ ELIMINAR SECCIÓN
+function deleteSection(sectionName) {
+    if (Object.keys(state.editedSong.lyrics).length > 1 &&
+        confirm(`¿Eliminar la sección "${sectionName}"?`)) {
+        delete state.editedSong.lyrics[sectionName];
+        addToHistory();
+        renderSongDetail(state.editedSong);
+        showSaveIndicator(`🗑️ Sección "${sectionName}" eliminada`);
+    }
+}
+
+// 👁️ VISTA PREVIA DE CAMBIOS
+function previewChanges() {
+    const tempEditMode = state.editMode;
+    state.editMode = false;
+    const previewContent = renderSongSections(state.editedSong);
+    state.editMode = tempEditMode;
     
-    // Cargar canciones guardadas si existen
-    const savedSongs = localStorage.getItem('betania_songs');
-    if (savedSongs) {
-        try {
-            const parsedSongs = JSON.parse(savedSongs);
-            if (Array.isArray(parsedSongs) && parsedSongs.length > 0) {
-                state.songs = parsedSongs;
-                state.filtered = [...state.songs];
-                console.log('🎵 Canciones cargadas desde localStorage');
-            }
-        } catch (e) {
-            console.log('⚠️ Error cargando canciones guardadas');
-        }
+    const preview = document.getElementById('song-display');
+    if (preview) {
+        preview.innerHTML = previewContent;
+        document.querySelectorAll('.chord').forEach(chord => {
+            chord.addEventListener('click', () => showChordDiagram(chord.textContent));
+        });
+        showSaveIndicator('👁️ Vista previa actualizada');
     }
 }
 
@@ -1154,25 +1672,23 @@ function showChordDiagram(chordName) {
 function generateChordSVG(chord) {
     const width = 200;
     const height = 250;
-    const fretWidth = 30;
-    const stringSpacing = 25;
-    const startX = 20;
-    const startY = 60;
+    const fretWidth = 20;
+    const startX = 40;
+    const startY = 30;
+    const stringSpacing = 30;
     
-    let svg = `<svg width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" style="background: white; border-radius: 8px;">`;
+    let svg = `<svg width="${width}" height="${height}" xmlns="http://www.w3.org/2000/svg">`;
     
-    // Dibujar trastes (líneas horizontales)
-    for (let fret = 0; fret <= 4; fret++) {
-        const y = startY + (fret * fretWidth);
-        const strokeWidth = fret === 0 ? 4 : 2;
-        const strokeColor = fret === 0 ? '#000' : '#666';
-        svg += `<line x1="${startX}" y1="${y}" x2="${startX + 5 * stringSpacing}" y2="${y}" 
-                stroke="${strokeColor}" stroke-width="${strokeWidth}"/>`;
+    // Dibujar trastes
+    for (let i = 1; i <= 4; i++) {
+        const y = startY + i * fretWidth;
+        svg += `<line x1="${startX}" y1="${y}" x2="${width - 10}" y2="${y}" 
+                stroke="#ccc" stroke-width="2" stroke-linecap="round"/>`;
     }
     
-    // Dibujar cuerdas (líneas verticales)
-    for (let string = 0; string < 6; string++) {
-        const x = startX + (string * stringSpacing);
+    // Dibujar cuerdas
+    for (let i = 0; i < 6; i++) {
+        const x = startX + (i * stringSpacing);
         svg += `<line x1="${x}" y1="${startY}" x2="${x}" y2="${startY + 4 * fretWidth}" 
                 stroke="#444" stroke-width="2"/>`;
     }
@@ -1230,44 +1746,72 @@ function closeChordDiagram() {
     }
 }
 
-// ✏️ ALTERNAR MODO EDICIÓN
-function toggleEditMode() {
-    state.editMode = !state.editMode;
+// 🌙 ALTERNAR MODO OSCURO - FUNCIÓN COMPLETAMENTE CORREGIDA
+function toggleDarkMode() {
+    const body = document.body;
+    const checkbox = document.getElementById('dark-mode');
     
-    if (state.editMode && state.selectedSong) {
-        // Entrar en modo edición
-        state.editedSong = JSON.parse(JSON.stringify(state.selectedSong));
-        state.history = [JSON.parse(JSON.stringify(state.editedSong))];
-        state.historyIndex = 0;
-        showSaveIndicator('✏️ Modo edición activado');
-    } else if (!state.editMode && state.editedSong) {
-        // Salir de modo edición y guardar
-        const index = state.songs.findIndex(s => s.title === state.selectedSong.title);
-        if (index !== -1) {
-            state.songs[index] = JSON.parse(JSON.stringify(state.editedSong));
-            state.selectedSong = state.songs[index];
-            state.originalSong = JSON.parse(JSON.stringify(state.songs[index])); // 🔧 ACTUALIZAR ORIGINAL
-            state.baseKey = state.selectedSong.key;
-            
-            // Persistir cambios
-            localStorage.setItem('betania_songs', JSON.stringify(state.songs));
-        }
-        showSaveIndicator('💾 Canción guardada exitosamente');
-    }
-    
-    if (state.selectedSong) {
-        renderSongDetail(state.editMode ? state.editedSong : state.selectedSong);
+    // Verificar el estado del checkbox
+    if (checkbox.checked) {
+        // Activar modo oscuro
+        body.className = 'dark-mode'; // Limpiar todas las clases y aplicar solo dark-mode
+        localStorage.setItem('darkMode', 'true');
+        showSaveIndicator('🌙 Modo oscuro activado');
+        console.log('🌙 Modo oscuro ON');
+    } else {
+        // Activar modo claro
+        body.className = 'light-mode'; // Limpiar todas las clases y aplicar solo light-mode
+        localStorage.setItem('darkMode', 'false');
+        showSaveIndicator('☀️ Modo claro activado');
+        console.log('☀️ Modo claro ON');
     }
 }
 
-// 💾 INDICADOR DE GUARDADO
-function showSaveIndicator(message = '✅ Cambios guardados') {
-    const indicator = document.getElementById('save-indicator');
-    indicator.textContent = message;
-    indicator.classList.add('show');
-    setTimeout(() => {
-        indicator.classList.remove('show');
-    }, 3000);
+// ⚙️ CARGAR CONFIGURACIONES - FUNCIÓN COMPLETAMENTE CORREGIDA
+function loadSettings() {
+    const savedDarkMode = localStorage.getItem('darkMode');
+    const checkbox = document.getElementById('dark-mode');
+
+    console.log('🔧 Cargando configuraciones. Modo oscuro guardado:', savedDarkMode);
+
+    if (savedDarkMode === 'true') {
+        checkbox.checked = true;
+        document.body.className = 'dark-mode';
+        console.log('✅ Modo oscuro cargado desde localStorage');
+    } else {
+        checkbox.checked = false;
+        document.body.className = 'light-mode';
+        console.log('✅ Modo claro cargado (default o desde localStorage)');
+    }
+
+    // Cargar canciones guardadas si existen y son válidas
+    const savedSongs = localStorage.getItem('betania_songs');
+    if (savedSongs) {
+        try {
+            const parsedSongs = JSON.parse(savedSongs);
+            if (Array.isArray(parsedSongs) && parsedSongs.length > 0) {
+                state.songs = parsedSongs;
+                state.filtered = [...state.songs];
+                console.log('🎵 Canciones cargadas desde localStorage');
+            } else {
+                // Si el array está vacío, usar las canciones por defecto
+                state.songs = songs;
+                state.filtered = [...state.songs];
+                localStorage.removeItem('betania_songs');
+                console.log('⚠️ Canciones en localStorage vacías, usando canciones por defecto');
+            }
+        } catch (e) {
+            // Si hay error, usar las canciones por defecto
+            state.songs = songs;
+            state.filtered = [...state.songs];
+            localStorage.removeItem('betania_songs');
+            console.log('⚠️ Error cargando canciones guardadas, usando canciones por defecto');
+        }
+    } else {
+        // Si no hay nada en localStorage, usar las canciones por defecto
+        state.songs = songs;
+        state.filtered = [...state.songs];
+    }
 }
 
 // ⌨️ ATAJOS DE TECLADO
@@ -1294,6 +1838,7 @@ function setupGlobalKeyboardShortcuts() {
                     break;
                 case 's':
                     e.preventDefault();
+
                     if (state.editMode) toggleEditMode();
                     break;
             }
@@ -1398,4 +1943,4 @@ window.addEventListener('beforeinstallprompt', (e) => {
     showSaveIndicator('📱 Disponible para instalar como app');
 });
 
-console.log('🎵 Sistema Betania V4 cargado y corregido - ¡Modo oscuro y ordenación arreglados!');
+console.log('🎵 Sistema Betania V4 cargado y corregido - ¡Transposición y modo oscuro arreglados!');
