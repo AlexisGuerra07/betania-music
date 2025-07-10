@@ -8,6 +8,26 @@
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#079b82">
     <meta name="description" content="Sistema de gestión musical para equipo de alabanza con acordes interactivos y transposición automática">
+
+    <!-- Breadcrumbs container -->
+    <div id="breadcrumbs" class="breadcrumbs-container"></div>
+
+    <!-- Loading indicator -->
+    <div id="loading-indicator" class="loading-indicator hidden">
+        <div class="spinner"></div>
+        <span>Cargando...</span>
+    </div>
+
+    <!-- Auth modal -->
+    <div id="auth-modal" class="auth-modal hidden">
+        <div class="auth-modal-content">
+            <div class="auth-tabs">
+                <button class="auth-tab active" data-tab="login">Iniciar Sesión</button>
+                <button class="auth-tab" data-tab="register">Registrarse</button>
+            </div>
+            <div id="auth-forms-container"></div>
+        </div>
+    </div>
 </head>
 <body class="light-mode">
     <header>
@@ -117,5 +137,10 @@
             });
         }
     </script>
+
+    <!-- Scripts del sistema SPA -->
+    <script src="js/auth.js"></script>
+    <script src="js/navigation.js"></script>
+    <script src="js/setlist.js"></script>
 </body>
 </html>
