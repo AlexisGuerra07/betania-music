@@ -1,9 +1,9 @@
-// 📱 SERVICE WORKER PARA PWA - BETANIA MUSIC V4
-// Sistema offline completo con cache inteligente
+// 📱 SERVICE WORKER ACTUALIZADO PARA SPA - BETANIA MUSIC V4
+// Manejo de rutas SPA y cache inteligente
 
-const CACHE_NAME = 'betania-music-v4.1';
-const STATIC_CACHE = 'betania-static-v4.1';
-const DYNAMIC_CACHE = 'betania-dynamic-v4.1';
+const CACHE_NAME = 'betania-music-v4.2-spa';
+const STATIC_CACHE = 'betania-static-v4.2';
+const DYNAMIC_CACHE = 'betania-dynamic-v4.2';
 
 // 📦 RECURSOS PARA CACHEAR
 const ASSETS_TO_CACHE = [
@@ -12,22 +12,27 @@ const ASSETS_TO_CACHE = [
     './styles.css',
     './script.js',
     './manifest.json',
+    './js/navigation.js',
+    './js/auth.js',
+    './js/setlist.js',
     // Fallbacks para offline
     './offline.html'
 ];
 
-// 🎵 DATOS MUSICALES ESENCIALES PARA OFFLINE
-const ESSENTIAL_DATA = [
-    // URIs de datos SVG para iconos
-    'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAi',
-    // Fuentes del sistema
-    'font-family: Segoe UI',
-    'font-family: Courier New'
+// 🧭 RUTAS SPA QUE DEBEN SERVIR index.html
+const SPA_ROUTES = [
+    '/',
+    '/canciones',
+    '/setlist',
+    '/grabaciones',
+    '/herramientas',
+    '/add-song',
+    '/login'
 ];
 
 // 🚀 INSTALACIÓN DEL SERVICE WORKER
 self.addEventListener('install', (event) => {
-    console.log('🔧 SW Betania V4: Instalando...');
+    console.log('🔧 SW Betania V4 SPA: Instalando...');
     
     event.waitUntil(
         Promise.all([
@@ -44,7 +49,7 @@ self.addEventListener('install', (event) => {
                 }));
             })
         ]).then(() => {
-            console.log('✅ SW Betania V4: Instalación completada');
+            console.log('✅ SW Betania V4 SPA: Instalación completada');
             self.skipWaiting();
         }).catch((error) => {
             console.error('❌ Error en instalación SW:', error);
@@ -54,7 +59,7 @@ self.addEventListener('install', (event) => {
 
 // 🔄 ACTIVACIÓN DEL SERVICE WORKER
 self.addEventListener('activate', (event) => {
-    console.log('🔧 SW Betania V4: Activando...');
+    console.log('🔧 SW Betania V4 SPA: Activando...');
     
     event.waitUntil(
         Promise.all([
@@ -74,14 +79,14 @@ self.addEventListener('activate', (event) => {
             // Tomar control inmediato
             self.clients.claim()
         ]).then(() => {
-            console.log('✅ SW Betania V4: Activado y listo');
+            console.log('✅ SW Betania V4 SPA: Activado y listo');
             
             // Notificar a clientes sobre actualización
             self.clients.matchAll().then(clients => {
                 clients.forEach(client => {
                     client.postMessage({
                         type: 'SW_UPDATED',
-                        message: '🎵 Betania V4 actualizado y listo para usar offline'
+                        message: '🎵 Betania V4 SPA actualizado y listo'
                     });
                 });
             });
@@ -104,47 +109,85 @@ self.addEventListener('fetch', (event) => {
         return;
     }
     
-    // Ignorar requests a URLs externas (excepto CDNs de fuentes)
+    // Ignorar requests a URLs externas (excepto CDNs permitidos)
     if (!request.url.startsWith(self.location.origin) && 
         !request.url.includes('fonts.googleapis.com') &&
-        !request.url.includes('fonts.gstatic.com')) {
+        !request.url.includes('fonts.gstatic.com') &&
+        !request.url.includes('cdnjs.cloudflare.com')) {
         return;
     }
     
-    event.respondWith(handleRequest(request));
+    event.respondWith(handleSPARequest(request, url));
 });
 
-// 🎯 MANEJADOR PRINCIPAL DE REQUESTS
-async function handleRequest(request) {
-    const url = new URL(request.url);
-    
+// 🎯 MANEJADOR PRINCIPAL DE REQUESTS SPA
+async function handleSPARequest(request, url) {
     try {
-        // 1. RECURSOS ESTÁTICOS (HTML, CSS, JS)
+        // 1. NAVEGACIÓN SPA - Servir index.html para rutas SPA
+        if (request.mode === 'navigate') {
+            return await handleSPANavigation(request, url);
+        }
+        
+        // 2. RECURSOS ESTÁTICOS (HTML, CSS, JS)
         if (isStaticResource(url.pathname)) {
             return await cacheFirst(request, STATIC_CACHE);
         }
         
-        // 2. DATOS DINÁMICOS (canciones, setlists)
-        if (isDynamicData(url.pathname)) {
+        // 3. API CALLS - Network first con cache fallback
+        if (isAPICall(url.pathname)) {
             return await networkFirst(request, DYNAMIC_CACHE);
         }
         
-        // 3. FUENTES Y RECURSOS EXTERNOS
+        // 4. FUENTES Y RECURSOS EXTERNOS
         if (isExternalResource(request.url)) {
             return await cacheFirst(request, STATIC_CACHE);
         }
         
-        // 4. NAVEGACIÓN (páginas)
-        if (request.mode === 'navigate') {
-            return await handleNavigation(request);
+        // 5. IMÁGENES Y MEDIA
+        if (isMediaResource(url.pathname)) {
+            return await cacheFirst(request, DYNAMIC_CACHE);
         }
         
-        // 5. FALLBACK GENERAL
+        // 6. FALLBACK GENERAL
         return await networkFirst(request, DYNAMIC_CACHE);
         
     } catch (error) {
-        console.error('❌ Error en handleRequest:', error);
-        return await getOfflineFallback(request);
+        console.error('❌ Error en handleSPARequest:', error);
+        return await getSPAOfflineFallback(request, url);
+    }
+}
+
+// 🧭 MANEJAR NAVEGACIÓN SPA
+async function handleSPANavigation(request, url) {
+    try {
+        // Intentar red primero para navegación
+        const response = await fetch(request);
+        
+        if (response && response.status === 200) {
+            // Cache la respuesta si es exitosa
+            const cache = await caches.open(STATIC_CACHE);
+            cache.put(request, response.clone());
+            return response;
+        }
+        
+        throw new Error('Network response not ok');
+        
+    } catch (error) {
+        console.log('🧭 Navegación SPA offline para:', url.pathname);
+        
+        // Para rutas SPA, servir index.html desde cache
+        if (isSPARoute(url.pathname)) {
+            const cache = await caches.open(STATIC_CACHE);
+            const cachedIndex = await cache.match('./index.html');
+            
+            if (cachedIndex) {
+                console.log('✅ Sirviendo index.html para ruta SPA:', url.pathname);
+                return cachedIndex;
+            }
+        }
+        
+        // Fallback general
+        return await getSPAOfflineFallback(request, url);
     }
 }
 
@@ -171,7 +214,7 @@ async function cacheFirst(request, cacheName) {
         
     } catch (error) {
         console.log('⚠️ Cache first fallback para:', request.url);
-        return await getOfflineFallback(request);
+        return await getSPAOfflineFallback(request);
     }
 }
 
@@ -198,34 +241,7 @@ async function networkFirst(request, cacheName) {
             return cachedResponse;
         }
         
-        return await getOfflineFallback(request);
-    }
-}
-
-// 🏠 MANEJAR NAVEGACIÓN (páginas principales)
-async function handleNavigation(request) {
-    try {
-        // Intentar red primero
-        const response = await fetch(request);
-        
-        if (response && response.status === 200) {
-            const cache = await caches.open(STATIC_CACHE);
-            cache.put(request, response.clone());
-            return response;
-        }
-        
-        throw new Error('Network response not ok');
-        
-    } catch (error) {
-        // Fallback a página principal cacheada
-        const cache = await caches.open(STATIC_CACHE);
-        const cachedIndex = await cache.match('./index.html');
-        
-        if (cachedIndex) {
-            return cachedIndex;
-        }
-        
-        return await getOfflineFallback(request);
+        return await getSPAOfflineFallback(request);
     }
 }
 
@@ -241,23 +257,31 @@ async function updateCacheInBackground(request, cache) {
     }
 }
 
-// 📱 FALLBACK OFFLINE
-async function getOfflineFallback(request) {
-    const url = new URL(request.url);
+// 📱 FALLBACK OFFLINE PARA SPA
+async function getSPAOfflineFallback(request, url) {
+    const requestUrl = url || new URL(request.url);
     
-    // Para navegación, devolver página offline
-    if (request.mode === 'navigate') {
-        return new Response(getOfflineHTML(), {
+    // Para navegación SPA, servir index.html offline
+    if (request.mode === 'navigate' || isSPARoute(requestUrl.pathname)) {
+        const cache = await caches.open(STATIC_CACHE);
+        const cachedIndex = await cache.match('./index.html');
+        
+        if (cachedIndex) {
+            return cachedIndex;
+        }
+        
+        // Si no hay index.html cacheado, devolver página offline
+        return new Response(getSPAOfflineHTML(), {
             headers: { 'Content-Type': 'text/html' }
         });
     }
     
     // Para APIs, devolver datos offline básicos
-    if (url.pathname.includes('/api/')) {
+    if (isAPICall(requestUrl.pathname)) {
         return new Response(JSON.stringify({
             offline: true,
             message: 'Datos no disponibles sin conexión',
-            cached_songs: []
+            timestamp: Date.now()
         }), {
             headers: { 'Content-Type': 'application/json' }
         });
@@ -270,8 +294,8 @@ async function getOfflineFallback(request) {
     });
 }
 
-// 🎨 HTML PARA PÁGINA OFFLINE
-function getOfflineHTML() {
+// 🎨 HTML PARA PÁGINA OFFLINE SPA
+function getSPAOfflineHTML() {
     return `
 <!DOCTYPE html>
 <html lang="es">
@@ -335,32 +359,21 @@ function getOfflineHTML() {
             text-transform: uppercase;
             font-weight: 600;
             letter-spacing: 1px;
+            margin: 10px;
         }
         .retry-btn:hover {
             background: #02866e;
             transform: translateY(-2px);
             box-shadow: 0 5px 15px rgba(7, 155, 130, 0.4);
         }
-        .features {
+        .spa-info {
             margin-top: 40px;
             padding-top: 30px;
             border-top: 1px solid rgba(255,255,255,0.2);
         }
-        .features h3 {
+        .spa-info h3 {
             color: #079b82;
             margin-bottom: 15px;
-        }
-        .features-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 10px;
-            margin-top: 20px;
-        }
-        .feature {
-            background: rgba(255,255,255,0.1);
-            padding: 10px 15px;
-            border-radius: 8px;
-            font-size: 0.9em;
         }
         .cached-info {
             margin-top: 20px;
@@ -369,41 +382,39 @@ function getOfflineHTML() {
             border-radius: 10px;
             border: 1px solid rgba(40, 167, 69, 0.3);
         }
-        .cached-info h4 {
-            color: #28a745;
-            margin-bottom: 10px;
-        }
     </style>
 </head>
 <body>
     <div class="offline-container">
         <div class="offline-icon">🎵</div>
         <h1>Sin conexión a internet</h1>
-        <p>No hay conexión disponible en este momento, pero Betania Music V4 está optimizado para funcionar offline.</p>
+        <p>No hay conexión disponible, pero Betania Music V4 funciona completamente offline con navegación SPA.</p>
         
         <button class="retry-btn" onclick="window.location.reload()">
             🔄 Intentar conectar
         </button>
         
+        <button class="retry-btn" onclick="goToApp()">
+            🎵 Ir a la aplicación
+        </button>
+        
         <div class="cached-info">
             <h4>📱 Funciones Disponibles Offline:</h4>
-            <p>✅ Canciones cacheadas • ✅ Editor de acordes • ✅ Transposición • ✅ Diagramas de guitarra</p>
+            <p>✅ Navegación SPA • ✅ Canciones cacheadas • ✅ Editor de acordes • ✅ Transposición • ✅ Setlist</p>
         </div>
         
-        <div class="features">
-            <h3>🎸 Betania Music V4 - Sistema Completo</h3>
-            <div class="features-grid">
-                <div class="feature">🎼 Editor avanzado de acordes</div>
-                <div class="feature">🎵 Transposición en 12 tonalidades</div>
-                <div class="feature">🎸 Diagramas interactivos</div>
-                <div class="feature">📱 Funciona completamente offline</div>
-                <div class="feature">📋 Sistema de setlist</div>
-                <div class="feature">🎤 Modo performance</div>
-            </div>
+        <div class="spa-info">
+            <h3>🧭 Navegación SPA Activa</h3>
+            <p>La aplicación funciona completamente sin recargas de página, incluso offline.</p>
         </div>
     </div>
     
     <script>
+        function goToApp() {
+            // Intentar ir a la aplicación principal
+            window.location.href = '/';
+        }
+        
         // Auto-retry cada 30 segundos
         setTimeout(() => {
             if (navigator.onLine) {
@@ -416,7 +427,7 @@ function getOfflineHTML() {
             window.location.reload();
         });
         
-        console.log('📱 Betania V4 - Modo Offline Activo');
+        console.log('📱 Betania V4 SPA - Modo Offline Activo');
     </script>
 </body>
 </html>`;
@@ -437,17 +448,38 @@ function isStaticResource(pathname) {
            pathname === './';
 }
 
-function isDynamicData(pathname) {
-    return pathname.includes('/api/') ||
-           pathname.includes('/songs') ||
-           pathname.includes('/setlist') ||
-           pathname.includes('/data/');
+function isAPICall(pathname) {
+    return pathname.startsWith('/api/') ||
+           pathname.includes('/api/') ||
+           pathname.startsWith('./api/');
+}
+
+function isMediaResource(pathname) {
+    return pathname.endsWith('.png') ||
+           pathname.endsWith('.jpg') ||
+           pathname.endsWith('.jpeg') ||
+           pathname.endsWith('.gif') ||
+           pathname.endsWith('.webp') ||
+           pathname.endsWith('.svg') ||
+           pathname.endsWith('.mp3') ||
+           pathname.endsWith('.mp4') ||
+           pathname.endsWith('.webm');
 }
 
 function isExternalResource(url) {
     return url.includes('fonts.googleapis.com') ||
            url.includes('fonts.gstatic.com') ||
            url.includes('cdnjs.cloudflare.com');
+}
+
+function isSPARoute(pathname) {
+    // Normalizar pathname
+    const normalizedPath = pathname === '/' ? '/' : pathname.replace(/\/$/, '');
+    
+    // Verificar si es una ruta SPA conocida
+    return SPA_ROUTES.includes(normalizedPath) ||
+           // O si parece una ruta SPA (sin extensión)
+           (!pathname.includes('.') && !pathname.startsWith('/api/'));
 }
 
 // 💬 MANEJAR MENSAJES DEL CLIENTE
@@ -465,6 +497,12 @@ self.addEventListener('message', (event) => {
             }
             break;
             
+        case 'CACHE_SETLIST':
+            if (data && data.setlist) {
+                cacheSetlistData(data.setlist);
+            }
+            break;
+            
         case 'CLEAR_CACHE':
             clearAllCaches();
             break;
@@ -473,6 +511,12 @@ self.addEventListener('message', (event) => {
             getCacheStatus().then(status => {
                 event.ports[0]?.postMessage(status);
             });
+            break;
+            
+        case 'PREFETCH_ROUTE':
+            if (data && data.route) {
+                prefetchRoute(data.route);
+            }
             break;
     }
 });
@@ -493,6 +537,39 @@ async function cacheSongData(songData) {
         console.log('🎵 Canción cacheada:', songData.title);
     } catch (error) {
         console.error('❌ Error cacheando canción:', error);
+    }
+}
+
+// 📋 CACHEAR DATOS DE SETLIST
+async function cacheSetlistData(setlistData) {
+    try {
+        const cache = await caches.open(DYNAMIC_CACHE);
+        
+        await cache.put(
+            './api/setlist',
+            new Response(JSON.stringify(setlistData), {
+                headers: { 'Content-Type': 'application/json' }
+            })
+        );
+        
+        console.log('📋 Setlist cacheado:', setlistData.length, 'canciones');
+    } catch (error) {
+        console.error('❌ Error cacheando setlist:', error);
+    }
+}
+
+// 🔄 PREFETCH DE RUTA
+async function prefetchRoute(route) {
+    try {
+        const cache = await caches.open(STATIC_CACHE);
+        const response = await fetch(route);
+        
+        if (response && response.status === 200) {
+            await cache.put(route, response);
+            console.log('🔄 Ruta prefetcheada:', route);
+        }
+    } catch (error) {
+        console.error('❌ Error en prefetch:', error);
     }
 }
 
@@ -527,7 +604,8 @@ async function getCacheStatus() {
         return {
             caches: status,
             version: CACHE_NAME,
-            timestamp: Date.now()
+            timestamp: Date.now(),
+            spaEnabled: true
         };
     } catch (error) {
         console.error('❌ Error obteniendo estado de cache:', error);
@@ -564,46 +642,4 @@ self.addEventListener('unhandledrejection', (event) => {
     event.preventDefault();
 });
 
-// 🔔 NOTIFICACIONES PUSH (para futuras funciones)
-self.addEventListener('push', (event) => {
-    if (event.data) {
-        const data = event.data.json();
-        const options = {
-            body: data.body || 'Nueva actualización disponible',
-            icon: './logo-192.png',
-            badge: './logo-96.png',
-            tag: 'betania-update',
-            requireInteraction: false,
-            actions: [
-                {
-                    action: 'open',
-                    title: 'Abrir Betania Music'
-                },
-                {
-                    action: 'dismiss',
-                    title: 'Cerrar'
-                }
-            ]
-        };
-        
-        event.waitUntil(
-            self.registration.showNotification(
-                data.title || 'Betania Music V4',
-                options
-            )
-        );
-    }
-});
-
-// 📱 MANEJAR CLICS EN NOTIFICACIONES
-self.addEventListener('notificationclick', (event) => {
-    event.notification.close();
-    
-    if (event.action === 'open' || !event.action) {
-        event.waitUntil(
-            clients.openWindow('./')
-        );
-    }
-});
-
-console.log('🎵 SW Betania V4 cargado y listo para funcionar offline');
+console.log('🎵 SW Betania V4 SPA cargado y listo para navegación sin recargas');
