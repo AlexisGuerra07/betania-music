@@ -31,29 +31,35 @@
                 <input type="text" class="search-box" placeholder="Buscar canciones...">
             </div>
             <div class="songs-list">
-                <div class="song-item active">
+                <div class="song-item active" data-key="C">
                     <div class="song-title">Sublime Gracia</div>
-                    <div class="song-key">Tonalidad: C</div>
                 </div>
-                <div class="song-item">
+                <div class="song-item" data-key="G">
                     <div class="song-title">Cuán Grande es Él</div>
-                    <div class="song-key">Tonalidad: G</div>
                 </div>
-                <div class="song-item">
+                <div class="song-item" data-key="D">
                     <div class="song-title">Te Exaltamos</div>
-                    <div class="song-key">Tonalidad: D</div>
                 </div>
-                <div class="song-item">
+                <div class="song-item" data-key="A">
                     <div class="song-title">Santo, Santo, Santo</div>
-                    <div class="song-key">Tonalidad: A</div>
                 </div>
-                <div class="song-item">
+                <div class="song-item" data-key="F">
                     <div class="song-title">Aleluya</div>
-                    <div class="song-key">Tonalidad: F</div>
                 </div>
-                <div class="song-item">
+                <div class="song-item" data-key="Em">
                     <div class="song-title">Ven Espíritu Santo</div>
-                    <div class="song-key">Tonalidad: Em</div>
+                </div>
+                <div class="song-item" data-key="C">
+                    <div class="song-title">Jesús en el Centro</div>
+                </div>
+                <div class="song-item" data-key="G">
+                    <div class="song-title">Renuévame</div>
+                </div>
+                <div class="song-item" data-key="Am">
+                    <div class="song-title">Espíritu de Dios</div>
+                </div>
+                <div class="song-item" data-key="D">
+                    <div class="song-title">Mi Jesús</div>
                 </div>
             </div>
         </aside>
@@ -68,20 +74,20 @@
                 </div>
                 <div class="controls">
                     <div class="transpose-controls">
-                        <button class="btn">♭</button>
+                        <button class="btn" id="transpose-down">♭</button>
                         <div class="current-key">C</div>
-                        <button class="btn">♯</button>
+                        <button class="btn" id="transpose-up">♯</button>
                     </div>
-                    <button class="btn">Diagramas</button>
-                    <button class="btn btn-primary">Editar</button>
-                    <button class="btn">+ Setlist</button>
+                    <button class="btn" id="show-diagrams">Diagramas</button>
+                    <button class="btn btn-primary" id="edit-mode">Editar</button>
+                    <button class="btn" id="add-to-setlist">+ Setlist</button>
                 </div>
             </div>
 
             <!-- Song Content -->
             <div class="song-content">
                 <div class="verse">
-                    <div class="verse-label">Verso 1:</div>
+                    <div class="verse-label">Verso 1</div>
                     <div class="chord-line"><span class="chord">C</span>        <span class="chord">Am</span>       <span class="chord">F</span>        <span class="chord">G</span></div>
                     <div class="lyric-line">Sublime gracia del Señor que a un infeliz salvó</div>
                     <div class="chord-line">    <span class="chord">Am</span>           <span class="chord">F</span></div>
@@ -89,7 +95,7 @@
                 </div>
 
                 <div class="verse">
-                    <div class="verse-label">Verso 2:</div>
+                    <div class="verse-label">Verso 2</div>
                     <div class="chord-line"><span class="chord">C</span>        <span class="chord">Am</span>       <span class="chord">F</span>        <span class="chord">G</span></div>
                     <div class="lyric-line">Su gracia me enseñó a temer, mis dudas ahuyentó</div>
                     <div class="chord-line">    <span class="chord">Am</span>           <span class="chord">F</span></div>
@@ -97,18 +103,26 @@
                 </div>
 
                 <div class="verse">
-                    <div class="verse-label">Coro:</div>
+                    <div class="verse-label">Coro</div>
                     <div class="chord-line"><span class="chord">F</span>        <span class="chord">C</span>       <span class="chord">G</span>        <span class="chord">Am</span></div>
                     <div class="lyric-line">Gracia admirable es, que salvó a un pecador</div>
                     <div class="chord-line"><span class="chord">F</span>        <span class="chord">C</span>       <span class="chord">G</span>        <span class="chord">C</span></div>
                     <div class="lyric-line">Perdido me encontró, mas ya no soy quien era yo</div>
                 </div>
+
+                <div class="verse">
+                    <div class="verse-label">Verso 3</div>
+                    <div class="chord-line"><span class="chord">C</span>        <span class="chord">Am</span>       <span class="chord">F</span>        <span class="chord">G</span></div>
+                    <div class="lyric-line">En los peligros o aflicción que yo he tenido aquí</div>
+                    <div class="chord-line">    <span class="chord">Am</span>           <span class="chord">F</span></div>
+                    <div class="lyric-line">Su gracia siempre me libró y me guiará feliz</div>
+                </div>
             </div>
 
             <!-- Status Bar -->
             <div class="status-bar">
-                <div>Modo: Presentación | Guardado automático: Activo</div>
-                <div>Última modificación: hace 2 minutos</div>
+                <div>Modo: Presentación | Guardado: Automático</div>
+                <div>Última modificación: ahora</div>
             </div>
         </main>
     </div>
