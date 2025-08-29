@@ -1,3 +1,4 @@
+// Estado global de la aplicación mejorado
 const AppState = {
     currentView: 'canciones',
     currentSong: null,
@@ -10,10 +11,11 @@ const AppState = {
         notation: 'latin',
         fontSize: 14,
         shortcuts: true,
-        autoSections: true
+        autoSections: true // Nueva configuración
     }
 };
 
+// Utilidades para localStorage con migración a v4
 const Storage = {
     SONGS_KEY: 'betania_songs_v4',
     SETTINGS_KEY: 'betania_settings_v4',
@@ -21,6 +23,7 @@ const Storage = {
 
     saveSongs() {
         try {
+            // Deduplicar por ID antes de guardar
             const deduplicatedSongs = this.deduplicateSongs(AppState.songs);
             localStorage.setItem(this.SONGS_KEY, JSON.stringify(deduplicatedSongs));
             AppState.songs = deduplicatedSongs;
@@ -34,17 +37,20 @@ const Storage = {
 
     loadSongs() {
         try {
+            // Intentar cargar v4 primero
             let data = localStorage.getItem(this.SONGS_KEY);
             
             if (!data) {
+                // Migrar desde v3 si existe
                 data = localStorage.getItem(this.OLD_SONGS_KEY);
                 if (data) {
                     const oldSongs = JSON.parse(data);
+                    // Migrar estructura
                     AppState.songs = oldSongs.map(song => ({
                         ...song,
-                        autoSections: true
+                        autoSections: true // Valor por defecto para canciones migradas
                     }));
-                    this.saveSongs();
+                    this.saveSongs(); // Guardar en v4
                     console.log('Migrated songs from v3 to v4');
                 }
             } else {
@@ -93,12 +99,14 @@ const Storage = {
     }
 };
 
+// Parser de acordes mejorado con detección robusta de secciones
 const ChordParser = {
     chordRegexes: {
         latin: /\b(Do|Re|Mi|Fa|Sol|La|Si)([#b])?(maj7|maj9|m7|m9|m|dim|aug|add\d+|sus2|sus4|7|9|11|13|°|ø)?(?:\/(Do|Re|Mi|Fa|Sol|La|Si)([#b])?)?\b/g,
         anglo: /\b([A-G])([#b])?(maj7|maj9|m7|m9|m|dim|aug|add\d+|sus2|sus4|7|9|11|13|°|ø)?(?:\/([A-G])([#b])?)?\b/g
     },
 
+    // Regex mejorada para detección de secciones
     sectionHeaderRegex: /^\s*(intro|estrofa|verso|pre[\s\-]?coro|coro|puente|bridge|interludio|solo|outro|final|tag)\s*(?:[:\-]|\b)?\s*(\d+|i{1,3}|[ivx]{1,4}|[1-9]ª|x\d+|\(.*?\))?\s*$/i,
 
     normalizeTildes(text) {
@@ -117,6 +125,7 @@ const ChordParser = {
         
         if (matches.length === 0) return false;
         
+        // Calcular densidad de acordes
         const chordChars = matches.reduce((acc, match) => acc + match[0].length, 0);
         const totalChars = line.replace(/\s/g, '').length;
         
@@ -159,6 +168,7 @@ const ChordParser = {
         let baseName = translations[normalizedType] || sectionType;
         
         if (number) {
+            // Normalizar numeración
             let suffix = '';
             if (/^\d+$/.test(number)) {
                 suffix = ` ${number}`;
@@ -189,6 +199,7 @@ const ChordParser = {
             const line = lines[i];
             const trimmed = line.trim();
             
+            // Detectar encabezados de sección solo si autoSections está activado
             if (useAutoSections && this.isSectionHeader(trimmed)) {
                 if (currentSection.pairs.length > 0) {
                     sections.push(currentSection);
@@ -204,25 +215,30 @@ const ChordParser = {
                 continue;
             }
             
+            // Saltar líneas vacías
             if (!trimmed) continue;
             
+            // Detectar líneas de acordes
             if (this.isChordLine(line, notation)) {
                 const nextLine = i + 1 < lines.length ? lines[i + 1] : '';
                 const nextTrimmed = nextLine.trim();
                 
                 if (!nextTrimmed || this.isChordLine(nextLine, notation)) {
+                    // Línea de acordes sin letra correspondiente
                     currentSection.pairs.push({
                         acordes: line,
                         letra: ''
                     });
                 } else {
+                    // Línea de acordes con letra
                     currentSection.pairs.push({
                         acordes: line,
                         letra: nextLine
                     });
-                    i++;
+                    i++; // Saltar la línea de letra
                 }
             } else {
+                // Línea de letra sin acordes
                 if (currentSection.pairs.length > 0 && !currentSection.pairs[currentSection.pairs.length - 1].letra.trim()) {
                     currentSection.pairs[currentSection.pairs.length - 1].letra = line;
                 } else {
@@ -244,6 +260,7 @@ const ChordParser = {
     }
 };
 
+// Transpositor de acordes
 const Transposer = {
     notes: {
         latin: ['Do', 'Do#', 'Re', 'Re#', 'Mi', 'Fa', 'Fa#', 'Sol', 'Sol#', 'La', 'La#', 'Si'],
@@ -257,6 +274,7 @@ const Transposer = {
         const regex = ChordParser.chordRegexes[notation];
         
         return chord.replace(regex, (match, root, accidental, suffix, bassRoot, bassAccidental) => {
+            // Transponer raíz
             let rootIndex = notes.indexOf(root + (accidental || ''));
             if (rootIndex === -1) rootIndex = notes.indexOf(root);
             
@@ -265,6 +283,7 @@ const Transposer = {
             
             let newRoot = notes[newRootIndex];
             
+            // Transponer bajo si existe
             let newBass = '';
             if (bassRoot) {
                 let bassIndex = notes.indexOf(bassRoot + (bassAccidental || ''));
@@ -281,17 +300,22 @@ const Transposer = {
     }
 };
 
+// Router mejorado con protección contra duplicados
 const Router = {
     debounceTimers: new Map(),
 
     init() {
+        // Configurar eventos de navegación
         document.querySelectorAll('.nav-tab').forEach(tab => {
             tab.addEventListener('click', () => {
                 this.navigate(tab.dataset.route);
             });
         });
 
+        // Configurar botones principales
         this.setupMainButtons();
+        
+        // Navegar a la vista inicial
         this.navigate('canciones');
     },
 
@@ -309,8 +333,10 @@ const Router = {
     },
 
     navigate(view) {
+        // Actualizar estado
         AppState.currentView = view;
         
+        // Actualizar tabs activas
         document.querySelectorAll('.nav-tab').forEach(tab => {
             tab.classList.remove('active');
             if (tab.dataset.route === view) {
@@ -318,6 +344,7 @@ const Router = {
             }
         });
         
+        // Mostrar vista correspondiente
         document.querySelectorAll('.view').forEach(viewEl => {
             viewEl.classList.remove('active');
         });
@@ -327,6 +354,7 @@ const Router = {
             targetView.classList.add('active');
         }
         
+        // Ejecutar lógica específica de cada vista
         switch (view) {
             case 'canciones':
                 this.renderSongsList();
@@ -341,7 +369,16 @@ const Router = {
     },
 
     setupMainButtons() {
-        this.bindButton('btn-add-song', () => this.navigate('edicion'));
+        // Botón añadir canción (una sola vez)
+        const btnAddSong = document.getElementById('btn-add-song');
+        if (btnAddSong && !btnAddSong.hasAttribute('data-bound')) {
+            btnAddSong.addEventListener('click', () => {
+                this.navigate('edicion');
+            });
+            btnAddSong.setAttribute('data-bound', 'true');
+        }
+
+        // Resto de botones con protección similar
         this.bindButton('btn-back-to-list', () => this.navigate('canciones'));
         this.bindButton('btn-back-from-editor', () => {
             this.saveCurrentSong();
@@ -352,9 +389,13 @@ const Router = {
                 this.editSong(AppState.currentSong.id);
             }
         });
+
+        // Botones de transposición en reader
         this.bindButton('btn-transpose-up-reader', () => this.transposeSong(1));
         this.bindButton('btn-transpose-down-reader', () => this.transposeSong(-1));
         this.bindButton('btn-reset-key-reader', () => this.resetTransposition());
+
+        // Selector de notación en reader
         this.bindSelect('notation-reader', (e) => {
             AppState.settings.notation = e.target.value;
             Storage.saveSettings();
@@ -362,25 +403,40 @@ const Router = {
                 this.renderSongContent();
             }
         });
+
+        // Botones del editor con protección anti-duplicados
         this.bindButton('btn-save-song', () => this.saveCurrentSong());
         this.bindButton('btn-add-section', () => Editor.addSection());
         this.bindButton('btn-add-pair-editor', () => Editor.addPair());
         this.bindButton('btn-reanalyze', () => Editor.reanalyzeContent());
+
+        // Botones de transposición en editor
         this.bindButton('btn-transpose-up', () => Editor.transpose(1));
         this.bindButton('btn-transpose-down', () => Editor.transpose(-1));
         this.bindButton('btn-reset-transpose', () => Editor.resetTranspose());
+
+        // Botones de exportación/importación
         this.bindButton('btn-export-json', () => Editor.exportJSON());
         this.bindButton('btn-import-json', () => Editor.importJSON());
+
+        // Búsqueda de canciones
         this.bindInput('search-box', (e) => this.filterSongs(e.target.value));
+
+        // Configuración
         this.bindSelect('default-notation', (e) => {
             AppState.settings.notation = e.target.value;
             Storage.saveSettings();
         });
+
         this.bindSelect('editor-font-size', (e) => {
             AppState.settings.fontSize = parseInt(e.target.value);
             Storage.saveSettings();
         });
+
+        // Toggle de auto-secciones
         this.bindButton('auto-sections-toggle', () => this.toggleAutoSections());
+
+        // Botones de gestión de datos
         this.bindButton('btn-export-data', () => Config.exportData());
         this.bindButton('btn-import-data', () => Config.importData());
         this.bindButton('btn-clear-data', () => Config.clearData());
@@ -469,6 +525,7 @@ const Router = {
     },
 
     saveCurrentSong() {
+        // Protección anti-duplicados
         if (AppState.isSaving) {
             console.log('Save already in progress, skipping...');
             return;
@@ -485,6 +542,7 @@ const Router = {
         AppState.isSaving = true;
         AppState.lastSaveTime = now;
 
+        // Deshabilitar botón de guardar
         const saveBtn = document.getElementById('btn-save-song');
         if (saveBtn) {
             saveBtn.disabled = true;
@@ -492,18 +550,21 @@ const Router = {
         }
 
         try {
+            // Actualizar título desde el editor
             const titleInput = document.getElementById('song-title-editor');
             if (titleInput && titleInput.value.trim()) {
                 AppState.currentSong.title = titleInput.value.trim();
             }
 
             if (AppState.editingSongId) {
+                // Actualizando canción existente
                 const index = AppState.songs.findIndex(s => s.id === AppState.editingSongId);
                 if (index !== -1) {
                     AppState.currentSong.updatedAt = new Date().toISOString();
                     AppState.songs[index] = AppState.currentSong;
                 }
             } else {
+                // Nueva canción - solo añadir si no existe ya
                 const exists = AppState.songs.find(s => s.id === AppState.currentSong.id);
                 if (!exists) {
                     AppState.songs.push(AppState.currentSong);
@@ -514,6 +575,7 @@ const Router = {
             Storage.updateSaveStatus('saved');
             
         } finally {
+            // Rehabilitar botón después de un delay
             setTimeout(() => {
                 AppState.isSaving = false;
                 if (saveBtn) {
@@ -547,6 +609,7 @@ const Router = {
         AppState.currentSong = song;
         AppState.currentTranspose = 0;
         
+        // Actualizar header del reader
         document.getElementById('reader-title').textContent = song.title;
         document.getElementById('reader-meta').textContent = `${song.artist || 'Sin autor'} • ${song.keyBase}`;
         document.getElementById('current-key-reader').textContent = song.keyBase;
@@ -561,7 +624,7 @@ const Router = {
         if (!song) return;
         
         AppState.editingSongId = songId;
-        AppState.currentSong = JSON.parse(JSON.stringify(song));
+        AppState.currentSong = JSON.parse(JSON.stringify(song)); // Deep copy
         
         this.navigate('edicion');
         Editor.loadSong(AppState.currentSong);
@@ -597,10 +660,12 @@ const Router = {
         
         AppState.currentTranspose += semitones;
         
+        // Actualizar visualización de la tonalidad actual
         const baseKey = AppState.currentSong.keyBase;
         const currentKey = Transposer.transpose(baseKey, AppState.currentTranspose, AppState.currentSong.notation);
         document.getElementById('current-key-reader').textContent = currentKey;
         
+        // Transponer contenido
         const chordLines = document.querySelectorAll('.chord-line');
         chordLines.forEach(line => {
             const originalText = line.textContent;
@@ -617,6 +682,7 @@ const Router = {
     },
 
     showInitialDialog() {
+        // Crear ID único para nueva canción
         const newSongId = this.generateId();
         
         const modal = this.createModal({
@@ -656,6 +722,7 @@ const Router = {
             ]
         });
 
+        // Actualizar opciones de tonalidad cuando cambie la notación
         document.getElementById('modal-notation').addEventListener('change', (e) => {
             const keySelect = document.getElementById('modal-key');
             keySelect.innerHTML = this.getKeyOptions(e.target.value);
@@ -678,19 +745,19 @@ const Router = {
         }
         
         const songData = {
-            id: songId,
+            id: songId, // Usar el ID generado previamente
             title: title,
             artist: document.getElementById('modal-artist').value.trim(),
             notation: document.getElementById('modal-notation').value,
             keyBase: document.getElementById('modal-key').value,
-            autoSections: AppState.settings.autoSections,
+            autoSections: AppState.settings.autoSections, // Usar configuración actual
             sections: [],
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString()
         };
         
         AppState.currentSong = songData;
-        AppState.editingSongId = null;
+        AppState.editingSongId = null; // Es una canción nueva
         
         this.closeModal();
         this.showCreationOptions();
@@ -729,6 +796,7 @@ const Router = {
             ]
         });
 
+        // Configurar toggle dentro del modal
         const toggle = document.getElementById('creation-auto-sections-toggle');
         if (toggle) {
             toggle.addEventListener('click', () => {
@@ -784,6 +852,7 @@ Perdiendo todo por amor y con alegría"></textarea>
             ]
         });
 
+        // Configurar toggle de soft wrap
         const toggle = document.getElementById('soft-wrap-toggle');
         const textarea = document.getElementById('song-text-input');
         
@@ -850,6 +919,7 @@ Perdiendo todo por amor y con alegría"></textarea>
             
             statusEl.innerHTML = '✅ PDF procesado exitosamente';
             
+            // Parsear automáticamente el texto extraído
             setTimeout(() => {
                 this.parseExtractedText(fullText);
             }, 1000);
@@ -911,10 +981,12 @@ Perdiendo todo por amor y con alegría"></textarea>
 
     saveFromPreview() {
         this.closeModal();
+        // Ir a la vista de edición para refinamiento
         Editor.loadSong(AppState.currentSong);
     },
 
     loadConfigurationView() {
+        // Cargar valores actuales en la configuración
         document.getElementById('default-notation').value = AppState.settings.notation;
         document.getElementById('editor-font-size').value = AppState.settings.fontSize;
         this.updateAutoSectionsUI();
@@ -942,10 +1014,12 @@ Perdiendo todo por amor y con alegría"></textarea>
             </div>
         `;
         
+        // Guardar acciones en el overlay para poder ejecutarlas
         overlay._actions = actions;
         
         document.body.appendChild(overlay);
         
+        // Cerrar al hacer clic en el overlay
         overlay.addEventListener('click', (e) => {
             if (e.target === overlay) {
                 this.closeModal();
@@ -974,6 +1048,7 @@ Perdiendo todo por amor y con alegría"></textarea>
     }
 };
 
+// Editor mejorado con funcionalidad de reanálisis
 const Editor = {
     currentTranspose: 0,
 
@@ -987,6 +1062,7 @@ const Editor = {
     },
 
     updateChips() {
+        // Actualizar chips en la toolbar
         const notationStatus = document.getElementById('notation-status');
         const keyStatus = document.getElementById('key-status');
         
@@ -998,6 +1074,7 @@ const Editor = {
             keyStatus.textContent = AppState.currentSong.keyBase;
         }
 
+        // Actualizar estado de auto-secciones
         Router.updateAutoSectionsUI();
     },
 
@@ -1067,6 +1144,7 @@ const Editor = {
     reanalyzeContent() {
         if (!AppState.currentSong || !AppState.settings.autoSections) return;
 
+        // Recopilar todo el contenido actual
         let allContent = '';
         AppState.currentSong.sections.forEach(section => {
             allContent += section.label + '\n';
@@ -1077,6 +1155,7 @@ const Editor = {
             allContent += '\n';
         });
 
+        // Re-parsear con auto-secciones
         const newSections = ChordParser.detectAndParse(allContent, AppState.currentSong.notation, true);
         
         if (newSections.length === 0) {
@@ -1084,6 +1163,7 @@ const Editor = {
             return;
         }
 
+        // Mostrar diff antes de aplicar
         this.showReanalyzeDiff(AppState.currentSong.sections, newSections);
     },
 
@@ -1131,6 +1211,7 @@ const Editor = {
                 textarea.style.height = textarea.scrollHeight + 'px';
             });
             
+            // Ajustar altura inicial
             textarea.style.height = 'auto';
             textarea.style.height = textarea.scrollHeight + 'px';
         });
@@ -1174,6 +1255,23 @@ const Editor = {
         
         const lastSectionIndex = AppState.currentSong.sections.length - 1;
         this.addPairToSection(lastSectionIndex);
+    },
+
+    addPairToSection(sIndex) {
+        if (!AppState.currentSong.sections[sIndex]) return;
+        
+        if (!AppState.currentSong.sections[sIndex].pairs) {
+            AppState.currentSong.sections[sIndex].pairs = [];
+        }
+        
+        AppState.currentSong.sections[sIndex].pairs.push({
+            acordes: '',
+            letra: ''
+        });
+        
+        this.render();
+        this.renderOutline();
+        Storage.updateSaveStatus('unsaved');
     },
 
     duplicatePair(sIndex, pIndex) {
@@ -1309,6 +1407,7 @@ const Editor = {
     }
 };
 
+// Configuración mejorada
 const Config = {
     exportData() {
         const data = {
@@ -1345,6 +1444,7 @@ const Config = {
                     if (data.songs && Array.isArray(data.songs)) {
                         const confirmMsg = `Esto importará ${data.songs.length} canción(es). ¿Continuar?`;
                         if (confirm(confirmMsg)) {
+                            // Migrar canciones sin autoSections
                             const migratedSongs = data.songs.map(song => ({
                                 ...song,
                                 autoSections: song.autoSections !== undefined ? song.autoSections : true
@@ -1378,6 +1478,7 @@ const Config = {
             if (doubleConfirm === 'ELIMINAR TODO') {
                 localStorage.removeItem(Storage.SONGS_KEY);
                 localStorage.removeItem(Storage.SETTINGS_KEY);
+                // También limpiar versiones anteriores
                 localStorage.removeItem(Storage.OLD_SONGS_KEY);
                 localStorage.removeItem('betania_settings_v3');
                 alert('Todos los datos han sido eliminados');
@@ -1387,14 +1488,18 @@ const Config = {
     }
 };
 
+// Inicialización de PDF.js
 if (typeof pdfjsLib !== 'undefined') {
     pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 }
 
+// Inicialización mejorada de la aplicación
 document.addEventListener('DOMContentLoaded', () => {
+    // Cargar datos guardados
     Storage.loadSongs();
     Storage.loadSettings();
     
+    // Agregar canción de ejemplo solo si no hay canciones
     if (AppState.songs.length === 0) {
         const exampleSongs = [
             {
@@ -1541,8 +1646,10 @@ document.addEventListener('DOMContentLoaded', () => {
         console.log('Added example songs');
     }
     
+    // Inicializar router
     Router.init();
     
+    // Configurar atajos de teclado globales
     document.addEventListener('keydown', (e) => {
         if (!AppState.settings.shortcuts) return;
         
