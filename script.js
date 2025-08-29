@@ -1,399 +1,582 @@
-// Funcionalidad completa de Betania Music
-document.addEventListener('DOMContentLoaded', function() {
-    
-    // Datos de canciones (simulado - en producción vendría de una base de datos)
-    const songsData = {
-        'Sublime Gracia': {
-            key: 'C',
-            author: 'Himno tradicional • John Newton',
-            verses: [
-                {
-                    label: 'Verso 1',
-                    chords: ['C        Am       F        G', '    Am           F'],
-                    lyrics: ['Sublime gracia del Señor que a un infeliz salvó', 'Perdido me encontró, ciego me hizo ver']
-                },
-                {
-                    label: 'Verso 2', 
-                    chords: ['C        Am       F        G', '    Am           F'],
-                    lyrics: ['Su gracia me enseñó a temer, mis dudas ahuyentó', '¡Oh cuán precioso fue a mi corazón cuando él me habló!']
-                },
-                {
-                    label: 'Coro',
-                    chords: ['F        C       G        Am', 'F        C       G        C'],
-                    lyrics: ['Gracia admirable es, que salvó a un pecador', 'Perdido me encontró, mas ya no soy quien era yo']
-                }
-            ]
-        },
-        'Cuán Grande es Él': {
-            key: 'G',
-            author: 'Stuart K. Hine',
-            verses: [
-                {
-                    label: 'Verso 1',
-                    chords: ['G        C       G        D', '    Em           C'],
-                    lyrics: ['Señor mi Dios, al contemplar los cielos', 'El firmamento y las estrellas mil']
-                }
-            ]
-        }
-    };
-
-    // Sistema de transposición
-    const keys = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
-    const chordMap = {
-        'C': 0, 'C#': 1, 'Db': 1, 'D': 2, 'D#': 3, 'Eb': 3, 'E': 4, 'F': 5, 
-        'F#': 6, 'Gb': 6, 'G': 7, 'G#': 8, 'Ab': 8, 'A': 9, 'A#': 10, 'Bb': 10, 'B': 11
-    };
-    
-    let currentKeyIndex = 0;
-    let currentSong = 'Sublime Gracia';
-
-    // Función para transponer acordes
-    function transposeChord(chord, semitones) {
-        // Extraer modificadores (m, 7, sus, etc.)
-        const chordPattern = /^([A-G][#b]?)(.*)$/;
-        const match = chord.match(chordPattern);
+// Gestor de Canciones - Betania Music
+class SongManager {
+    constructor() {
+        this.songs = this.loadSongs();
+        this.currentSong = null;
+        this.currentTransposition = 0;
+        this.editMode = false;
         
-        if (!match) return chord;
+        // Key mappings
+        this.latinKeys = ['Do', 'Do#', 'Re', 'Re#', 'Mi', 'Fa', 'Fa#', 'Sol', 'Sol#', 'La', 'La#', 'Si'];
+        this.angloKeys = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+        this.latinFlats = ['Do', 'Reb', 'Re', 'Mib', 'Mi', 'Fa', 'Solb', 'Sol', 'Lab', 'La', 'Sib', 'Si'];
+        this.angloFlats = ['C', 'Db', 'D', 'Eb', 'E', 'F', 'Gb', 'G', 'Ab', 'A', 'Bb', 'B'];
         
-        const rootNote = match[1];
-        const modifier = match[2];
-        
-        if (chordMap[rootNote] === undefined) return chord;
-        
-        const originalIndex = chordMap[rootNote];
-        const newIndex = (originalIndex + semitones + 12) % 12;
-        const newRoot = keys[newIndex];
-        
-        return newRoot + modifier;
+        this.init();
     }
 
-    // Función para transponer una línea de acordes
-    function transposeChordLine(chordLine, semitones) {
-        return chordLine.replace(/\b[A-G][#b]?(?:m|maj|sus|add|dim|aug|\d)*\b/g, function(chord) {
-            return transposeChord(chord.trim(), semitones);
+    init() {
+        this.bindEvents();
+        this.renderSongsList();
+        this.populateKeySelectors();
+    }
+
+    // Event Bindings
+    bindEvents() {
+        // Navigation
+        document.getElementById('nav-songs').addEventListener('click', (e) => {
+            e.preventDefault();
+            this.showSongsView();
+        });
+
+        // Add song button
+        document.getElementById('btn-add-song').addEventListener('click', () => {
+            this.openAddSongModal();
+        });
+
+        // Search
+        document.getElementById('search-box').addEventListener('input', (e) => {
+            this.filterSongs(e.target.value);
+        });
+
+        // Modal controls
+        document.getElementById('btn-close-modal').addEventListener('click', () => {
+            this.closeSongModal();
+        });
+
+        document.getElementById('btn-cancel').addEventListener('click', () => {
+            this.closeSongModal();
+        });
+
+        document.getElementById('btn-save').addEventListener('click', () => {
+            this.saveSong();
+        });
+
+        // Delete modal
+        document.getElementById('btn-close-delete').addEventListener('click', () => {
+            this.closeDeleteModal();
+        });
+
+        document.getElementById('btn-cancel-delete').addEventListener('click', () => {
+            this.closeDeleteModal();
+        });
+
+        document.getElementById('btn-confirm-delete').addEventListener('click', () => {
+            this.deleteSong();
+        });
+
+        // Editor controls
+        document.getElementById('btn-add-pair').addEventListener('click', () => {
+            this.addPair();
+        });
+
+        // Notation change
+        document.getElementById('notation-type').addEventListener('change', () => {
+            this.updateKeySelector();
+            if (this.editMode) {
+                this.updateTransposeControls();
+            }
+        });
+
+        // Transpose controls
+        document.getElementById('btn-transpose-down').addEventListener('click', () => {
+            this.transpose(-1);
+        });
+
+        document.getElementById('btn-transpose-up').addEventListener('click', () => {
+            this.transpose(1);
+        });
+
+        document.getElementById('btn-reset-key').addEventListener('click', () => {
+            this.resetToBaseKey();
+        });
+
+        // Modal backdrop close
+        document.getElementById('song-modal').addEventListener('click', (e) => {
+            if (e.target.id === 'song-modal') {
+                this.closeSongModal();
+            }
+        });
+
+        document.getElementById('delete-modal').addEventListener('click', (e) => {
+            if (e.target.id === 'delete-modal') {
+                this.closeDeleteModal();
+            }
+        });
+
+        // Keyboard shortcuts
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                this.closeSongModal();
+                this.closeDeleteModal();
+            }
         });
     }
 
-    // Función para renderizar canción
-    function renderSong(songName, transposition = 0) {
-        const song = songsData[songName];
+    // Data Management
+    loadSongs() {
+        const stored = localStorage.getItem('songs_v1');
+        return stored ? JSON.parse(stored) : [];
+    }
+
+    saveSongs() {
+        localStorage.setItem('songs_v1', JSON.stringify(this.songs));
+    }
+
+    generateId() {
+        return 'song_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+    }
+
+    // UI Management
+    showSongsView() {
+        // Update navigation
+        document.querySelectorAll('.nav-menu a').forEach(a => a.classList.remove('active'));
+        document.getElementById('nav-songs').classList.add('active');
+        
+        this.renderSongsList();
+    }
+
+    renderSongsList() {
+        const emptyState = document.getElementById('empty-state');
+        const songsGrid = document.getElementById('songs-grid');
+        
+        if (this.songs.length === 0) {
+            emptyState.style.display = 'block';
+            songsGrid.style.display = 'none';
+        } else {
+            emptyState.style.display = 'none';
+            songsGrid.style.display = 'grid';
+            this.populateSongsGrid();
+        }
+    }
+
+    populateSongsGrid() {
+        const grid = document.getElementById('songs-grid');
+        grid.innerHTML = '';
+
+        this.songs.forEach(song => {
+            const card = this.createSongCard(song);
+            grid.appendChild(card);
+        });
+    }
+
+    createSongCard(song) {
+        const card = document.createElement('div');
+        card.className = 'song-card';
+        
+        const updatedDate = new Date(song.updatedAt).toLocaleDateString('es-ES', {
+            year: 'numeric',
+            month: 'short',
+            day: 'numeric'
+        });
+
+        card.innerHTML = `
+            <div class="song-title">${this.escapeHtml(song.title)}</div>
+            <div class="song-meta">
+                <div>${song.artist ? this.escapeHtml(song.artist) : 'Sin autor'}</div>
+                <div>Tonalidad: ${song.keyBase} • ${updatedDate}</div>
+            </div>
+            <div class="song-actions">
+                <button class="btn-sm btn-primary" onclick="songManager.editSong('${song.id}')">Ver/Editar</button>
+                <button class="btn-sm" onclick="songManager.duplicateSong('${song.id}')">Duplicar</button>
+                <button class="btn-sm btn-danger" onclick="songManager.confirmDeleteSong('${song.id}')">Eliminar</button>
+            </div>
+        `;
+
+        return card;
+    }
+
+    filterSongs(query) {
+        const filteredSongs = this.songs.filter(song => 
+            song.title.toLowerCase().includes(query.toLowerCase()) ||
+            (song.artist && song.artist.toLowerCase().includes(query.toLowerCase()))
+        );
+
+        const grid = document.getElementById('songs-grid');
+        grid.innerHTML = '';
+
+        if (filteredSongs.length === 0 && query) {
+            grid.innerHTML = '<div style="grid-column: 1 / -1; text-align: center; color: #718096; padding: 2rem;">No se encontraron canciones que coincidan con la búsqueda.</div>';
+        } else {
+            filteredSongs.forEach(song => {
+                const card = this.createSongCard(song);
+                grid.appendChild(card);
+            });
+        }
+    }
+
+    // Modal Management
+    // Modal Management
+    openAddSongModal() {
+        this.currentSong = null;
+        this.currentTransposition = 0;
+        this.editMode = false;
+        
+        document.getElementById('modal-title').textContent = 'Añadir Canción';
+        document.getElementById('transpose-section').style.display = 'none';
+        
+        this.clearForm();
+        this.addPair(); // Start with one pair
+        document.getElementById('song-modal').classList.add('active');
+        
+        // Focus on title input
+        setTimeout(() => {
+            document.getElementById('song-title').focus();
+        }, 100);
+    }
+
+    editSong(songId) {
+        const song = this.songs.find(s => s.id === songId);
         if (!song) return;
 
-        const songInfo = document.querySelector('.song-info h1');
-        const songMeta = document.querySelector('.song-meta');
-        const songContent = document.querySelector('.song-content');
-        const currentKey = document.querySelector('.current-key');
+        this.currentSong = song;
+        this.currentTransposition = 0;
+        this.editMode = true;
 
-        songInfo.textContent = songName;
-        songMeta.textContent = song.author;
-        
-        // Calcular tonalidad actual
-        const originalKeyIndex = keys.indexOf(song.key);
-        const newKeyIndex = (originalKeyIndex + transposition + 12) % 12;
-        currentKey.textContent = keys[newKeyIndex];
+        document.getElementById('modal-title').textContent = 'Editar Canción';
+        document.getElementById('transpose-section').style.display = 'block';
 
-        // Renderizar contenido
-        songContent.innerHTML = song.verses.map(verse => `
-            <div class="verse">
-                <div class="verse-label">${verse.label}</div>
-                ${verse.chords.map((chordLine, index) => `
-                    <div class="chord-line">${transposeChordLine(chordLine, transposition).replace(/\b[A-G][#b]?(?:m|maj|sus|add|dim|aug|\d)*\b/g, '<span class="chord">$&</span>')}</div>
-                    ${verse.lyrics[index] ? `<div class="lyric-line">${verse.lyrics[index]}</div>` : ''}
-                `).join('')}
-            </div>
-        `).join('');
-
-        // Reactivar eventos de acordes
-        attachChordEvents();
+        this.populateForm(song);
+        document.getElementById('song-modal').classList.add('active');
     }
 
-    // Función para eventos de acordes
-    function attachChordEvents() {
-        document.querySelectorAll('.chord').forEach(chord => {
-            chord.addEventListener('click', function() {
-                showChordDiagram(this.textContent.trim());
-            });
-        });
-    }
+    duplicateSong(songId) {
+        const song = this.songs.find(s => s.id === songId);
+        if (!song) return;
 
-    // Función para mostrar diagrama de acordes
-    function showChordDiagram(chord) {
-        // Crear modal simple
-        const modal = document.createElement('div');
-        modal.style.cssText = `
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0,0,0,0.8);
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            z-index: 1000;
-        `;
-        
-        const content = document.createElement('div');
-        content.style.cssText = `
-            background: white;
-            padding: 2rem;
-            border-radius: 12px;
-            text-align: center;
-            max-width: 300px;
-        `;
-        
-        content.innerHTML = `
-            <h3 style="margin-bottom: 1rem; color: #2d3748;">Diagrama: ${chord}</h3>
-            <p style="color: #718096; margin-bottom: 1rem;">Diagrama de guitarra para el acorde ${chord}</p>
-            <button style="padding: 0.5rem 1rem; background: #667eea; color: white; border: none; border-radius: 8px; cursor: pointer;">Cerrar</button>
-        `;
-        
-        modal.appendChild(content);
-        document.body.appendChild(modal);
-        
-        // Cerrar modal
-        modal.addEventListener('click', function(e) {
-            if (e.target === modal || e.target.tagName === 'BUTTON') {
-                document.body.removeChild(modal);
-            }
-        });
-    }
-
-    // Cambio de canción al hacer clic en la lista
-    document.querySelectorAll('.song-item').forEach(item => {
-        item.addEventListener('click', function() {
-            // Remover clase active de todos los elementos
-            document.querySelectorAll('.song-item').forEach(i => i.classList.remove('active'));
-            
-            // Agregar clase active al elemento clickeado
-            this.classList.add('active');
-            
-            // Obtener datos de la canción
-            const songTitle = this.querySelector('.song-title').textContent;
-            const originalKey = this.getAttribute('data-key');
-            
-            currentSong = songTitle;
-            currentKeyIndex = keys.indexOf(originalKey);
-            
-            // Renderizar canción
-            if (songsData[songTitle]) {
-                renderSong(songTitle, 0);
-            } else {
-                // Si no tenemos datos, mostrar título básico
-                document.querySelector('.song-info h1').textContent = songTitle;
-                document.querySelector('.song-meta').textContent = 'Canción tradicional';
-                document.querySelector('.current-key').textContent = originalKey;
-                document.querySelector('.song-content').innerHTML = `
-                    <div class="verse">
-                        <div class="verse-label">Contenido no disponible</div>
-                        <div class="lyric-line">Esta canción aún no tiene contenido cargado.</div>
-                        <div class="lyric-line">Usa el botón "Editar" para agregar acordes y letras.</div>
-                    </div>
-                `;
-            }
-        });
-    });
-
-    // Sistema de transposición
-    document.getElementById('transpose-down').addEventListener('click', function() {
-        currentKeyIndex = (currentKeyIndex - 1 + keys.length) % keys.length;
-        const transposition = currentKeyIndex - keys.indexOf(songsData[currentSong]?.key || 'C');
-        renderSong(currentSong, transposition);
-    });
-    
-    document.getElementById('transpose-up').addEventListener('click', function() {
-        currentKeyIndex = (currentKeyIndex + 1) % keys.length;
-        const transposition = currentKeyIndex - keys.indexOf(songsData[currentSong]?.key || 'C');
-        renderSong(currentSong, transposition);
-    });
-
-    // Funcionalidad de búsqueda de canciones
-    const searchBox = document.querySelector('.search-box');
-    const songItems = document.querySelectorAll('.song-item');
-
-    searchBox.addEventListener('input', function() {
-        const searchTerm = this.value.toLowerCase();
-        
-        songItems.forEach(item => {
-            const songTitle = item.querySelector('.song-title').textContent.toLowerCase();
-            
-            if (songTitle.includes(searchTerm)) {
-                item.style.display = 'block';
-            } else {
-                item.style.display = 'none';
-            }
-        });
-    });
-
-    // Funcionalidad de los botones del toolbar
-    let editMode = false;
-    
-    document.getElementById('edit-mode').addEventListener('click', function() {
-        editMode = !editMode;
-        
-        if (editMode) {
-            this.textContent = 'Guardar';
-            this.style.background = 'linear-gradient(135deg, #48bb78, #38a169)';
-            enableEditMode();
-        } else {
-            this.textContent = 'Editar';
-            this.style.background = 'linear-gradient(135deg, #667eea, #764ba2)';
-            disableEditMode();
-        }
-    });
-
-    function enableEditMode() {
-        const songContent = document.querySelector('.song-content');
-        songContent.style.background = 'rgba(255, 243, 224, 0.5)';
-        songContent.style.border = '2px dashed #ed8936';
-        
-        // Hacer contenido editable
-        document.querySelectorAll('.chord-line, .lyric-line').forEach(line => {
-            line.contentEditable = true;
-            line.style.background = 'rgba(255, 255, 255, 0.8)';
-            line.style.padding = '0.25rem';
-            line.style.margin = '0.25rem 0';
-            line.style.borderRadius = '4px';
-        });
-        
-        console.log('Modo edición activado');
-    }
-
-    function disableEditMode() {
-        const songContent = document.querySelector('.song-content');
-        songContent.style.background = 'rgba(248, 250, 252, 0.5)';
-        songContent.style.border = 'none';
-        
-        // Desactivar edición
-        document.querySelectorAll('.chord-line, .lyric-line').forEach(line => {
-            line.contentEditable = false;
-            line.style.background = 'transparent';
-            line.style.padding = '';
-            line.style.margin = '';
-        });
-        
-        console.log('Cambios guardados');
-    }
-
-    // Mostrar diagramas
-    document.getElementById('show-diagrams').addEventListener('click', function() {
-        const chords = document.querySelectorAll('.chord');
-        if (chords.length > 0) {
-            const chordList = Array.from(chords).map(c => c.textContent.trim());
-            const uniqueChords = [...new Set(chordList)];
-            alert('Acordes en esta canción: ' + uniqueChords.join(', ') + '\n\nHaz clic en cualquier acorde para ver su diagrama.');
-        } else {
-            alert('No hay acordes disponibles en esta canción');
-        }
-    });
-
-    // Funcionalidad para agregar al setlist
-    document.getElementById('add-to-setlist').addEventListener('click', function() {
-        const currentSongTitle = document.querySelector('.song-info h1').textContent;
-        const currentKeyText = document.querySelector('.current-key').textContent;
-        
-        // Simular agregado al setlist (en producción se guardaría en localStorage o base de datos)
-        const setlistItem = {
-            song: currentSongTitle,
-            key: currentKeyText,
-            timestamp: new Date().toISOString()
+        const duplicatedSong = {
+            ...song,
+            id: this.generateId(),
+            title: song.title + ' (Copia)',
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString()
         };
-        
-        // Obtener setlist del localStorage
-        let setlist = JSON.parse(localStorage.getItem('betania-setlist') || '[]');
-        
-        // Verificar si ya está en el setlist
-        const exists = setlist.find(item => item.song === currentSongTitle);
-        
-        if (exists) {
-            alert(`"${currentSongTitle}" ya está en el setlist`);
-        } else {
-            setlist.push(setlistItem);
-            localStorage.setItem('betania-setlist', JSON.stringify(setlist));
-            
-            // Feedback visual
-            this.textContent = '✓ Agregada';
-            this.style.background = 'linear-gradient(135deg, #48bb78, #38a169)';
-            
-            setTimeout(() => {
-                this.textContent = '+ Setlist';
-                this.style.background = '';
-            }, 2000);
-            
-            console.log('Agregado al setlist:', setlistItem);
-        }
-    });
 
-    // Navegación del menú principal
-    document.querySelectorAll('.nav-menu a').forEach(link => {
-        link.addEventListener('click', function(e) {
-            e.preventDefault();
-            
-            // Remover clase active de todos los enlaces
-            document.querySelectorAll('.nav-menu a').forEach(l => l.classList.remove('active'));
-            
-            // Agregar clase active al enlace clickeado
-            this.classList.add('active');
-            
-            const section = this.textContent;
-            console.log('Navegando a:', section);
-            
-            // Simular cambio de sección
-            if (section === 'Setlist') {
-                showSetlist();
-            } else if (section !== 'Canciones') {
-                alert(`Sección "${section}" en desarrollo`);
-            }
+        this.songs.push(duplicatedSong);
+        this.saveSongs();
+        this.renderSongsList();
+    }
+
+    confirmDeleteSong(songId) {
+        const song = this.songs.find(s => s.id === songId);
+        if (!song) return;
+
+        document.getElementById('delete-song-title').textContent = song.title;
+        document.getElementById('delete-modal').classList.add('active');
+        document.getElementById('delete-modal').dataset.songId = songId;
+    }
+
+    deleteSong() {
+        const songId = document.getElementById('delete-modal').dataset.songId;
+        this.songs = this.songs.filter(s => s.id !== songId);
+        this.saveSongs();
+        this.closeDeleteModal();
+        this.renderSongsList();
+    }
+
+    closeSongModal() {
+        document.getElementById('song-modal').classList.remove('active');
+        this.clearForm();
+    }
+
+    closeDeleteModal() {
+        document.getElementById('delete-modal').classList.remove('active');
+    }
+
+    // Form Management
+    clearForm() {
+        document.getElementById('song-title').value = '';
+        document.getElementById('song-artist').value = '';
+        document.getElementById('notation-type').value = 'latin';
+        document.getElementById('base-key').value = 'Do';
+        document.getElementById('pairs-container').innerHTML = '';
+        this.updateKeySelector();
+    }
+
+    populateForm(song) {
+        document.getElementById('song-title').value = song.title;
+        document.getElementById('song-artist').value = song.artist || '';
+        document.getElementById('notation-type').value = song.notation;
+        
+        this.updateKeySelector();
+        document.getElementById('base-key').value = song.keyBase;
+        
+        // Populate pairs
+        document.getElementById('pairs-container').innerHTML = '';
+        song.pairs.forEach(pair => {
+            this.addPair(pair.acordes, pair.letra);
         });
-    });
 
-    // Función para mostrar setlist
-    function showSetlist() {
-        const setlist = JSON.parse(localStorage.getItem('betania-setlist') || '[]');
+        this.updateTransposeControls();
+    }
+
+    populateKeySelectors() {
+        this.updateKeySelector();
+    }
+
+    updateKeySelector() {
+        const notation = document.getElementById('notation-type').value;
+        const keySelect = document.getElementById('base-key');
+        const keys = notation === 'latin' ? this.latinKeys : this.angloKeys;
         
-        if (setlist.length === 0) {
-            alert('El setlist está vacío. Agrega algunas canciones primero.');
+        keySelect.innerHTML = '';
+        keys.forEach(key => {
+            const option = document.createElement('option');
+            option.value = key;
+            option.textContent = key;
+            keySelect.appendChild(option);
+        });
+    }
+
+    updateTransposeControls() {
+        if (!this.editMode || !this.currentSong) return;
+
+        const notation = document.getElementById('notation-type').value;
+        const baseKey = this.currentSong.keyBase;
+        const currentKey = this.transposeKey(baseKey, this.currentTransposition, notation);
+        
+        document.getElementById('current-key').textContent = currentKey;
+    }
+
+    // Pair Management
+    addPair(chords = '', lyrics = '') {
+        const container = document.getElementById('pairs-container');
+        const pairIndex = container.children.length;
+        
+        const pairElement = document.createElement('div');
+        pairElement.className = 'pair-item';
+        pairElement.dataset.index = pairIndex;
+        
+        pairElement.innerHTML = `
+            <div class="pair-header">
+                <span class="pair-label">Par ${pairIndex + 1}</span>
+                <div class="pair-actions">
+                    <button type="button" class="btn-xs" onclick="songManager.duplicatePair(${pairIndex})">Duplicar</button>
+                    <button type="button" class="btn-xs" onclick="songManager.removePair(${pairIndex})">Eliminar</button>
+                </div>
+            </div>
+            <textarea class="chord-input" placeholder="Acordes (ej: Do    Sol    Lam   Fa)" rows="2">${this.escapeHtml(chords)}</textarea>
+            <textarea class="lyric-input" placeholder="Letra de la canción" rows="2">${this.escapeHtml(lyrics)}</textarea>
+        `;
+
+        container.appendChild(pairElement);
+        this.updatePairLabels();
+
+        // Focus on new pair if it's empty
+        if (!chords && !lyrics) {
+            const chordInput = pairElement.querySelector('.chord-input');
+            setTimeout(() => chordInput.focus(), 50);
+        }
+    }
+
+    duplicatePair(index) {
+        const container = document.getElementById('pairs-container');
+        const pairElement = container.children[index];
+        
+        if (!pairElement) return;
+
+        const chords = pairElement.querySelector('.chord-input').value;
+        const lyrics = pairElement.querySelector('.lyric-input').value;
+        
+        this.addPair(chords, lyrics);
+    }
+
+    removePair(index) {
+        const container = document.getElementById('pairs-container');
+        const pairElement = container.children[index];
+        
+        if (!pairElement) return;
+        if (container.children.length === 1) {
+            alert('Debe haber al menos un par de acordes/letra');
             return;
         }
-        
-        const setlistContent = setlist.map((item, index) => 
-            `${index + 1}. ${item.song} (${item.key})`
-        ).join('\n');
-        
-        alert('Setlist actual:\n\n' + setlistContent);
+
+        pairElement.remove();
+        this.updatePairLabels();
     }
 
-    // Atajos de teclado
-    document.addEventListener('keydown', function(e) {
-        // Solo si no estamos editando
-        if (!editMode && !e.target.matches('input')) {
-            switch(e.key) {
-                case 'ArrowUp':
-                    e.preventDefault();
-                    document.getElementById('transpose-up').click();
-                    break;
-                case 'ArrowDown':
-                    e.preventDefault();
-                    document.getElementById('transpose-down').click();
-                    break;
-                case 'e':
-                case 'E':
-                    e.preventDefault();
-                    document.getElementById('edit-mode').click();
-                    break;
-                case ' ':
-                    e.preventDefault();
-                    document.getElementById('add-to-setlist').click();
-                    break;
+    updatePairLabels() {
+        const container = document.getElementById('pairs-container');
+        Array.from(container.children).forEach((pair, index) => {
+            pair.dataset.index = index;
+            pair.querySelector('.pair-label').textContent = `Par ${index + 1}`;
+            
+            // Update onclick handlers
+            const duplicateBtn = pair.querySelector('.pair-actions .btn-xs:first-child');
+            const removeBtn = pair.querySelector('.pair-actions .btn-xs:last-child');
+            
+            duplicateBtn.onclick = () => this.duplicatePair(index);
+            removeBtn.onclick = () => this.removePair(index);
+        });
+    }
+
+    // Save/Load Operations
+    saveSong() {
+        const title = document.getElementById('song-title').value.trim();
+        const artist = document.getElementById('song-artist').value.trim();
+        const notation = document.getElementById('notation-type').value;
+        const keyBase = document.getElementById('base-key').value;
+
+        // Validation
+        if (!title) {
+            alert('El título es obligatorio');
+            document.getElementById('song-title').focus();
+            return;
+        }
+
+        // Get pairs
+        const pairs = [];
+        const pairElements = document.getElementById('pairs-container').children;
+        
+        for (let pairElement of pairElements) {
+            const chords = pairElement.querySelector('.chord-input').value;
+            const lyrics = pairElement.querySelector('.lyric-input').value;
+            pairs.push({ acordes: chords, letra: lyrics });
+        }
+
+        if (pairs.length === 0) {
+            alert('Debe haber al menos un par de acordes/letra');
+            return;
+        }
+
+        // Create or update song
+        const now = new Date().toISOString();
+        const songData = {
+            title,
+            artist: artist || null,
+            notation,
+            keyBase,
+            pairs
+        };
+
+        if (this.currentSong) {
+            // Update existing song
+            const song = this.songs.find(s => s.id === this.currentSong.id);
+            Object.assign(song, songData, { updatedAt: now });
+        } else {
+            // Create new song
+            const newSong = {
+                id: this.generateId(),
+                ...songData,
+                createdAt: now,
+                updatedAt: now
+            };
+            this.songs.push(newSong);
+        }
+
+        this.saveSongs();
+        this.closeSongModal();
+        this.renderSongsList();
+    }
+
+    // Transposition Logic
+    transpose(semitones) {
+        this.currentTransposition += semitones;
+        this.updateTransposeControls();
+        this.applyTransposition();
+    }
+
+    resetToBaseKey() {
+        this.currentTransposition = 0;
+        this.updateTransposeControls();
+        this.applyTransposition();
+    }
+
+    applyTransposition() {
+        if (!this.editMode || !this.currentSong) return;
+
+        const notation = document.getElementById('notation-type').value;
+        const pairElements = document.getElementById('pairs-container').children;
+
+        for (let pairElement of pairElements) {
+            const chordInput = pairElement.querySelector('.chord-input');
+            const originalIndex = parseInt(pairElement.dataset.index);
+            const originalChords = this.currentSong.pairs[originalIndex]?.acordes || '';
+            
+            if (originalChords) {
+                const transposedChords = this.transposeChordLine(originalChords, this.currentTransposition, notation);
+                chordInput.value = transposedChords;
             }
         }
-    });
+    }
 
-    // Inicializar con primera canción
-    renderSong(currentSong, 0);
-    attachChordEvents();
+    transposeChordLine(chordLine, semitones, notation) {
+        if (semitones === 0) return chordLine;
 
-    // Mostrar mensaje de bienvenida
-    console.log('🎵 Betania Music inicializado correctamente');
-    console.log('Atajos: ↑/↓ = Transponer, E = Editar, Espacio = Agregar al setlist');
-});
+        // Regular expression to match chords
+        const chordRegex = /\b([A-G][#b]?)(m|maj|sus|add|dim|aug|\d|°|ø|\+)*(\/?([A-G][#b]?))?\b/g;
+        
+        return chordLine.replace(chordRegex, (match, root, suffix, slashPart, bassNote) => {
+            let transposedRoot = this.transposeKey(root, semitones, notation);
+            let result = transposedRoot + (suffix || '');
+            
+            if (slashPart && bassNote) {
+                let transposedBass = this.transposeKey(bassNote, semitones, notation);
+                result += '/' + transposedBass;
+            }
+            
+            return result;
+        });
+    }
+
+    transposeKey(key, semitones, notation) {
+        // Convert to standard format first
+        const standardKey = this.convertToStandard(key, notation);
+        if (standardKey === null) return key;
+
+        // Get the key array based on notation and direction
+        let keyArray;
+        if (notation === 'latin') {
+            keyArray = semitones >= 0 ? this.latinKeys : this.latinFlats;
+        } else {
+            keyArray = semitones >= 0 ? this.angloKeys : this.angloFlats;
+        }
+
+        // Find current position
+        const currentIndex = keyArray.indexOf(standardKey);
+        if (currentIndex === -1) return key;
+
+        // Calculate new position
+        const newIndex = (currentIndex + semitones + 12) % 12;
+        return keyArray[newIndex];
+    }
+
+    convertToStandard(key, notation) {
+        // Convert various key representations to standard format
+        const keyMaps = {
+            latin: {
+                'Do': 'Do', 'Do#': 'Do#', 'Reb': 'Do#',
+                'Re': 'Re', 'Re#': 'Re#', 'Mib': 'Re#',
+                'Mi': 'Mi',
+                'Fa': 'Fa', 'Fa#': 'Fa#', 'Solb': 'Fa#',
+                'Sol': 'Sol', 'Sol#': 'Sol#', 'Lab': 'Sol#',
+                'La': 'La', 'La#': 'La#', 'Sib': 'La#',
+                'Si': 'Si'
+            },
+            anglo: {
+                'C': 'C', 'C#': 'C#', 'Db': 'C#',
+                'D': 'D', 'D#': 'D#', 'Eb': 'D#',
+                'E': 'E',
+                'F': 'F', 'F#': 'F#', 'Gb': 'F#',
+                'G': 'G', 'G#': 'G#', 'Ab': 'G#',
+                'A': 'A', 'A#': 'A#', 'Bb': 'A#',
+                'B': 'B'
+            }
+        };
+
+        return keyMaps[notation][key] || null;
+    }
+
+    // Utility Functions
+    escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+}
+
+// Initialize the application
+const songManager = new SongManager();
+
+// Export for debugging
+window.songManager = songManager;
