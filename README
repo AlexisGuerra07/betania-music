@@ -1,0 +1,117 @@
+# Betania Music - Sistema de Alabanza
+
+Sistema profesional para equipos de alabanza con funcionalidades avanzadas de transposición, edición y presentación de canciones.
+
+## 🎵 Características
+
+- **Lista de canciones visible**: Panel lateral siempre accesible con todas las canciones
+- **Navegación clara**: Menú principal intuitivo (Canciones, Setlist, Editor, Configuración)
+- **Transposición en tiempo real**: Cambio de tonalidad con botones ♭/♯
+- **Acordes interactivos**: Click en acordes para ver diagramas
+- **Búsqueda integrada**: Encuentra canciones rápidamente
+- **Diseño profesional**: Interfaz limpia sin elementos amateur
+- **Responsive**: Optimizado para desktop y móviles
+
+## 📁 Estructura de archivos
+
+```
+betania-music/
+├── index.html          # Estructura principal
+├── styles.css          # Estilos y diseño
+├── script.js           # Funcionalidad JavaScript
+└── README.md           # Documentación
+```
+
+## 🚀 Instalación
+
+1. Clona o descarga este repositorio
+2. Abre `index.html` en tu navegador
+3. ¡Listo! No requiere servidor web
+
+## 💻 Uso
+
+### Navegación básica
+- **Lista lateral**: Todas las canciones disponibles
+- **Búsqueda**: Escribe en la caja de búsqueda para filtrar
+- **Selección**: Click en cualquier canción para cargarla
+
+### Controles de canción
+- **♭**: Baja un semitono la tonalidad
+- **♯**: Sube un semitono la tonalidad
+- **Diagramas**: Muestra acordes de guitarra
+- **Editar**: Activa modo edición
+- **+ Setlist**: Agrega canción al setlist
+
+### Acordes interactivos
+- Click en cualquier acorde resaltado para ver su diagrama
+- Los acordes cambian automáticamente al transponer
+
+## 🔧 Personalización
+
+### Agregar nuevas canciones
+Edita el HTML en la sección `.songs-list`:
+
+```html
+<div class="song-item">
+    <div class="song-title">Nombre de la Canción</div>
+    <div class="song-key">Tonalidad: G</div>
+</div>
+```
+
+### Modificar colores
+Los colores principales se definen en `styles.css`:
+
+```css
+:root {
+    --primary-color: #1e40af;
+    --secondary-color: #3b82f6;
+    --background-color: #f8fafc;
+}
+```
+
+## 📱 Responsive Design
+
+El sistema se adapta automáticamente a:
+- **Desktop**: Diseño completo con sidebar
+- **Tablet**: Layout optimizado
+- **Móvil**: Sidebar colapsable, controles centrados
+
+## 🎯 Próximas mejoras
+
+Las siguientes funcionalidades están identificadas para implementar:
+
+### Almacenamiento y sincronización
+- Sistema de cuentas de usuario
+- Guardado en la nube
+- Sincronización entre dispositivos
+- Respaldo automático
+
+### Colaboración
+- Compartir setlists entre miembros
+- Comentarios en canciones
+- Historial de versiones
+
+### Funcionalidades avanzadas
+- Importar/exportar canciones
+- Metronomo integrado
+- Grabación de ensayos
+
+## 🤝 Contribuir
+
+1. Fork el repositorio
+2. Crea una rama para tu feature (`git checkout -b feature/nueva-funcionalidad`)
+3. Commit tus cambios (`git commit -am 'Agrega nueva funcionalidad'`)
+4. Push a la rama (`git push origin feature/nueva-funcionalidad`)
+5. Crea un Pull Request
+
+## 📄 Licencia
+
+Este proyecto está bajo la Licencia MIT - ver el archivo [LICENSE](LICENSE) para detalles.
+
+## 🎸 Créditos
+
+Desarrollado para equipos de alabanza que buscan una herramienta profesional y fácil de usar.
+
+---
+
+**Nota**: Este es el prototipo mejorado que soluciona los problemas principales de navegación e interfaz identificados en la versión original.
