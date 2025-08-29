@@ -3,144 +3,116 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Equipo de Alabanza Betania V4 - Sistema Completo</title>
+    <title>Betania Music - Sistema de Alabanza</title>
     <link rel="stylesheet" href="styles.css">
-    <link rel="manifest" href="manifest.json">
-    <meta name="theme-color" content="#079b82">
-    <meta name="description" content="Sistema de gestión musical para equipo de alabanza con acordes interactivos y transposición automática">
-
-    <!-- Breadcrumbs container -->
-    <div id="breadcrumbs" class="breadcrumbs-container"></div>
-
-    <!-- Loading indicator -->
-    <div id="loading-indicator" class="loading-indicator hidden">
-        <div class="spinner"></div>
-        <span>Cargando...</span>
-    </div>
-
-    <!-- Auth modal -->
-    <div id="auth-modal" class="auth-modal hidden">
-        <div class="auth-modal-content">
-            <div class="auth-tabs">
-                <button class="auth-tab active" data-tab="login">Iniciar Sesión</button>
-                <button class="auth-tab" data-tab="register">Registrarse</button>
-            </div>
-            <div id="auth-forms-container"></div>
-        </div>
-    </div>
 </head>
-<body class="light-mode">
-    <header>
-        <img id="logo" src="logo.png" alt="Logo" style="height: 48px; width: 48px; border-radius: 50%;">                  
-        <div class="title">
-            <h1>Equipo de Alabanza Betania V4</h1>
-            <p>Sistema Completo | Editor Avanzado | Transposición Total | Modo Performance</p>
-        </div>
-                 
-        <div class="main-select">
-            <select id="section-select">
-                <option value="canciones">🎵 Canciones</option>
-                <option value="setlist">📋 Mi Setlist</option>
-                <option value="grabaciones">🎙️ Grabaciones</option>
-                <option value="herramientas">🛠️ Herramientas</option>
-                <option value="add-song">➕ Añadir Canción</option>
-            </select>
-                         
-            <!-- 🌙 INTERRUPTOR DE MODO OSCURO CORREGIDO - Removido label y mejorado el toggle -->
-            <div class="dark-mode-toggle">
-                <span class="toggle-label">🌙 Modo Oscuro</span>
-                <label class="toggle-switch" for="dark-mode">
-                    <input type="checkbox" id="dark-mode">
-                    <span class="toggle-slider"></span>
-                </label>
-            </div>
+<body>
+    <!-- Header Navigation -->
+    <header class="header">
+        <div class="header-content">
+            <div class="logo">Betania Music</div>
+            <nav>
+                <ul class="nav-menu">
+                    <li><a href="#" class="active">Canciones</a></li>
+                    <li><a href="#">Setlist</a></li>
+                    <li><a href="#">Editor</a></li>
+                    <li><a href="#">Configuración</a></li>
+                </ul>
+            </nav>
         </div>
     </header>
 
-    <!-- Indicador de guardado -->
-    <div id="save-indicator" class="save-indicator">
-        ✅ Cambios guardados
-    </div>
-
-    <div class="container">
-        <aside>
-            <input type="text" id="search" placeholder="🔍 Buscar canciones...">
-                         
-            <!-- 📝 SELECTOR DE ORDENACIÓN MODIFICADO - Removida opción "por artista" -->
-            <select id="order-select">
-                <option value="title">📝 Ordenar por título</option>
-                <option value="key">🎼 Ordenar por tonalidad</option>
-                <!-- ❌ REMOVIDO: <option value="artist">👤 Ordenar por artista</option> -->
-            </select>
-                         
-            <ul id="song-list">
-                <!-- Lista de canciones se genera dinámicamente -->
-            </ul>
-                         
-            <button id="add-to-setlist">➕ Añadir al Setlist</button>
+    <!-- Main Container -->
+    <div class="main-container">
+        <!-- Sidebar - Lista de Canciones -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <h2>Lista de Canciones</h2>
+                <input type="text" class="search-box" placeholder="Buscar canciones...">
+            </div>
+            <div class="songs-list">
+                <div class="song-item active">
+                    <div class="song-title">Sublime Gracia</div>
+                    <div class="song-key">Tonalidad: C</div>
+                </div>
+                <div class="song-item">
+                    <div class="song-title">Cuán Grande es Él</div>
+                    <div class="song-key">Tonalidad: G</div>
+                </div>
+                <div class="song-item">
+                    <div class="song-title">Te Exaltamos</div>
+                    <div class="song-key">Tonalidad: D</div>
+                </div>
+                <div class="song-item">
+                    <div class="song-title">Santo, Santo, Santo</div>
+                    <div class="song-key">Tonalidad: A</div>
+                </div>
+                <div class="song-item">
+                    <div class="song-title">Aleluya</div>
+                    <div class="song-key">Tonalidad: F</div>
+                </div>
+                <div class="song-item">
+                    <div class="song-title">Ven Espíritu Santo</div>
+                    <div class="song-key">Tonalidad: Em</div>
+                </div>
+            </div>
         </aside>
 
-        <main id="main-content">
-            <h2>🎵 Sistema de Alabanza Betania V4</h2>
-            <div class="welcome-content">
-                <p><strong>✅ SISTEMA COMPLETO!</strong> Editor avanzado con transposición total</p>
-                
-                <div class="feature-showcase">
-                    <h3>🎸 Funcionalidades Implementadas:</h3>
-                    
-                    <div class="chord-example">
-                        <div class="chord-line-example">C            Am           F             G</div>
-                        <div class="lyric-line-example">Sublime gracia del Señor que a un infeliz salvó</div>
-                        <div class="chord-line-example">Am                       F</div>
-                        <div class="lyric-line-example">Perdido me encontró, ciego me hizo ver</div>
-                    </div>
-                    
-                    <div class="features-grid">
-                        <div class="feature-item">✅ <strong>Editor completo de acordes y letras</strong></div>
-                        <div class="feature-item">✅ <strong>Transposición en todas las tonalidades</strong></div>
-                        <div class="feature-item">✅ <strong>Rueda tonal completa (12 tonalidades)</strong></div>
-                        <div class="feature-item">✅ <strong>Diagramas SVG interactivos</strong></div>
-                        <div class="feature-item">✅ <strong>Modo performance optimizado</strong></div>
-                        <div class="feature-item">✅ <strong>Sistema de setlist avanzado</strong></div>
-                        <div class="feature-item">✅ <strong>Guardado automático local</strong></div>
-                        <div class="feature-item">✅ <strong>Interfaz móvil responsiva</strong></div>
-                    </div>
+        <!-- Main Content Area -->
+        <main class="content-area">
+            <!-- Toolbar -->
+            <div class="toolbar">
+                <div class="song-info">
+                    <h1>Sublime Gracia</h1>
+                    <div class="song-meta">Himno tradicional • John Newton</div>
                 </div>
-                
-                <div class="instructions">
-                    <h4>🚀 Instrucciones de Uso:</h4>
-                    <ol>
-                        <li><strong>Selecciona una canción</strong> de la lista lateral</li>
-                        <li><strong>Usa ♭/♯</strong> para transponer en tiempo real</li>
-                        <li><strong>Activa "✏️ Editar"</strong> para modificar acordes y letras</li>
-                        <li><strong>Haz clic en acordes</strong> para ver diagramas de guitarra</li>
-                        <li><strong>Añade canciones al setlist</strong> para presentaciones</li>
-                    </ol>
+                <div class="controls">
+                    <div class="transpose-controls">
+                        <button class="btn">♭</button>
+                        <div class="current-key">C</div>
+                        <button class="btn">♯</button>
+                    </div>
+                    <button class="btn">Diagramas</button>
+                    <button class="btn btn-primary">Editar</button>
+                    <button class="btn">+ Setlist</button>
                 </div>
+            </div>
+
+            <!-- Song Content -->
+            <div class="song-content">
+                <div class="verse">
+                    <div class="verse-label">Verso 1:</div>
+                    <div class="chord-line"><span class="chord">C</span>        <span class="chord">Am</span>       <span class="chord">F</span>        <span class="chord">G</span></div>
+                    <div class="lyric-line">Sublime gracia del Señor que a un infeliz salvó</div>
+                    <div class="chord-line">    <span class="chord">Am</span>           <span class="chord">F</span></div>
+                    <div class="lyric-line">Perdido me encontró, ciego me hizo ver</div>
+                </div>
+
+                <div class="verse">
+                    <div class="verse-label">Verso 2:</div>
+                    <div class="chord-line"><span class="chord">C</span>        <span class="chord">Am</span>       <span class="chord">F</span>        <span class="chord">G</span></div>
+                    <div class="lyric-line">Su gracia me enseñó a temer, mis dudas ahuyentó</div>
+                    <div class="chord-line">    <span class="chord">Am</span>           <span class="chord">F</span></div>
+                    <div class="lyric-line">¡Oh cuán precioso fue a mi corazón cuando él me habló!</div>
+                </div>
+
+                <div class="verse">
+                    <div class="verse-label">Coro:</div>
+                    <div class="chord-line"><span class="chord">F</span>        <span class="chord">C</span>       <span class="chord">G</span>        <span class="chord">Am</span></div>
+                    <div class="lyric-line">Gracia admirable es, que salvó a un pecador</div>
+                    <div class="chord-line"><span class="chord">F</span>        <span class="chord">C</span>       <span class="chord">G</span>        <span class="chord">C</span></div>
+                    <div class="lyric-line">Perdido me encontró, mas ya no soy quien era yo</div>
+                </div>
+            </div>
+
+            <!-- Status Bar -->
+            <div class="status-bar">
+                <div>Modo: Presentación | Guardado automático: Activo</div>
+                <div>Última modificación: hace 2 minutos</div>
             </div>
         </main>
     </div>
 
     <script src="script.js"></script>
-    
-    <!-- Service Worker Registration -->
-    <script>
-        if ('serviceWorker' in navigator) {
-            window.addEventListener('load', () => {
-                navigator.serviceWorker.register('./sw.js')
-                    .then((registration) => {
-                        console.log('✅ SW registrado:', registration.scope);
-                    })
-                    .catch((error) => {
-                        console.log('❌ SW falló:', error);
-                    });
-            });
-        }
-    </script>
-
-    <!-- Scripts del sistema SPA -->
-    <script src="js/auth.js"></script>
-    <script src="js/navigation.js"></script>
-    <script src="js/setlist.js"></script>
 </body>
 </html>
