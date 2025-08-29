@@ -1,1145 +1,1296 @@
-// Gestor Avanzado de Canciones - Betania Music
-class AdvancedSongManager {
-    constructor() {
-        this.songs = this.loadSongs();
-        this.currentRoute = 'canciones';
-        this.currentSong = null;
-        this.currentSongId = null;
-        this.currentTransposition = 0;
-        this.unsavedChanges = false;
-        this.autoSaveInterval = null;
-        
-        // Key mappings
-        this.latinKeys = ['Do', 'Do#', 'Re', 'Re#', 'Mi', 'Fa', 'Fa#', 'Sol', 'Sol#', 'La', 'La#', 'Si'];
-        this.angloKeys = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
-        this.latinFlats = ['Do', 'Reb', 'Re', 'Mib', 'Mi', 'Fa', 'Solb', 'Sol', 'Lab', 'La', 'Sib', 'Si'];
-        this.angloFlats = ['C', 'Db', 'D', 'Eb', 'E', 'F', 'Gb', 'G', 'Ab', 'A', 'Bb', 'B'];
-        
-        // Section templates
-        this.sectionTemplates = [
-            'Intro', 'Verso 1', 'Pre-Coro', 'Coro', 'Verso 2', 
-            'Puente', 'Solo', 'Coro Final', 'Outro'
-        ];
-        
-        this.init();
-    }
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Betania Music - Gestor Avanzado de Canciones</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
 
-    init() {
-        this.bindEvents();
-        this.initRouter();
-        this.renderCurrentView();
-        this.startAutoSave();
-    }
+        :root {
+            --primary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            --primary-color: #667eea;
+            --secondary-color: #764ba2;
+            --success-color: #48bb78;
+            --danger-color: #e53e3e;
+            --warning-color: #ed8936;
+            --gray-50: #f9fafb;
+            --gray-100: #f7fafc;
+            --gray-200: #e2e8f0;
+            --gray-300: #cbd5e1;
+            --gray-400: #94a3b8;
+            --gray-500: #64748b;
+            --gray-600: #475569;
+            --gray-700: #334155;
+            --gray-800: #1e293b;
+            --gray-900: #0f172a;
+        }
 
-    // Router System
-    initRouter() {
-        // Handle browser back/forward
-        window.addEventListener('popstate', (e) => {
-            if (e.state) {
-                this.navigateToRoute(e.state.route, e.state.params, false);
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--primary-gradient);
+            min-height: 100vh;
+            color: var(--gray-800);
+        }
+
+        /* Header */
+        .header {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            padding: 1rem 2rem;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .header-content {
+            max-width: 1400px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo {
+            font-size: 1.5rem;
+            font-weight: 700;
+            background: var(--primary-gradient);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .nav-tabs {
+            display: flex;
+            list-style: none;
+            gap: 0.5rem;
+        }
+
+        .nav-tab {
+            padding: 0.75rem 1.5rem;
+            border-radius: 25px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            color: var(--gray-600);
+            background: transparent;
+            border: none;
+            text-decoration: none;
+        }
+
+        .nav-tab:hover {
+            color: var(--primary-color);
+            background: rgba(102, 126, 234, 0.1);
+            transform: translateY(-1px);
+        }
+
+        .nav-tab.active {
+            background: var(--primary-gradient);
+            color: white;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        /* Main Container */
+        .app-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            min-height: calc(100vh - 90px);
+        }
+
+        /* View containers */
+        .view {
+            display: none;
+            padding: 2rem;
+        }
+
+        .view.active {
+            display: block;
+        }
+
+        /* Songs List View */
+        .songs-container {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 16px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+
+        .section-header {
+            padding: 1.5rem 2rem;
+            background: rgba(102, 126, 234, 0.05);
+            border-bottom: 1px solid rgba(102, 126, 234, 0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .section-title {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--gray-800);
+        }
+
+        .btn-add-song {
+            background: linear-gradient(135deg, var(--success-color), #38a169);
+            color: white;
+            border: none;
+            padding: 0.75rem 1.5rem;
+            border-radius: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 0.9rem;
+        }
+
+        .btn-add-song:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(72, 187, 120, 0.4);
+        }
+
+        /* Search */
+        .search-container {
+            padding: 1.5rem 2rem;
+            border-bottom: 1px solid var(--gray-200);
+        }
+
+        .search-box {
+            width: 100%;
+            padding: 0.75rem 1rem;
+            border: 2px solid var(--gray-200);
+            border-radius: 12px;
+            font-size: 0.95rem;
+            background: white;
+            transition: all 0.3s ease;
+        }
+
+        .search-box:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        /* Songs Grid */
+        .songs-grid {
+            padding: 1.5rem 2rem;
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 1rem;
+        }
+
+        .song-card {
+            background: white;
+            border-radius: 12px;
+            padding: 1.5rem;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+            transition: all 0.3s ease;
+            border: 2px solid transparent;
+            cursor: pointer;
+        }
+
+        .song-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            border-color: rgba(102, 126, 234, 0.2);
+        }
+
+        .song-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: var(--gray-800);
+            margin-bottom: 0.5rem;
+        }
+
+        .song-meta {
+            font-size: 0.9rem;
+            color: var(--gray-500);
+            margin-bottom: 1rem;
+        }
+
+        .song-actions {
+            display: flex;
+            gap: 0.5rem;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .song-card:hover .song-actions {
+            opacity: 1;
+        }
+
+        .btn-sm {
+            padding: 0.5rem 1rem;
+            border: 1px solid var(--gray-200);
+            border-radius: 8px;
+            background: white;
+            cursor: pointer;
+            font-size: 0.8rem;
+            transition: all 0.3s ease;
+            color: var(--gray-600);
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .btn-sm:hover {
+            background: var(--gray-50);
+            border-color: var(--primary-color);
+            color: var(--primary-color);
+        }
+
+        .btn-sm.btn-primary {
+            background: var(--primary-gradient);
+            color: white;
+            border-color: transparent;
+        }
+
+        .btn-sm.btn-danger {
+            color: var(--danger-color);
+            border-color: #feb2b2;
+        }
+
+        .btn-sm.btn-danger:hover {
+            background: #fed7d7;
+        }
+
+        /* Song Reader View */
+        .song-reader {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 16px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+            min-height: calc(100vh - 150px);
+        }
+
+        .reader-header {
+            padding: 2rem;
+            background: rgba(102, 126, 234, 0.05);
+            border-bottom: 1px solid var(--gray-200);
+            position: sticky;
+            top: 90px;
+            z-index: 50;
+            backdrop-filter: blur(10px);
+        }
+
+        .reader-title {
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--gray-800);
+            margin-bottom: 0.5rem;
+        }
+
+        .reader-meta {
+            font-size: 1rem;
+            color: var(--gray-500);
+            margin-bottom: 1.5rem;
+        }
+
+        .reader-controls {
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .transpose-controls {
+            display: flex;
+            gap: 0.5rem;
+            align-items: center;
+            background: white;
+            padding: 0.75rem;
+            border-radius: 16px;
+            border: 2px solid var(--gray-200);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+        }
+
+        .transpose-btn {
+            background: white;
+            border: 2px solid var(--gray-200);
+            border-radius: 8px;
+            padding: 0.5rem 0.75rem;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 1rem;
+            transition: all 0.3s ease;
+            color: var(--gray-600);
+        }
+
+        .transpose-btn:hover {
+            border-color: var(--primary-color);
+            background: rgba(102, 126, 234, 0.05);
+        }
+
+        .current-key {
+            padding: 0.5rem 1rem;
+            background: var(--primary-gradient);
+            color: white;
+            border-radius: 12px;
+            font-weight: 700;
+            font-size: 1.1rem;
+            min-width: 60px;
+            text-align: center;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+        }
+
+        .notation-selector {
+            padding: 0.5rem 1rem;
+            border: 2px solid var(--gray-200);
+            border-radius: 12px;
+            background: white;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .notation-selector:focus {
+            outline: none;
+            border-color: var(--primary-color);
+        }
+
+        .btn {
+            padding: 0.75rem 1.5rem;
+            border: 2px solid var(--gray-200);
+            border-radius: 12px;
+            background: white;
+            cursor: pointer;
+            font-size: 0.9rem;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            color: var(--gray-600);
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .btn:hover {
+            background: var(--gray-50);
+            border-color: var(--primary-color);
+        }
+
+        .btn.btn-primary {
+            background: var(--primary-gradient);
+            color: white;
+            border-color: transparent;
+        }
+
+        .btn.btn-primary:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        /* Song Content */
+        .song-content {
+            padding: 2rem;
+            font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+            line-height: 1.8;
+            overflow-x: auto;
+        }
+
+        .section {
+            margin-bottom: 2.5rem;
+            padding: 1.5rem;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+        }
+
+        .section-label {
+            font-weight: 700;
+            color: var(--primary-color);
+            margin-bottom: 1rem;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            font-size: 1.1rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .pair {
+            margin-bottom: 1.5rem;
+        }
+
+        .chord-line {
+            color: var(--danger-color);
+            font-weight: 700;
+            margin-bottom: 0.25rem;
+            font-size: 1rem;
+            white-space: pre;
+            overflow-x: auto;
+        }
+
+        .lyric-line {
+            color: var(--gray-700);
+            margin-bottom: 0.5rem;
+            font-size: 1rem;
+            white-space: pre;
+            overflow-x: auto;
+        }
+
+        /* Editor View */
+        .editor-container {
+            display: grid;
+            grid-template-columns: 250px 1fr;
+            gap: 1rem;
+            min-height: calc(100vh - 150px);
+        }
+
+        .editor-sidebar {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 16px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            padding: 1.5rem;
+            position: sticky;
+            top: 110px;
+            max-height: calc(100vh - 130px);
+            overflow-y: auto;
+        }
+
+        .sidebar-section {
+            margin-bottom: 1.5rem;
+        }
+
+        .sidebar-title {
+            font-weight: 600;
+            color: var(--gray-700);
+            margin-bottom: 0.75rem;
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .outline-item {
+            padding: 0.5rem 0.75rem;
+            margin-bottom: 0.25rem;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 0.85rem;
+            color: var(--gray-600);
+        }
+
+        .outline-item:hover {
+            background: rgba(102, 126, 234, 0.1);
+            color: var(--primary-color);
+        }
+
+        .outline-item.active {
+            background: var(--primary-gradient);
+            color: white;
+        }
+
+        .editor-main {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 16px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .editor-toolbar {
+            padding: 1.5rem 2rem;
+            background: rgba(102, 126, 234, 0.05);
+            border-bottom: 1px solid var(--gray-200);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+
+        .toolbar-left, .toolbar-right {
+            display: flex;
+            gap: 0.5rem;
+            align-items: center;
+        }
+
+        .save-indicator {
+            font-size: 0.8rem;
+            color: var(--success-color);
+            font-weight: 500;
+        }
+
+        .save-indicator.unsaved {
+            color: var(--warning-color);
+        }
+
+        /* Initial Dialog */
+        .initial-dialog {
+            background: white;
+            border-radius: 16px;
+            padding: 2rem;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
+            max-width: 500px;
+            margin: 2rem auto;
+        }
+
+        .dialog-title {
+            font-size: 1.3rem;
+            font-weight: 700;
+            color: var(--gray-800);
+            margin-bottom: 1.5rem;
+            text-align: center;
+        }
+
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+
+        .form-label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 600;
+            color: var(--gray-700);
+        }
+
+        .form-input, .form-select {
+            width: 100%;
+            padding: 0.75rem 1rem;
+            border: 2px solid var(--gray-200);
+            border-radius: 12px;
+            font-size: 0.95rem;
+            background: white;
+            transition: all 0.3s ease;
+        }
+
+        .form-input:focus, .form-select:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+        }
+
+        .dialog-actions {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+            margin-top: 2rem;
+        }
+
+        /* Mass Paste Area */
+        .paste-method-selector {
+            margin-bottom: 2rem;
+            text-align: center;
+        }
+
+        .method-tabs {
+            display: flex;
+            justify-content: center;
+            gap: 0.5rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .method-tab {
+            padding: 0.75rem 1.5rem;
+            border: 2px solid var(--gray-200);
+            border-radius: 12px;
+            background: white;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-weight: 500;
+        }
+
+        .method-tab.active {
+            background: var(--primary-gradient);
+            color: white;
+            border-color: transparent;
+        }
+
+        .mass-paste-container {
+            padding: 2rem;
+            border-bottom: 1px solid var(--gray-200);
+            background: var(--gray-50);
+        }
+
+        .mass-paste-area {
+            width: 100%;
+            min-height: 300px;
+            font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+            font-size: 0.9rem;
+            padding: 1rem;
+            border: 2px dashed var(--gray-300);
+            border-radius: 12px;
+            background: white;
+            resize: vertical;
+        }
+
+        .mass-paste-area:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .paste-controls {
+            margin-top: 1rem;
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .soft-wrap-toggle {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.9rem;
+            color: var(--gray-600);
+        }
+
+        .toggle-switch {
+            position: relative;
+            width: 44px;
+            height: 24px;
+            background: var(--gray-300);
+            border-radius: 12px;
+            cursor: pointer;
+            transition: background 0.3s ease;
+        }
+
+        .toggle-switch.active {
+            background: var(--primary-color);
+        }
+
+        .toggle-switch::after {
+            content: '';
+            position: absolute;
+            top: 2px;
+            left: 2px;
+            width: 20px;
+            height: 20px;
+            background: white;
+            border-radius: 50%;
+            transition: transform 0.3s ease;
+        }
+
+        .toggle-switch.active::after {
+            transform: translateX(20px);
+        }
+
+        /* PDF Import */
+        .pdf-import-container {
+            padding: 2rem;
+            border: 2px dashed var(--warning-color);
+            border-radius: 12px;
+            background: rgba(237, 137, 54, 0.05);
+            text-align: center;
+            display: none;
+        }
+
+        .pdf-warning {
+            background: rgba(237, 137, 54, 0.1);
+            border: 1px solid var(--warning-color);
+            border-radius: 8px;
+            padding: 1rem;
+            margin-bottom: 1.5rem;
+            color: var(--warning-color);
+            font-size: 0.9rem;
+        }
+
+        .pdf-drop-zone {
+            padding: 2rem;
+            border: 2px dashed var(--gray-300);
+            border-radius: 12px;
+            background: white;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .pdf-drop-zone:hover {
+            border-color: var(--primary-color);
+            background: rgba(102, 126, 234, 0.05);
+        }
+
+        /* Preview Container */
+        .preview-container {
+            padding: 2rem;
+            background: var(--gray-50);
+            border-top: 1px solid var(--gray-200);
+        }
+
+        .preview-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: var(--gray-700);
+            margin-bottom: 1rem;
+        }
+
+        .preview-content {
+            background: white;
+            border-radius: 12px;
+            padding: 1.5rem;
+            font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+            line-height: 1.6;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .preview-pair {
+            margin-bottom: 1rem;
+            padding: 0.75rem;
+            border-radius: 8px;
+            border: 1px solid var(--gray-200);
+        }
+
+        .preview-chord {
+            color: var(--danger-color);
+            font-weight: 600;
+            margin-bottom: 0.25rem;
+        }
+
+        .preview-lyric {
+            color: var(--gray-700);
+        }
+
+        .line-correction {
+            display: flex;
+            gap: 0.5rem;
+            align-items: center;
+            margin-top: 0.5rem;
+        }
+
+        .correction-btn {
+            padding: 0.25rem 0.5rem;
+            font-size: 0.7rem;
+            border-radius: 4px;
+            border: 1px solid var(--gray-300);
+            background: white;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .correction-btn.active {
+            background: var(--primary-color);
+            color: white;
+            border-color: var(--primary-color);
+        }
+
+        .preview-actions {
+            margin-top: 1.5rem;
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+        }
+
+        /* Editor Content */
+        .editor-content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 2rem;
+        }
+
+        .section-editor {
+            margin-bottom: 2rem;
+            padding: 1.5rem;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+            border: 2px solid transparent;
+            position: relative;
+        }
+
+        .section-editor.active {
+            border-color: var(--primary-color);
+        }
+
+        .section-editor.selected {
+            background: rgba(102, 126, 234, 0.05);
+            border-color: var(--primary-color);
+        }
+
+        .section-header-editor {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 1px solid var(--gray-200);
+        }
+
+        .section-label-input {
+            font-weight: 600;
+            font-size: 1.1rem;
+            color: var(--primary-color);
+            background: transparent;
+            border: none;
+            outline: none;
+            flex: 1;
+        }
+
+        .section-actions {
+            display: flex;
+            gap: 0.25rem;
+        }
+
+        .section-checkbox {
+            margin-right: 1rem;
+        }
+
+        .btn-xs {
+            padding: 0.25rem 0.5rem;
+            font-size: 0.7rem;
+            border-radius: 6px;
+            border: 1px solid var(--gray-200);
+            background: white;
+            cursor: pointer;
+            color: var(--gray-600);
+        }
+
+        .btn-xs:hover {
+            background: var(--gray-50);
+        }
+
+        .pair-editor {
+            margin-bottom: 1rem;
+            padding: 1rem;
+            background: var(--gray-50);
+            border-radius: 8px;
+            border: 1px solid var(--gray-200);
+            position: relative;
+        }
+
+        .pair-editor.selected {
+            background: rgba(102, 126, 234, 0.05);
+            border-color: var(--primary-color);
+        }
+
+        .pair-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.5rem;
+        }
+
+        .pair-label {
+            font-size: 0.8rem;
+            color: var(--gray-500);
+            font-weight: 500;
+        }
+
+        .pair-checkbox {
+            margin-right: 0.5rem;
+        }
+
+        .chord-input, .lyric-input {
+            width: 100%;
+            font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+            font-size: 0.9rem;
+            padding: 0.5rem;
+            border: 1px solid var(--gray-200);
+            border-radius: 6px;
+            background: white;
+            resize: none;
+            overflow-x: auto;
+            white-space: pre;
+        }
+
+        .chord-input {
+            color: var(--danger-color);
+            font-weight: 600;
+            margin-bottom: 0.25rem;
+        }
+
+        .lyric-input {
+            color: var(--gray-700);
+        }
+
+        .chord-input:focus, .lyric-input:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            background: white;
+        }
+
+        /* Block Operations Bar */
+        .block-operations {
+            position: fixed;
+            bottom: 2rem;
+            left: 50%;
+            transform: translateX(-50%);
+            background: white;
+            border-radius: 16px;
+            padding: 1rem 2rem;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+            border: 2px solid var(--primary-color);
+            display: none;
+            gap: 1rem;
+            z-index: 200;
+        }
+
+        .block-operations.active {
+            display: flex;
+        }
+
+        /* Empty States */
+        .empty-state {
+            text-align: center;
+            padding: 4rem 2rem;
+            color: var(--gray-500);
+        }
+
+        .empty-state h3 {
+            font-size: 1.2rem;
+            margin-bottom: 0.5rem;
+            color: var(--gray-600);
+        }
+
+        /* Responsive */
+        @media (max-width: 1024px) {
+            .editor-container {
+                grid-template-columns: 1fr;
             }
-        });
-        
-        // Initial route from URL hash
-        const hash = window.location.hash.slice(1);
-        if (hash) {
-            const [route, ...params] = hash.split('/');
-            this.navigateToRoute(route, params, false);
-        }
-    }
-
-    navigateToRoute(route, params = [], pushState = true) {
-        // Check for unsaved changes
-        if (this.unsavedChanges && this.currentRoute === 'edicion') {
-            if (!confirm('Tienes cambios sin guardar. ¿Quieres continuar sin guardar?')) {
-                return;
+            
+            .editor-sidebar {
+                position: relative;
+                top: auto;
+                max-height: none;
             }
         }
 
-        this.currentRoute = route;
-        
-        // Update URL
-        const url = params.length > 0 ? `#${route}/${params.join('/')}` : `#${route}`;
-        if (pushState) {
-            window.history.pushState({ route, params }, '', url);
-        }
-        
-        // Update navigation
-        this.updateNavigation();
-        
-        // Handle specific routes
-        switch (route) {
-            case 'canciones':
-                if (params[0]) {
-                    this.showSongReader(params[0]);
-                } else {
-                    this.showSongsList();
-                }
-                break;
-            case 'edicion':
-                if (params[0] === 'nueva') {
-                    this.showEditor();
-                } else if (params[0]) {
-                    this.showEditor(params[0]);
-                } else {
-                    this.showEditor();
-                }
-                break;
-            case 'configuracion':
-                this.showConfiguration();
-                break;
-            default:
-                this.showSongsList();
-        }
-    }
-
-    updateNavigation() {
-        document.querySelectorAll('.nav-tab').forEach(tab => {
-            tab.classList.remove('active');
-            if (tab.dataset.route === this.currentRoute || 
-                (this.currentRoute.includes('canciones') && tab.dataset.route === 'canciones') ||
-                (this.currentRoute.includes('edicion') && tab.dataset.route === 'edicion')) {
-                tab.classList.add('active');
+        @media (max-width: 768px) {
+            .view {
+                padding: 1rem;
             }
-        });
-    }
 
-    renderCurrentView() {
-        // Hide all views
-        document.querySelectorAll('.view').forEach(view => {
-            view.classList.remove('active');
-        });
-        
-        // Show current view
-        let viewId = 'view-canciones';
-        if (this.currentRoute.includes('edicion')) {
-            viewId = 'view-edicion';
-        } else if (this.currentRoute.includes('configuracion')) {
-            viewId = 'view-configuracion';
-        } else if (this.currentSongId) {
-            viewId = 'view-song-reader';
-        }
-        
-        document.getElementById(viewId).classList.add('active');
-    }
-
-    // Event Bindings
-    bindEvents() {
-        // Navigation tabs
-        document.querySelectorAll('.nav-tab').forEach(tab => {
-            tab.addEventListener('click', () => {
-                this.navigateToRoute(tab.dataset.route);
-            });
-        });
-
-        // Songs list events
-        document.getElementById('btn-add-song').addEventListener('click', () => {
-            this.navigateToRoute('edicion', ['nueva']);
-        });
-
-        document.getElementById('search-box').addEventListener('input', (e) => {
-            this.filterSongs(e.target.value);
-        });
-
-        // Reader events
-        document.getElementById('btn-back-to-list').addEventListener('click', () => {
-            this.navigateToRoute('canciones');
-        });
-
-        document.getElementById('btn-edit-song').addEventListener('click', () => {
-            if (this.currentSongId) {
-                this.navigateToRoute('edicion', [this.currentSongId]);
+            .songs-grid {
+                grid-template-columns: 1fr;
+                padding: 1rem;
             }
-        });
 
-        // Reader transpose controls
-        document.getElementById('btn-transpose-down-reader').addEventListener('click', () => {
-            this.transposeReader(-1);
-        });
-
-        document.getElementById('btn-transpose-up-reader').addEventListener('click', () => {
-            this.transposeReader(1);
-        });
-
-        document.getElementById('btn-reset-key-reader').addEventListener('click', () => {
-            this.resetReaderKey();
-        });
-
-        document.getElementById('notation-reader').addEventListener('change', () => {
-            this.updateReaderNotation();
-        });
-
-        // Editor events
-        document.getElementById('btn-back-from-editor').addEventListener('click', () => {
-            this.navigateToRoute('canciones');
-        });
-
-        document.getElementById('btn-save-song').addEventListener('click', () => {
-            this.saveSong();
-        });
-
-        document.getElementById('song-title-editor').addEventListener('input', () => {
-            this.markUnsaved();
-        });
-
-        document.getElementById('btn-add-section').addEventListener('click', () => {
-            this.addSection();
-        });
-
-        document.getElementById('btn-add-pair-editor').addEventListener('click', () => {
-            this.addPairToCurrentSection();
-        });
-
-        // Mass paste events
-        document.getElementById('btn-parse-content').addEventListener('click', () => {
-            this.parseContent();
-        });
-
-        document.getElementById('btn-clear-paste').addEventListener('click', () => {
-            document.getElementById('mass-paste-area').value = '';
-        });
-
-        // Import/Export
-        document.getElementById('btn-import-json').addEventListener('click', () => {
-            this.importJSON();
-        });
-
-        document.getElementById('btn-export-json').addEventListener('click', () => {
-            this.exportJSON();
-        });
-
-        // Keyboard shortcuts
-        document.addEventListener('keydown', (e) => {
-            this.handleKeyboardShortcuts(e);
-        });
-
-        // Auto-resize textareas
-        document.addEventListener('input', (e) => {
-            if (e.target.matches('.chord-input, .lyric-input')) {
-                this.autoResizeTextarea(e.target);
-                this.markUnsaved();
+            .reader-controls {
+                flex-direction: column;
+                align-items: stretch;
             }
-        });
-    }
 
-    // Data Management
-    loadSongs() {
-        const stored = localStorage.getItem('songs_v2');
-        return stored ? JSON.parse(stored) : [];
-    }
-
-    saveSongs() {
-        localStorage.setItem('songs_v2', JSON.stringify(this.songs));
-    }
-
-    generateId() {
-        return 'song_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
-    }
-
-    // Auto-save functionality
-    startAutoSave() {
-        this.autoSaveInterval = setInterval(() => {
-            if (this.unsavedChanges && this.currentRoute === 'edicion') {
-                this.saveSong(true); // Silent save
+            .transpose-controls {
+                justify-content: center;
             }
-        }, 30000); // Auto-save every 30 seconds
-    }
 
-    markUnsaved() {
-        this.unsavedChanges = true;
-        const indicator = document.getElementById('save-indicator');
-        if (indicator) {
-            indicator.textContent = 'Cambios sin guardar';
-            indicator.classList.add('unsaved');
+            .song-content {
+                padding: 1rem;
+                font-size: 0.9rem;
+            }
+
+            .header-content {
+                padding: 0 1rem;
+            }
+
+            .nav-tabs {
+                gap: 0.25rem;
+            }
+
+            .nav-tab {
+                padding: 0.5rem 1rem;
+                font-size: 0.85rem;
+            }
+
+            .form-row {
+                grid-template-columns: 1fr;
+            }
         }
-    }
 
-    markSaved() {
-        this.unsavedChanges = false;
-        const indicator = document.getElementById('save-indicator');
-        if (indicator) {
-            indicator.textContent = 'Guardado';
-            indicator.classList.remove('unsaved');
+        /* Utilities */
+        .hidden {
+            display: none !important;
         }
-    }
 
-    // Songs List View
-    showSongsList() {
-        this.currentSongId = null;
-        this.renderCurrentView();
-        this.renderSongsList();
-    }
-
-    renderSongsList() {
-        const emptyState = document.getElementById('empty-state');
-        const songsGrid = document.getElementById('songs-grid');
-        
-        if (this.songs.length === 0) {
-            emptyState.style.display = 'block';
-            songsGrid.style.display = 'none';
-        } else {
-            emptyState.style.display = 'none';
-            songsGrid.style.display = 'grid';
-            this.populateSongsGrid();
+        .sr-only {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            padding: 0;
+            margin: -1px;
+            overflow: hidden;
+            clip: rect(0, 0, 0, 0);
+            white-space: nowrap;
+            border: 0;
         }
-    }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="header-content">
+            <div class="logo">Betania Music</div>
+            <nav>
+                <div class="nav-tabs">
+                    <button class="nav-tab active" data-route="canciones">Canciones</button>
+                    <button class="nav-tab" data-route="edicion">Edición</button>
+                    <button class="nav-tab" data-route="configuracion">Configuración</button>
+                </div>
+            </nav>
+        </div>
+    </header>
 
-    populateSongsGrid() {
-        const grid = document.getElementById('songs-grid');
-        grid.innerHTML = '';
+    <!-- Main App Container -->
+    <div class="app-container">
+        <!-- Songs List View -->
+        <div class="view active" id="view-canciones">
+            <div class="songs-container">
+                <div class="section-header">
+                    <h2 class="section-title">Canciones</h2>
+                    <button class="btn-add-song" id="btn-add-song">➕ Añadir canción</button>
+                </div>
 
-        this.songs.forEach(song => {
-            const card = this.createSongCard(song);
-            grid.appendChild(card);
-        });
-    }
+                <div class="search-container">
+                    <input type="text" class="search-box" id="search-box" placeholder="Buscar por título o autor...">
+                </div>
 
-    createSongCard(song) {
-        const card = document.createElement('div');
-        card.className = 'song-card';
-        
-        const updatedDate = new Date(song.updatedAt).toLocaleDateString('es-ES', {
-            year: 'numeric',
-            month: 'short',
-            day: 'numeric'
-        });
+                <!-- Empty State -->
+                <div class="empty-state" id="empty-state">
+                    <h3>Aún no hay canciones</h3>
+                    <p>Pulsa "Añadir canción" para crear la primera.</p>
+                </div>
 
-        card.innerHTML = `
-            <div class="song-title">${this.escapeHtml(song.title)}</div>
-            <div class="song-meta">
-                <div>${song.artist ? this.escapeHtml(song.artist) : 'Sin autor'}</div>
-                <div>Tonalidad: ${song.keyBase} • ${updatedDate}</div>
+                <!-- Songs Grid -->
+                <div class="songs-grid" id="songs-grid" style="display: none;">
+                    <!-- Songs will be dynamically added here -->
+                </div>
             </div>
-            <div class="song-actions">
-                <button class="btn-sm btn-primary" onclick="songManager.viewSong('${song.id}')">Ver</button>
-                <button class="btn-sm" onclick="songManager.editSong('${song.id}')">Editar</button>
-                <button class="btn-sm" onclick="songManager.duplicateSong('${song.id}')">Duplicar</button>
-                <button class="btn-sm btn-danger" onclick="songManager.deleteSong('${song.id}')">Eliminar</button>
+        </div>
+
+        <!-- Song Reader View -->
+        <div class="view" id="view-song-reader">
+            <div class="song-reader">
+                <div class="reader-header">
+                    <button class="btn" id="btn-back-to-list">← Volver a canciones</button>
+                    <div class="reader-title" id="reader-title">Título de la canción</div>
+                    <div class="reader-meta" id="reader-meta">Autor • Tonalidad base</div>
+                    
+                    <div class="reader-controls">
+                        <div class="transpose-controls">
+                            <span style="font-size: 0.8rem; color: var(--gray-500);">Tonalidad:</span>
+                            <button class="transpose-btn" id="btn-transpose-down-reader">♭</button>
+                            <div class="current-key" id="current-key-reader">D</div>
+                            <button class="transpose-btn" id="btn-transpose-up-reader">♯</button>
+                            <button class="btn btn-sm" id="btn-reset-key-reader">Base</button>
+                        </div>
+                        
+                        <select class="notation-selector" id="notation-reader">
+                            <option value="latin">Do, Re, Mi...</option>
+                            <option value="anglo">C, D, E...</option>
+                        </select>
+                        
+                        <button class="btn btn-primary" id="btn-edit-song">Editar</button>
+                    </div>
+                </div>
+
+                <div class="song-content" id="song-content">
+                    <!-- Song sections will be rendered here -->
+                </div>
             </div>
-        `;
+        </div>
 
-        // Add click to view
-        card.addEventListener('click', (e) => {
-            if (!e.target.matches('button')) {
-                this.viewSong(song.id);
-            }
-        });
-
-        return card;
-    }
-
-    filterSongs(query) {
-        const filteredSongs = this.songs.filter(song => 
-            song.title.toLowerCase().includes(query.toLowerCase()) ||
-            (song.artist && song.artist.toLowerCase().includes(query.toLowerCase()))
-        );
-
-        const grid = document.getElementById('songs-grid');
-        grid.innerHTML = '';
-
-        if (filteredSongs.length === 0 && query) {
-            grid.innerHTML = '<div style="grid-column: 1 / -1; text-align: center; color: var(--gray-500); padding: 2rem;">No se encontraron canciones que coincidan con la búsqueda.</div>';
-        } else {
-            filteredSongs.forEach(song => {
-                const card = this.createSongCard(song);
-                grid.appendChild(card);
-            });
-        }
-    }
-
-    // Song Actions
-    viewSong(songId) {
-        this.navigateToRoute('canciones', [songId]);
-    }
-
-    editSong(songId) {
-        this.navigateToRoute('edicion', [songId]);
-    }
-
-    duplicateSong(songId) {
-        const song = this.songs.find(s => s.id === songId);
-        if (!song) return;
-
-        const duplicatedSong = {
-            ...JSON.parse(JSON.stringify(song)),
-            id: this.generateId(),
-            title: song.title + ' (Copia)',
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString()
-        };
-
-        this.songs.push(duplicatedSong);
-        this.saveSongs();
-        this.renderSongsList();
-    }
-
-    deleteSong(songId) {
-        if (!confirm('¿Estás seguro de que quieres eliminar esta canción?')) return;
-        
-        this.songs = this.songs.filter(s => s.id !== songId);
-        this.saveSongs();
-        this.renderSongsList();
-    }
-
-    // Song Reader View
-    showSongReader(songId) {
-        const song = this.songs.find(s => s.id === songId);
-        if (!song) {
-            this.navigateToRoute('canciones');
-            return;
-        }
-
-        this.currentSong = song;
-        this.currentSongId = songId;
-        this.currentTransposition = 0;
-        this.renderCurrentView();
-        this.renderSongReader();
-    }
-
-    renderSongReader() {
-        if (!this.currentSong) return;
-
-        const song = this.currentSong;
-        
-        // Update header
-        document.getElementById('reader-title').textContent = song.title;
-        document.getElementById('reader-meta').textContent = 
-            `${song.artist || 'Sin autor'} • Tonalidad base: ${song.keyBase}`;
-        
-        // Update controls
-        document.getElementById('notation-reader').value = song.notation;
-        this.updateReaderCurrentKey();
-        
-        // Render content
-        this.renderSongContent();
-    }
-
-    renderSongContent() {
-        const content = document.getElementById('song-content');
-        content.innerHTML = '';
-
-        this.currentSong.sections.forEach(section => {
-            const sectionEl = document.createElement('div');
-            sectionEl.className = 'section';
-            
-            const labelEl = document.createElement('div');
-            labelEl.className = 'section-label';
-            labelEl.textContent = section.label;
-            sectionEl.appendChild(labelEl);
-
-            section.pairs.forEach(pair => {
-                const pairEl = document.createElement('div');
-                pairEl.className = 'pair';
+        <!-- Initial Dialog for New Songs -->
+        <div class="view" id="view-initial-dialog">
+            <div class="initial-dialog">
+                <h2 class="dialog-title">Nueva Canción</h2>
                 
-                if (pair.acordes && pair.acordes.trim()) {
-                    const chordEl = document.createElement('div');
-                    chordEl.className = 'chord-line';
-                    chordEl.textContent = this.transposeChordLine(pair.acordes, this.currentTransposition);
-                    pairEl.appendChild(chordEl);
-                }
+                <div class="form-group">
+                    <label class="form-label" for="initial-title">Título *</label>
+                    <input type="text" class="form-input" id="initial-title" required>
+                </div>
                 
-                if (pair.letra && pair.letra.trim()) {
-                    const lyricEl = document.createElement('div');
-                    lyricEl.className = 'lyric-line';
-                    lyricEl.textContent = pair.letra;
-                    pairEl.appendChild(lyricEl);
-                }
+                <div class="form-group">
+                    <label class="form-label" for="initial-artist">Autor/Intérprete</label>
+                    <input type="text" class="form-input" id="initial-artist">
+                </div>
                 
-                sectionEl.appendChild(pairEl);
-            });
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label" for="initial-notation">Notación</label>
+                        <select class="form-select" id="initial-notation">
+                            <option value="latin">Latina (Do, Re, Mi...)</option>
+                            <option value="anglo">Anglosajona (C, D, E...)</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="initial-key">Tonalidad Base</label>
+                        <select class="form-select" id="initial-key">
+                            <!-- Options will be populated by JavaScript -->
+                        </select>
+                    </div>
+                </div>
 
-            content.appendChild(sectionEl);
-        });
-    }
+                <div class="dialog-actions">
+                    <button class="btn" id="btn-cancel-initial">Cancelar</button>
+                    <button class="btn btn-primary" id="btn-continue-initial">Continuar</button>
+                </div>
+            </div>
+        </div>
 
-    // Reader transpose controls
-    transposeReader(semitones) {
-        this.currentTransposition += semitones;
-        this.updateReaderCurrentKey();
-        this.renderSongContent();
-    }
-
-    resetReaderKey() {
-        this.currentTransposition = 0;
-        this.updateReaderCurrentKey();
-        this.renderSongContent();
-    }
-
-    updateReaderCurrentKey() {
-        const notation = document.getElementById('notation-reader').value;
-        const baseKey = this.currentSong.keyBase;
-        const currentKey = this.transposeKey(baseKey, this.currentTransposition, notation);
-        document.getElementById('current-key-reader').textContent = currentKey;
-    }
-
-    updateReaderNotation() {
-        this.updateReaderCurrentKey();
-        this.renderSongContent();
-    }
-
-    // Editor View
-    showEditor(songId = null) {
-        if (songId) {
-            const song = this.songs.find(s => s.id === songId);
-            if (song) {
-                this.currentSong = JSON.parse(JSON.stringify(song)); // Deep copy
-                this.currentSongId = songId;
-            } else {
-                this.navigateToRoute('canciones');
-                return;
-            }
-        } else {
-            // New song
-            this.currentSong = this.createNewSong();
-            this.currentSongId = null;
-        }
-
-        this.currentTransposition = 0;
-        this.unsavedChanges = false;
-        this.renderCurrentView();
-        this.renderEditor();
-        this.markSaved();
-    }
-
-    createNewSong() {
-        return {
-            id: this.generateId(),
-            title: '',
-            artist: '',
-            notation: 'latin',
-            keyBase: 'Do',
-            sections: [
-                {
-                    label: 'Verso 1',
-                    pairs: [
-                        { acordes: '', letra: '' }
-                    ],
-                    collapsed: false
-                }
-            ],
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString()
-        };
-    }
-
-    renderEditor() {
-        // Update title
-        document.getElementById('song-title-editor').value = this.currentSong.title;
-        
-        // Render outline
-        this.renderSectionsOutline();
-        
-        // Render editor content
-        this.renderEditorContent();
-        
-        // Show/hide mass paste area for new songs
-        const massContainer = document.getElementById('mass-paste-container');
-        if (!this.currentSongId) {
-            massContainer.style.display = 'block';
-        } else {
-            massContainer.style.display = 'none';
-        }
-    }
-
-    renderSectionsOutline() {
-        const outline = document.getElementById('sections-outline');
-        outline.innerHTML = '';
-
-        this.currentSong.sections.forEach((section, index) => {
-            const item = document.createElement('div');
-            item.className = 'outline-item';
-            item.textContent = section.label;
-            item.onclick = () => this.scrollToSection(index);
-            outline.appendChild(item);
-        });
-    }
-
-    renderEditorContent() {
-        const content = document.getElementById('editor-content');
-        content.innerHTML = '';
-
-        this.currentSong.sections.forEach((section, sectionIndex) => {
-            const sectionEl = this.createSectionEditor(section, sectionIndex);
-            content.appendChild(sectionEl);
-        });
-    }
-
-    createSectionEditor(section, sectionIndex) {
-        const sectionEl = document.createElement('div');
-        sectionEl.className = 'section-editor';
-        sectionEl.dataset.sectionIndex = sectionIndex;
-
-        const headerEl = document.createElement('div');
-        headerEl.className = 'section-header-editor';
-        
-        const labelInput = document.createElement('input');
-        labelInput.className = 'section-label-input';
-        labelInput.value = section.label;
-        labelInput.onchange = () => {
-            this.currentSong.sections[sectionIndex].label = labelInput.value;
-            this.renderSectionsOutline();
-            this.markUnsaved();
-        };
-        
-        const actionsEl = document.createElement('div');
-        actionsEl.className = 'section-actions';
-        actionsEl.innerHTML = `
-            <button class="btn-xs" onclick="songManager.duplicateSection(${sectionIndex})">Duplicar</button>
-            <button class="btn-xs" onclick="songManager.moveSection(${sectionIndex}, -1)">↑</button>
-            <button class="btn-xs" onclick="songManager.moveSection(${sectionIndex}, 1)">↓</button>
-            <button class="btn-xs" onclick="songManager.deleteSection(${sectionIndex})">Eliminar</button>
-        `;
-        
-        headerEl.appendChild(labelInput);
-        headerEl.appendChild(actionsEl);
-        sectionEl.appendChild(headerEl);
-
-        // Render pairs
-        section.pairs.forEach((pair, pairIndex) => {
-            const pairEl = this.createPairEditor(pair, sectionIndex, pairIndex);
-            sectionEl.appendChild(pairEl);
-        });
-
-        // Add pair button
-        const addPairBtn = document.createElement('button');
-        addPairBtn.className = 'btn btn-sm';
-        addPairBtn.textContent = '+ Añadir par';
-        addPairBtn.style.width = '100%';
-        addPairBtn.onclick = () => this.addPair(sectionIndex);
-        sectionEl.appendChild(addPairBtn);
-
-        return sectionEl;
-    }
-
-    createPairEditor(pair, sectionIndex, pairIndex) {
-        const pairEl = document.createElement('div');
-        pairEl.className = 'pair-editor';
-        pairEl.dataset.pairIndex = pairIndex;
-
-        const headerEl = document.createElement('div');
-        headerEl.className = 'pair-header';
-        
-        const labelEl = document.createElement('span');
-        labelEl.className = 'pair-label';
-        labelEl.textContent = `Par ${pairIndex + 1}`;
-        
-        const actionsEl = document.createElement('div');
-        actionsEl.innerHTML = `
-            <button class="btn-xs" onclick="songManager.duplicatePair(${sectionIndex}, ${pairIndex})">Duplicar</button>
-            <button class="btn-xs" onclick="songManager.movePair(${sectionIndex}, ${pairIndex}, -1)">↑</button>
-            <button class="btn-xs" onclick="songManager.movePair(${sectionIndex}, ${pairIndex}, 1)">↓</button>
-            <button class="btn-xs" onclick="songManager.deletePair(${sectionIndex}, ${pairIndex})">Eliminar</button>
-        `;
-        
-        headerEl.appendChild(labelEl);
-        headerEl.appendChild(actionsEl);
-        pairEl.appendChild(headerEl);
-
-        // Chord input
-        const chordInput = document.createElement('textarea');
-        chordInput.className = 'chord-input';
-        chordInput.placeholder = 'Acordes (ej: Do    Sol    Lam   Fa)';
-        chordInput.rows = 1;
-        chordInput.value = pair.acordes;
-        chordInput.oninput = () => {
-            this.currentSong.sections[sectionIndex].pairs[pairIndex].acordes = chordInput.value;
-            this.autoResizeTextarea(chordInput);
-            this.markUnsaved();
-        };
-
-        // Lyric input
-        const lyricInput = document.createElement('textarea');
-        lyricInput.className = 'lyric-input';
-        lyricInput.placeholder = 'Letra de la canción';
-        lyricInput.rows = 1;
-        lyricInput.value = pair.letra;
-        lyricInput.oninput = () => {
-            this.currentSong.sections[sectionIndex].pairs[pairIndex].letra = lyricInput.value;
-            this.autoResizeTextarea(lyricInput);
-            this.markUnsaved();
-        };
-
-        pairEl.appendChild(chordInput);
-        pairEl.appendChild(lyricInput);
-
-        // Auto-resize on load
-        setTimeout(() => {
-            this.autoResizeTextarea(chordInput);
-            this.autoResizeTextarea(lyricInput);
-        }, 10);
-
-        return pairEl;
-    }
-
-    // Mass Paste Parser
-    parseContent() {
-        const content = document.getElementById('mass-paste-area').value.trim();
-        if (!content) return;
-
-        const lines = content.split('\n');
-        const sections = [];
-        let currentSection = {
-            label: 'Sección 1',
-            pairs: [],
-            collapsed: false
-        };
-
-        let i = 0;
-        while (i < lines.length) {
-            const line = lines[i];
-            
-            // Skip empty lines
-            if (!line.trim()) {
-                i++;
-                continue;
-            }
-
-            // Check if this looks like a chord line
-            if (this.isChordLine(line)) {
-                const chordLine = line;
-                const lyricLine = (i + 1 < lines.length) ? lines[i + 1] : '';
-                
-                currentSection.pairs.push({
-                    acordes: chordLine,
-                    letra: lyricLine
-                });
-                
-                i += 2; // Skip both lines
-            } else {
-                // This is likely just a lyric line
-                currentSection.pairs.push({
-                    acordes: '',
-                    letra: line
-                });
-                
-                i++;
-            }
-        }
-
-        if (currentSection.pairs.length > 0) {
-            sections.push(currentSection);
-        }
-
-        // Update current song with parsed sections
-        this.currentSong.sections = sections.length > 0 ? sections : this.currentSong.sections;
-        
-        // Clear paste area and re-render
-        document.getElementById('mass-paste-area').value = '';
-        document.getElementById('mass-paste-container').style.display = 'none';
-        this.renderEditor();
-        this.markUnsaved();
-    }
-
-    isChordLine(line) {
-        // Regex to detect chord patterns
-        const chordPattern = /\b([A-G][#b]?(?:m|maj|sus|add|dim|aug|\d|°|ø|\+)*(?:\/[A-G][#b]?)?)\b/g;
-        const matches = line.match(chordPattern);
-        
-        // Consider it a chord line if it has chords and mostly non-letters
-        if (matches && matches.length > 0) {
-            const chordChars = matches.join('').length;
-            const totalChars = line.replace(/\s/g, '').length;
-            return chordChars / totalChars > 0.3; // 30% or more chord content
-        }
-        
-        return false;
-    }
-
-    // Section Management
-    addSection() {
-        const newSection = {
-            label: `Sección ${this.currentSong.sections.length + 1}`,
-            pairs: [{ acordes: '', letra: '' }],
-            collapsed: false
-        };
-        
-        this.currentSong.sections.push(newSection);
-        this.renderEditor();
-        this.markUnsaved();
-    }
-
-    duplicateSection(sectionIndex) {
-        const section = this.currentSong.sections[sectionIndex];
-        const duplicated = JSON.parse(JSON.stringify(section));
-        duplicated.label += ' (Copia)';
-        
-        this.currentSong.sections.splice(sectionIndex + 1, 0, duplicated);
-        this.renderEditor();
-        this.markUnsaved();
-    }
-
-    moveSection(sectionIndex, direction) {
-        const sections = this.currentSong.sections;
-        const newIndex = sectionIndex + direction;
-        
-        if (newIndex < 0 || newIndex >= sections.length) return;
-        
-        [sections[sectionIndex], sections[newIndex]] = [sections[newIndex], sections[sectionIndex]];
-        this.renderEditor();
-        this.markUnsaved();
-    }
-
-    deleteSection(sectionIndex) {
-        if (this.currentSong.sections.length === 1) {
-            alert('Debe haber al menos una sección');
-            return;
-        }
-        
-        this.currentSong.sections.splice(sectionIndex, 1);
-        this.renderEditor();
-        this.markUnsaved();
-    }
-
-    // Pair Management
-    addPair(sectionIndex) {
-        this.currentSong.sections[sectionIndex].pairs.push({
-            acordes: '',
-            letra: ''
-        });
-        
-        this.renderEditor();
-        this.markUnsaved();
-    }
-
-    addPairToCurrentSection() {
-        // Add to first section by default
-        this.addPair(0);
-    }
-
-    duplicatePair(sectionIndex, pairIndex) {
-        const pair = this.currentSong.sections[sectionIndex].pairs[pairIndex];
-        const duplicated = JSON.parse(JSON.stringify(pair));
-        
-        this.currentSong.sections[sectionIndex].pairs.splice(pairIndex + 1, 0, duplicated);
-        this.renderEditor();
-        this.markUnsaved();
-    }
-
-    movePair(sectionIndex, pairIndex, direction) {
-        const pairs = this.currentSong.sections[sectionIndex].pairs;
-        const newIndex = pairIndex + direction;
-        
-        if (newIndex < 0 || newIndex >= pairs.length) return;
-        
-        [pairs[pairIndex], pairs[newIndex]] = [pairs[newIndex], pairs[pairIndex]];
-        this.renderEditor();
-        this.markUnsaved();
-    }
-
-    deletePair(sectionIndex, pairIndex) {
-        const section = this.currentSong.sections[sectionIndex];
-        if (section.pairs.length === 1) {
-            alert('Debe haber al menos un par en cada sección');
-            return;
-        }
-        
-        section.pairs.splice(pairIndex, 1);
-        this.renderEditor();
-        this.markUnsaved();
-    }
-
-    // Save Song
-    saveSong(silent = false) {
-        // Get title from editor
-        const title = document.getElementById('song-title-editor').value.trim();
-        
-        if (!title) {
-            if (!silent) alert('El título es obligatorio');
-            return;
-        }
-
-        this.currentSong.title = title;
-        this.currentSong.updatedAt = new Date().toISOString();
-
-        if (this.currentSongId) {
-            // Update existing song
-            const songIndex = this.songs.findIndex(s => s.id === this.currentSongId);
-            if (songIndex !== -1) {
-                this.songs[songIndex] = JSON.parse(JSON.stringify(this.currentSong));
-            }
-        } else {
-            // Create new song
-            this.currentSongId = this.currentSong.id;
-            this.songs.push(JSON.parse(JSON.stringify(this.currentSong)));
-        }
-
-        this.saveSongs();
-        this.markSaved();
-        
-        if (!silent) {
-            // Update URL to reflect we're now editing an existing song
-            this.navigateToRoute('edicion', [this.currentSongId], false);
-        }
-    }
-
-    // Import/Export JSON
-    importJSON() {
-        const input = document.createElement('input');
-        input.type = 'file';
-        input.accept = '.json';
-        
-        input.onchange = (e) => {
-            const file = e.target.files[0];
-            if (!file) return;
-            
-            const reader = new FileReader();
-            reader.onload = (e) => {
-                try {
-                    const data = JSON.parse(e.target.result);
+        <!-- Editor View -->
+        <div class="view" id="view-edicion">
+            <div class="editor-container">
+                <!-- Editor Sidebar -->
+                <div class="editor-sidebar">
+                    <div class="sidebar-section">
+                        <h3 class="sidebar-title">Estructura</h3>
+                        <div id="sections-outline">
+                            <!-- Outline will be generated here -->
+                        </div>
+                        <button class="btn btn-sm" id="btn-add-section" style="width: 100%; margin-top: 0.5rem;">+ Sección</button>
+                    </div>
                     
-                    if (Array.isArray(data)) {
-                        // Multiple songs
-                        data.forEach(song => {
-                            if (this.validateSongData(song)) {
-                                song.id = this.generateId();
-                                song.createdAt = new Date().toISOString();
-                                song.updatedAt = new Date().toISOString();
-                                this.songs.push(song);
-                            }
-                        });
-                    } else if (this.validateSongData(data)) {
-                        // Single song
-                        data.id = this.generateId();
-                        data.createdAt = new Date().toISOString();
-                        data.updatedAt = new Date().toISOString();
-                        this.songs.push(data);
-                    }
+                    <div class="sidebar-section">
+                        <h3 class="sidebar-title">Acciones</h3>
+                        <button class="btn btn-sm" id="btn-import-json" style="width: 100%; margin-bottom: 0.5rem;">Importar JSON</button>
+                        <button class="btn btn-sm" id="btn-export-json" style="width: 100%;">Exportar JSON</button>
+                    </div>
+
+                    <div class="sidebar-section">
+                        <h3 class="sidebar-title">Selección</h3>
+                        <button class="btn btn-sm" id="btn-select-all" style="width: 100%; margin-bottom: 0.5rem;">Seleccionar todo</button>
+                        <button class="btn btn-sm" id="btn-clear-selection" style="width: 100%;">Limpiar selección</button>
+                    </div>
+                </div>
+
+                <!-- Editor Main -->
+                <div class="editor-main">
+                    <div class="editor-toolbar">
+                        <div class="toolbar-left">
+                            <button class="btn btn-sm" id="btn-back-from-editor">← Volver</button>
+                            <input type="text" id="song-title-editor" placeholder="Título de la canción" 
+                                   style="font-size: 1.1rem; font-weight: 600; border: none; background: transparent; outline: none; min-width: 200px;">
+                        </div>
+                        
+                        <div class="toolbar-right">
+                            <span class="save-indicator" id="save-indicator">Guardado</span>
+                            <button class="btn btn-sm" id="btn-add-pair-editor">+ Par</button>
+                            <button class="btn btn-primary" id="btn-save-song">Guardar</button>
+                        </div>
+                    </div>
+
+                    <!-- Method Selector -->
+                    <div class="paste-method-selector" id="method-selector">
+                        <div class="method-tabs">
+                            <button class="method-tab active" data-method="paste">📝 Pegar Texto</button>
+                            <button class="method-tab" data-method="pdf">📄 Importar PDF</button>
+                        </div>
+                    </div>
+
+                    <!-- Mass Paste Area -->
+                    <div class="mass-paste-container" id="mass-paste-container">
+                        <textarea class="mass-paste-area" id="mass-paste-area" 
+                                  placeholder="Pega aquí el contenido completo de tu canción. El sistema detectará automáticamente los acordes y la letra.
+
+Ejemplo:
+    Em               D
+//Ningún principado, ni las potestades
+    C                Am
+Ni armas forjadas. ¿Quién podrá? ¿Quién podrá?
+    Em               D
+No han prevalecido, ha caído el enemigo
+    C                Am
+Al infierno has vencido. ¿Quién podrá? ¿Quién podrá?"></textarea>
+                        
+                        <div class="paste-controls">
+                            <div class="soft-wrap-toggle">
+                                <span>Ajuste de línea:</span>
+                                <div class="toggle-switch" id="soft-wrap-toggle"></div>
+                                <span>ON/OFF</span>
+                            </div>
+                            <button class="btn btn-primary" id="btn-parse-content">Convertir a pares</button>
+                            <button class="btn" id="btn-clear-paste">Limpiar</button>
+                        </div>
+                    </div>
+
+                    <!-- PDF Import Container -->
+                    <div class="pdf-import-container" id="pdf-import-container">
+                        <div class="pdf-warning">
+                            ⚠️ <strong>Advertencia:</strong> La importación de PDF puede alterar espacios y saltos de línea. 
+                            Revisa cuidadosamente el resultado antes de guardar.
+                        </div>
+                        
+                        <div class="pdf-drop-zone" id="pdf-drop-zone">
+                            <h3>📄 Importar PDF</h3>
+                            <p>Arrastra un archivo PDF aquí o haz clic para seleccionar</p>
+                            <input type="file" id="pdf-file-input" accept=".pdf" style="display: none;">
+                        </div>
+                    </div>
+
+                    <!-- Preview Container -->
+                    <div class="preview-container" id="preview-container" style="display: none;">
+                        <h3 class="preview-title">Vista Previa - Verifica y corrige si es necesario</h3>
+                        <div class="preview-content" id="preview-content">
+                            <!-- Preview pairs will be rendered here -->
+                        </div>
+                        <div class="preview-actions">
+                            <button class="btn" id="btn-cancel-preview">Cancelar</button>
+                            <button class="btn btn-primary" id="btn-accept-preview">Aceptar y crear pares</button>
+                        </div>
+                    </div>
+
+                    <!-- Editor Content -->
+                    <div class="editor-content" id="editor-content">
+                        <!-- Sections and pairs will be rendered here -->
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Configuration View -->
+        <div class="view" id="view-configuracion">
+            <div class="songs-container">
+                <div class="section-header">
+                    <h2 class="section-title">Configuración</h2>
+                </div>
+                <div style="padding: 2rem;">
+                    <h3>Preferencias</h3>
+                    <div class="form-group">
+                        <label class="form-label">Notación por defecto</label>
+                        <select class="form-select" id="default-notation">
+                            <option value="latin">Latina (Do, Re, Mi...)</option>
+                            <option value="anglo">Anglosajona (C, D, E...)</option>
+                        </select>
+                    </div>
                     
-                    this.saveSongs();
-                    this.renderEditor();
-                    alert('Canciones importadas correctamente');
-                } catch (error) {
-                    alert('Error al importar el archivo JSON');
-                    console.error(error);
-                }
-            };
-            reader.readAsText(file);
-        };
-        
-        input.click();
-    }
+                    <div class="form-group">
+                        <label class="form-label">Tamaño de fuente en editor</label>
+                        <select class="form-select" id="editor-font-size">
+                            <option value="0.8">Pequeño</option>
+                            <option value="0.9" selected>Normal</option>
+                            <option value="1.0">Grande</option>
+                            <option value="1.1">Muy grande</option>
+                        </select>
+                    </div>
 
-    exportJSON() {
-        const data = this.currentSong ? [this.currentSong] : this.songs;
-        const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-        const url = URL.createObjectURL(blob);
-        
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = this.currentSong ? 
-            `${this.currentSong.title.replace(/[^a-zA-Z0-9]/g, '_')}.json` : 
-            'betania_songs.json';
-        a.click();
-        
-        URL.revokeObjectURL(url);
-    }
+                    <h3 style="margin-top: 2rem;">Atajos de Teclado</h3>
+                    <div style="margin-top: 1rem; font-family: monospace; font-size: 0.9rem;">
+                        <div><strong>Ctrl/Cmd + S:</strong> Guardar canción</div>
+                        <div><strong>Enter:</strong> Nueva línea/par debajo (en editor)</div>
+                        <div><strong>Ctrl/Cmd + D:</strong> Duplicar par actual</div>
+                        <div><strong>Alt + ↑/↓:</strong> Mover par arriba/abajo</div>
+                        <div><strong>Ctrl/Cmd + Backspace:</strong> Borrar par actual</div>
+                        <div><strong>Escape:</strong> Salir del editor</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 
-    validateSongData(data) {
-        return data && 
-               typeof data.title === 'string' &&
-               Array.isArray(data.sections) &&
-               data.sections.every(section => 
-                   typeof section.label === 'string' &&
-                   Array.isArray(section.pairs) &&
-                   section.pairs.every(pair => 
-                       typeof pair.acordes === 'string' && 
-                       typeof pair.letra === 'string'
-                   )
-               );
-    }
+    <!-- Block Operations Bar -->
+    <div class="block-operations" id="block-operations">
+        <span id="selection-count">0 elementos seleccionados</span>
+        <button class="btn btn-sm" id="btn-duplicate-selected">Duplicar</button>
+        <button class="btn btn-sm" id="btn-move-selected-up">↑ Mover arriba</button>
+        <button class="btn btn-sm" id="btn-move-selected-down">↓ Mover abajo</button>
+        <button class="btn btn-sm btn-danger" id="btn-delete-selected">Eliminar</button>
+    </div>
 
-    // Configuration View
-    showConfiguration() {
-        this.renderCurrentView();
-    }
-
-    // Transposition Logic
-    transposeChordLine(chordLine, semitones) {
-        if (semitones === 0) return chordLine;
-
-        const notation = this.currentSong.notation;
-        const chordRegex = /\b([A-G][#b]?|Do[#b]?|Re[#b]?|Mi[#b]?|Fa[#b]?|Sol[#b]?|La[#b]?|Si[#b]?)(m|maj|sus|add|dim|aug|\d|°|ø|\+)*(\/?([A-G][#b]?|Do[#b]?|Re[#b]?|Mi[#b]?|Fa[#b]?|Sol[#b]?|La[#b]?|Si[#b]?))?\b/g;
-        
-        return chordLine.replace(chordRegex, (match, root, suffix, slashPart, bassNote) => {
-            let transposedRoot = this.transposeKey(root, semitones, notation);
-            let result = transposedRoot + (suffix || '');
-            
-            if (slashPart && bassNote) {
-                let transposedBass = this.transposeKey(bassNote, semitones, notation);
-                result += '/' + transposedBass;
-            }
-            
-            return result;
-        });
-    }
-
-    transposeKey(key, semitones, notation) {
-        // Convert to standard format first
-        const standardKey = this.convertToStandard(key, notation);
-        if (standardKey === null) return key;
-
-        // Get the key array based on notation and direction
-        let keyArray;
-        if (notation === 'latin') {
-            keyArray = semitones >= 0 ? this.latinKeys : this.latinFlats;
-        } else {
-            keyArray = semitones >= 0 ? this.angloKeys : this.angloFlats;
-        }
-
-        // Find current position
-        const currentIndex = keyArray.indexOf(standardKey);
-        if (currentIndex === -1) return key;
-
-        // Calculate new position
-        const newIndex = (currentIndex + semitones + 12) % 12;
-        return keyArray[newIndex];
-    }
-
-    convertToStandard(key, notation) {
-        // Convert various key representations to standard format
-        const keyMaps = {
-            latin: {
-                'Do': 'Do', 'Do#': 'Do#', 'Reb': 'Do#',
-                'Re': 'Re', 'Re#': 'Re#', 'Mib': 'Re#',
-                'Mi': 'Mi',
-                'Fa': 'Fa', 'Fa#': 'Fa#', 'Solb': 'Fa#',
-                'Sol': 'Sol', 'Sol#': 'Sol#', 'Lab': 'Sol#',
-                'La': 'La', 'La#': 'La#', 'Sib': 'La#',
-                'Si': 'Si'
-            },
-            anglo: {
-                'C': 'C', 'C#': 'C#', 'Db': 'C#',
-                'D': 'D', 'D#': 'D#', 'Eb': 'D#',
-                'E': 'E',
-                'F': 'F', 'F#': 'F#', 'Gb': 'F#',
-                'G': 'G', 'G#': 'G#', 'Ab': 'G#',
-                'A': 'A', 'A#': 'A#', 'Bb': 'A#',
-                'B': 'B'
-            }
-        };
-
-        return keyMaps[notation][key] || null;
-    }
-
-    // Utility Functions
-    scrollToSection(sectionIndex) {
-        const sectionEl = document.querySelector(`[data-section-index="${sectionIndex}"]`);
-        if (sectionEl) {
-            sectionEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
-            
-            // Highlight section temporarily
-            sectionEl.classList.add('active');
-            setTimeout(() => sectionEl.classList.remove('active'), 2000);
-            
-            // Update outline
-            document.querySelectorAll('.outline-item').forEach((item, index) => {
-                item.classList.toggle('active', index === sectionIndex);
-            });
-        }
-    }
-
-    autoResizeTextarea(textarea) {
-        textarea.style.height = 'auto';
-        textarea.style.height = Math.max(textarea.scrollHeight, 24) + 'px';
-    }
-
-    handleKeyboardShortcuts(e) {
-        const isEditor = this.currentRoute === 'edicion';
-        const isCtrl = e.ctrlKey || e.metaKey;
-        
-        if (isEditor) {
-            if (isCtrl) {
-                switch (e.key) {
-                    case 's':
-                        e.preventDefault();
-                        this.saveSong();
-                        break;
-                    case 'd':
-                        e.preventDefault();
-                        // Duplicate current pair (implementation would need to track focus)
-                        break;
-                    case 'ArrowUp':
-                        if (e.shiftKey) {
-                            e.preventDefault();
-                            // Move current pair up (implementation would need to track focus)
-                        }
-                        break;
-                    case 'ArrowDown':
-                        if (e.shiftKey) {
-                            e.preventDefault();
-                            // Move current pair down (implementation would need to track focus)
-                        }
-                        break;
-                }
-            }
-            
-            if (e.key === 'Enter' && !e.shiftKey && e.target.matches('.chord-input, .lyric-input')) {
-                // Add new pair below current one
-                e.preventDefault();
-                const pairEl = e.target.closest('.pair-editor');
-                const sectionEl = pairEl.closest('.section-editor');
-                const sectionIndex = parseInt(sectionEl.dataset.sectionIndex);
-                const pairIndex = parseInt(pairEl.dataset.pairIndex);
-                
-                // Add new pair
-                this.currentSong.sections[sectionIndex].pairs.splice(pairIndex + 1, 0, {
-                    acordes: '',
-                    letra: ''
-                });
-                
-                this.renderEditor();
-                this.markUnsaved();
-                
-                // Focus on new pair
-                setTimeout(() => {
-                    const newPairEl = sectionEl.querySelector(`[data-pair-index="${pairIndex + 1}"] .chord-input`);
-                    if (newPairEl) newPairEl.focus();
-                }, 50);
-            }
-        }
-        
-        // Global shortcuts
-        if (e.key === 'Escape') {
-            if (this.currentRoute === 'edicion' && this.unsavedChanges) {
-                if (confirm('¿Quieres salir sin guardar los cambios?')) {
-                    this.navigateToRoute('canciones');
-                }
-            }
-        }
-    }
-
-    escapeHtml(text) {
-        const div = document.createElement('div');
-        div.textContent = text;
-        return div.innerHTML;
-    }
-
-    // Cleanup
-    destroy() {
-        if (this.autoSaveInterval) {
-            clearInterval(this.autoSaveInterval);
-        }
-    }
-}
-
-// Initialize the application
-const songManager = new AdvancedSongManager();
-
-// Export for debugging and global access
-window.songManager = songManager;
-
-// Cleanup on page unload
-window.addEventListener('beforeunload', (e) => {
-    if (songManager.unsavedChanges) {
-        e.preventDefault();
-        e.returnValue = '';
-    }
-    songManager.destroy();
-});
-
-console.log('🎵 Betania Music Advanced - Sistema inicializado correctamente');
-console.log('Atajos de teclado:');
-console.log('- Ctrl/Cmd + S: Guardar canción');
-console.log('- Enter: Nuevo par (en editor)');
-console.log('- Ctrl/Cmd + D: Duplicar par');
-console.log('- Escape: Salir del editor');
+    <script src="script.js"></script>
+</body>
+</html>
