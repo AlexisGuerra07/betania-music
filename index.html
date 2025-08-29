@@ -114,7 +114,22 @@
                         </div>
                         
                         <div class="toolbar-right">
+                            <div class="chips-container">
+                                <div class="chip" id="auto-sections-chip">
+                                    <span>Auto-secciones:</span>
+                                    <span id="auto-sections-status">ON</span>
+                                </div>
+                                <div class="chip" id="notation-chip">
+                                    <span>Notación:</span>
+                                    <span id="notation-status">Latina</span>
+                                </div>
+                                <div class="chip" id="key-chip">
+                                    <span>Tonalidad:</span>
+                                    <span id="key-status">Do</span>
+                                </div>
+                            </div>
                             <span class="save-indicator" id="save-indicator">Guardado</span>
+                            <button class="btn btn-sm" id="btn-reanalyze" style="display: none;">🔄 Reanalizar (auto)</button>
                             <button class="btn btn-sm" id="btn-add-pair-editor">+ Par</button>
                             <button class="btn btn-primary" id="btn-save-song">Guardar</button>
                         </div>
@@ -153,6 +168,17 @@
                             <option value="18">18px</option>
                             <option value="20">20px</option>
                         </select>
+                    </div>
+
+                    <div class="form-group">
+                        <div class="toggle-container">
+                            <span class="toggle-label">Detector automático de secciones</span>
+                            <div class="toggle-switch active" id="auto-sections-toggle"></div>
+                            <span class="toggle-label" id="auto-sections-label">ON</span>
+                        </div>
+                        <small style="color: var(--gray-500); font-size: 0.85rem;">
+                            Cuando está activado, detecta automáticamente estrofas, coros y otras secciones al pegar texto.
+                        </small>
                     </div>
 
                     <h3 style="margin-top: 2rem;">Gestión de datos</h3>
