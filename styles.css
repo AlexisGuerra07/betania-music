@@ -42,9 +42,9 @@ body {
     overflow-x: hidden;
 }
 
-/* Header */
+/* Header con degradado turquesa del logo */
 .header {
-    background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-hover) 100%);
+    background: linear-gradient(135deg, #26a69a 0%, #00695c 100%);
     color: white;
     padding: 1rem 0;
     box-shadow: var(--shadow-md);
