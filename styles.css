@@ -289,14 +289,14 @@ body {
 
 .edit-btn:hover {
     color: var(--primary-color);
-    background: rgba(99, 102, 241, 0.1);
-    border-color: rgba(99, 102, 241, 0.2);
+    background: rgba(38, 166, 154, 0.1);
+    border-color: rgba(38, 166, 154, 0.2);
 }
 
 .delete-btn:hover {
     color: var(--danger-color);
-    background: rgba(239, 68, 68, 0.1);
-    border-color: rgba(239, 68, 68, 0.2);
+    background: rgba(239, 83, 80, 0.1);
+    border-color: rgba(239, 83, 80, 0.2);
 }
 
 /* Lector de canciones */
@@ -561,7 +561,7 @@ body {
 
 .section-label-input:focus {
     outline: none;
-    box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.3);
+    box-shadow: 0 0 0 2px rgba(38, 166, 154, 0.3);
 }
 
 .section-actions {
@@ -613,7 +613,7 @@ body {
 }
 
 .chord-input {
-    background: rgba(99, 102, 241, 0.05);
+    background: rgba(38, 166, 154, 0.05);
 }
 
 /* Botones */
@@ -657,8 +657,8 @@ body {
 }
 
 .btn-danger:hover {
-    background: #dc2626;
-    border-color: #dc2626;
+    background: #e53935;
+    border-color: #e53935;
 }
 
 .btn-sm {
