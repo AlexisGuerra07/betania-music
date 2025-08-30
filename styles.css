@@ -1,22 +1,22 @@
-/* Variables CSS */
+/* Variables CSS con colores del logo turquesa */
 :root {
-    --primary-color: #6366f1;
-    --primary-hover: #5855eb;
-    --secondary-color: #64748b;
-    --success-color: #10b981;
-    --danger-color: #ef4444;
-    --warning-color: #f59e0b;
+    --primary-color: #26a69a;
+    --primary-hover: #00695c;
+    --secondary-color: #4db6ac;
+    --success-color: #66bb6a;
+    --danger-color: #ef5350;
+    --warning-color: #ff7043;
     
     --bg-primary: #ffffff;
-    --bg-secondary: #f8fafc;
-    --bg-tertiary: #f1f5f9;
+    --bg-secondary: #f1f8e9;
+    --bg-tertiary: #e0f2f1;
     
     --text-primary: #1e293b;
-    --text-secondary: #64748b;
-    --text-muted: #94a3b8;
+    --text-secondary: #455a64;
+    --text-muted: #78909c;
     
-    --border-color: #e2e8f0;
-    --border-hover: #cbd5e1;
+    --border-color: #b2dfdb;
+    --border-hover: #80cbc4;
     
     --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
     --shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
