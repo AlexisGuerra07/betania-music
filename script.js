@@ -348,6 +348,14 @@ const Router = {
     },
 
     setupMainButtons() {
+        // Logo click para volver a inicio
+        this.bindButton('logo-home', () => {
+            if (AppState.currentView === 'edicion' && AppState.currentSong) {
+                this.saveCurrentSong();
+            }
+            this.navigate('canciones');
+        });
+        
         this.bindButton('btn-add-song', () => {
             AppState.isCreatingNew = true;
             this.navigate('edicion');
