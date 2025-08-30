@@ -13,15 +13,22 @@
             <div class="logo-section" id="logo-home" style="cursor: pointer;">
                 <div class="logo-icon">
                     <svg width="32" height="32" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <!-- Llama/Espíritu Santo estilizada -->
-                        <path d="M50 15C35 15 25 25 25 40C25 50 30 58 35 62C40 67 45 70 50 70C55 70 60 67 65 62C70 58 75 50 75 40C75 25 65 15 50 15Z" fill="white"/>
-                        <path d="M50 20C38 20 30 28 30 40C30 48 34 54 38 58C42 62 46 65 50 65C54 65 58 62 62 58C66 54 70 48 70 40C70 28 62 20 50 20Z" fill="none" stroke="white" stroke-width="1"/>
-                        <!-- Forma interna de la llama -->
-                        <path d="M50 25C42 25 35 32 35 42C35 48 38 52 42 55C45 57 48 58 50 58C52 58 55 57 58 55C62 52 65 48 65 42C65 32 58 25 50 25Z" fill="rgba(255,255,255,0.8)"/>
-                        <!-- Detalle central -->
-                        <ellipse cx="50" cy="45" rx="8" ry="15" fill="rgba(255,255,255,0.6)"/>
-                        <!-- Parte superior de la llama -->
-                        <path d="M50 15C46 18 44 22 44 28C44 32 46 35 48 37C49 38 50 38 50 38C50 38 51 38 52 37C54 35 56 32 56 28C56 22 54 18 50 15Z" fill="rgba(255,255,255,0.9)"/>
+                        <!-- Fondo circular con degradado -->
+                        <defs>
+                            <radialGradient id="logoGradient" cx="50%" cy="30%" r="70%">
+                                <stop offset="0%" style="stop-color:#ffffff;stop-opacity:1" />
+                                <stop offset="100%" style="stop-color:#e0f2f1;stop-opacity:1" />
+                            </radialGradient>
+                        </defs>
+                        <circle cx="50" cy="50" r="45" fill="url(#logoGradient)" stroke="rgba(255,255,255,0.3)" stroke-width="1"/>
+                        <!-- Llama principal -->
+                        <path d="M50 20C42 20 36 26 36 35C36 42 39 47 43 50C46 52 48 53 50 53C52 53 54 52 57 50C61 47 64 42 64 35C64 26 58 20 50 20Z" fill="rgba(255,255,255,0.9)"/>
+                        <!-- Llama interna -->
+                        <path d="M50 25C45 25 41 29 41 35C41 39 43 42 45 44C47 45 48 46 50 46C52 46 53 45 55 44C57 42 59 39 59 35C59 29 55 25 50 25Z" fill="rgba(255,255,255,0.7)"/>
+                        <!-- Núcleo de la llama -->
+                        <ellipse cx="50" cy="37" rx="5" ry="8" fill="rgba(255,255,255,0.8)"/>
+                        <!-- Punta superior -->
+                        <path d="M50 20C48 22 47 25 47 28C47 30 48 31 49 32C49.5 32.5 50 32.5 50 32.5C50 32.5 50.5 32.5 51 32C52 31 53 30 53 28C53 25 52 22 50 20Z" fill="white"/>
                     </svg>
                 </div>
                 <div class="logo-text">Betania Music</div>
