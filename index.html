@@ -3,20 +3,33 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Betania Music - Gestor Avanzado de Canciones</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <title>Betania Music - Gestor de Canciones</title>
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
     <!-- Header -->
     <header class="header">
         <div class="header-content">
-            <div class="logo">🎵 Betania Music</div>
+            <div class="logo-section" id="logo-home" style="cursor: pointer;">
+                <div class="logo-icon">
+                    <svg width="32" height="32" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <!-- Llama/Espíritu Santo estilizada -->
+                        <path d="M50 15C35 15 25 25 25 40C25 50 30 58 35 62C40 67 45 70 50 70C55 70 60 67 65 62C70 58 75 50 75 40C75 25 65 15 50 15Z" fill="white"/>
+                        <path d="M50 20C38 20 30 28 30 40C30 48 34 54 38 58C42 62 46 65 50 65C54 65 58 62 62 58C66 54 70 48 70 40C70 28 62 20 50 20Z" fill="none" stroke="white" stroke-width="1"/>
+                        <!-- Forma interna de la llama -->
+                        <path d="M50 25C42 25 35 32 35 42C35 48 38 52 42 55C45 57 48 58 50 58C52 58 55 57 58 55C62 52 65 48 65 42C65 32 58 25 50 25Z" fill="rgba(255,255,255,0.8)"/>
+                        <!-- Detalle central -->
+                        <ellipse cx="50" cy="45" rx="8" ry="15" fill="rgba(255,255,255,0.6)"/>
+                        <!-- Parte superior de la llama -->
+                        <path d="M50 15C46 18 44 22 44 28C44 32 46 35 48 37C49 38 50 38 50 38C50 38 51 38 52 37C54 35 56 32 56 28C56 22 54 18 50 15Z" fill="rgba(255,255,255,0.9)"/>
+                    </svg>
+                </div>
+                <div class="logo-text">Betania Music</div>
+            </div>
             <nav>
                 <div class="nav-tabs">
                     <button class="nav-tab active" data-route="canciones">Canciones</button>
                     <button class="nav-tab" data-route="edicion">Edición</button>
-                    <button class="nav-tab" data-route="configuracion">Configuración</button>
                 </div>
             </nav>
         </div>
@@ -29,7 +42,7 @@
             <div class="songs-container">
                 <div class="section-header">
                     <h2 class="section-title">Canciones</h2>
-                    <button class="btn-add-song" id="btn-add-song">➕ Añadir canción</button>
+                    <button class="btn-add-song" id="btn-add-song">+ Añadir canción</button>
                 </div>
 
                 <div class="search-container">
@@ -61,15 +74,10 @@
                         <div class="transpose-controls">
                             <span style="font-size: 0.8rem; color: var(--gray-500);">Tonalidad:</span>
                             <button class="transpose-btn" id="btn-transpose-down-reader">♭</button>
-                            <div class="current-key" id="current-key-reader">D</div>
+                            <div class="current-key" id="current-key-reader">C</div>
                             <button class="transpose-btn" id="btn-transpose-up-reader">♯</button>
                             <button class="btn btn-sm" id="btn-reset-key-reader">Base</button>
                         </div>
-                        
-                        <select class="form-select" id="notation-reader" style="width: auto;">
-                            <option value="latin">Do, Re, Mi...</option>
-                            <option value="anglo">C, D, E...</option>
-                        </select>
                         
                         <button class="btn btn-primary" id="btn-edit-song">Editar</button>
                     </div>
@@ -96,8 +104,6 @@
                     
                     <div class="sidebar-section">
                         <h3 class="sidebar-title">Acciones</h3>
-                        <button class="btn btn-sm" id="btn-import-json" style="width: 100%; margin-bottom: 0.5rem;">Importar JSON</button>
-                        <button class="btn btn-sm" id="btn-export-json" style="width: 100%; margin-bottom: 0.5rem;">Exportar JSON</button>
                         <button class="btn btn-sm" id="btn-transpose-up" style="width: 100%; margin-bottom: 0.25rem;">♯ Subir tono</button>
                         <button class="btn btn-sm" id="btn-transpose-down" style="width: 100%; margin-bottom: 0.25rem;">♭ Bajar tono</button>
                         <button class="btn btn-sm" id="btn-reset-transpose" style="width: 100%;">Reset</button>
@@ -115,21 +121,13 @@
                         
                         <div class="toolbar-right">
                             <div class="chips-container">
-                                <div class="chip" id="auto-sections-chip">
-                                    <span>Auto-secciones:</span>
-                                    <span id="auto-sections-status">ON</span>
-                                </div>
-                                <div class="chip" id="notation-chip">
-                                    <span>Notación:</span>
-                                    <span id="notation-status">Latina</span>
-                                </div>
                                 <div class="chip" id="key-chip">
                                     <span>Tonalidad:</span>
-                                    <span id="key-status">Do</span>
+                                    <span id="key-status">C</span>
                                 </div>
                             </div>
                             <span class="save-indicator" id="save-indicator">Guardado</span>
-                            <button class="btn btn-sm" id="btn-reanalyze" style="display: none;">🔄 Reanalizar (auto)</button>
+                            <button class="btn btn-sm" id="btn-reanalyze" style="display: none;">🔄 Reanalizar</button>
                             <button class="btn btn-sm" id="btn-add-pair-editor">+ Par</button>
                             <button class="btn btn-primary" id="btn-save-song">Guardar</button>
                         </div>
@@ -138,64 +136,6 @@
                     <!-- Editor Content -->
                     <div class="editor-content" id="editor-content">
                         <!-- Sections and pairs will be rendered here -->
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Configuration View -->
-        <div class="view" id="view-configuracion">
-            <div class="songs-container">
-                <div class="section-header">
-                    <h2 class="section-title">Configuración</h2>
-                </div>
-                <div style="padding: 2rem;">
-                    <h3>Preferencias</h3>
-                    <div class="form-group">
-                        <label class="form-label">Notación por defecto</label>
-                        <select class="form-select" id="default-notation">
-                            <option value="latin">Latina (Do, Re, Mi...)</option>
-                            <option value="anglo">Anglosajona (C, D, E...)</option>
-                        </select>
-                    </div>
-                    
-                    <div class="form-group">
-                        <label class="form-label">Tamaño de fuente en editor</label>
-                        <select class="form-select" id="editor-font-size">
-                            <option value="12">12px</option>
-                            <option value="14" selected>14px</option>
-                            <option value="16">16px</option>
-                            <option value="18">18px</option>
-                            <option value="20">20px</option>
-                        </select>
-                    </div>
-
-                    <div class="form-group">
-                        <div class="toggle-container">
-                            <span class="toggle-label">Detector automático de secciones</span>
-                            <div class="toggle-switch active" id="auto-sections-toggle"></div>
-                            <span class="toggle-label" id="auto-sections-label">ON</span>
-                        </div>
-                        <small style="color: var(--gray-500); font-size: 0.85rem;">
-                            Cuando está activado, detecta automáticamente estrofas, coros y otras secciones al pegar texto.
-                        </small>
-                    </div>
-
-                    <h3 style="margin-top: 2rem;">Gestión de datos</h3>
-                    <div style="display: flex; gap: 1rem; margin-top: 1rem;">
-                        <button class="btn" id="btn-export-data">Exportar canciones</button>
-                        <button class="btn" id="btn-import-data">Importar canciones</button>
-                        <button class="btn btn-danger" id="btn-clear-data">Limpiar todo</button>
-                    </div>
-
-                    <h3 style="margin-top: 2rem;">Atajos de Teclado</h3>
-                    <div style="margin-top: 1rem; font-family: var(--mono-font); font-size: 0.9rem;">
-                        <div><strong>Ctrl/Cmd + S:</strong> Guardar canción</div>
-                        <div><strong>Enter:</strong> Nueva línea/par debajo (en editor)</div>
-                        <div><strong>Ctrl/Cmd + D:</strong> Duplicar par actual</div>
-                        <div><strong>Alt + ↑/↓:</strong> Mover par arriba/abajo</div>
-                        <div><strong>Ctrl/Cmd + Backspace:</strong> Borrar par actual</div>
-                        <div><strong>Escape:</strong> Salir del editor</div>
                     </div>
                 </div>
             </div>
