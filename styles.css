@@ -62,7 +62,27 @@ body {
     justify-content: space-between;
 }
 
-.logo {
+/* Logo section con icono y texto */
+.logo-section {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    transition: opacity 0.2s;
+}
+
+.logo-section:hover {
+    opacity: 0.9;
+}
+
+.logo-icon {
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.logo-text {
     font-size: 1.25rem;
     font-weight: 700;
 }
