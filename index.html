@@ -3,152 +3,127 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Betania Music - Gestor de Canciones</title>
+    <title>Betania Music - Canciones de Adoración</title>
+    <meta name="description" content="Colección de canciones de adoración con acordes para la iglesia Betania">
+    
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Source+Code+Pro:wght@400;500;600&display=swap" rel="stylesheet">
+    
+    <!-- CSS -->
     <link rel="stylesheet" href="styles.css">
+    
+    <!-- Favicon -->
+    <link rel="icon" type="image/x-icon" href="favicon.ico">
 </head>
 <body>
-    <!-- Header -->
+    <!-- Header Sticky -->
     <header class="header">
-        <div class="header-content">
-            <div class="logo-section" id="logo-home" style="cursor: pointer;">
-                <div class="logo-icon">
-                    <svg width="32" height="32" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <!-- Fondo circular con degradado -->
-                        <defs>
-                            <radialGradient id="logoGradient" cx="50%" cy="30%" r="70%">
-                                <stop offset="0%" style="stop-color:#ffffff;stop-opacity:1" />
-                                <stop offset="100%" style="stop-color:#e0f2f1;stop-opacity:1" />
-                            </radialGradient>
-                        </defs>
-                        <circle cx="50" cy="50" r="45" fill="url(#logoGradient)" stroke="rgba(255,255,255,0.3)" stroke-width="1"/>
-                        <!-- Llama principal -->
-                        <path d="M50 20C42 20 36 26 36 35C36 42 39 47 43 50C46 52 48 53 50 53C52 53 54 52 57 50C61 47 64 42 64 35C64 26 58 20 50 20Z" fill="rgba(255,255,255,0.9)"/>
-                        <!-- Llama interna -->
-                        <path d="M50 25C45 25 41 29 41 35C41 39 43 42 45 44C47 45 48 46 50 46C52 46 53 45 55 44C57 42 59 39 59 35C59 29 55 25 50 25Z" fill="rgba(255,255,255,0.7)"/>
-                        <!-- Núcleo de la llama -->
-                        <ellipse cx="50" cy="37" rx="5" ry="8" fill="rgba(255,255,255,0.8)"/>
-                        <!-- Punta superior -->
-                        <path d="M50 20C48 22 47 25 47 28C47 30 48 31 49 32C49.5 32.5 50 32.5 50 32.5C50 32.5 50.5 32.5 51 32C52 31 53 30 53 28C53 25 52 22 50 20Z" fill="white"/>
-                    </svg>
-                </div>
-                <div class="logo-text">Betania Music</div>
+        <div class="header-container">
+            <div class="logo-section">
+                <img src="logo.png" alt="Betania Music Logo" class="logo" id="logo">
+                <h1 class="site-title">Betania Music</h1>
             </div>
-            <nav>
-                <div class="nav-tabs">
-                    <button class="nav-tab active" data-route="canciones">Canciones</button>
-                    <button class="nav-tab" data-route="edicion">Edición</button>
-                </div>
+            
+            <nav class="nav">
+                <button class="nav-toggle" id="navToggle" aria-label="Abrir menú">
+                    <span class="nav-toggle-icon"></span>
+                </button>
+                <ul class="nav-list" id="navList">
+                    <li><a href="#home" class="nav-link active">Inicio</a></li>
+                    <li><a href="#songs" class="nav-link">Canciones</a></li>
+                    <li><a href="#about" class="nav-link">Acerca</a></li>
+                </ul>
             </nav>
         </div>
     </header>
 
-    <!-- Main App Container -->
-    <div class="app-container">
-        <!-- Songs List View -->
-        <div class="view active" id="view-canciones">
-            <div class="songs-container">
-                <div class="section-header">
-                    <h2 class="section-title">Canciones</h2>
-                    <button class="btn-add-song" id="btn-add-song">+ Añadir canción</button>
-                </div>
-
-                <div class="search-container">
-                    <input type="text" class="search-box" id="search-box" placeholder="Buscar por título o autor...">
-                </div>
-
-                <!-- Empty State -->
-                <div class="empty-state" id="empty-state">
-                    <h3>Aún no hay canciones</h3>
-                    <p>Pulsa "Añadir canción" para crear la primera.</p>
-                </div>
-
-                <!-- Songs Grid -->
-                <div class="songs-grid" id="songs-grid" style="display: none;">
-                    <!-- Songs will be dynamically added here -->
+    <!-- Main Content -->
+    <main class="main" id="main">
+        <!-- Home Section -->
+        <section id="home" class="section home-section">
+            <div class="container">
+                <div class="welcome-content">
+                    <h2 class="welcome-title">Bienvenidos a Betania Music</h2>
+                    <p class="welcome-text">
+                        Encuentra aquí nuestra colección de canciones de adoración con acordes, 
+                        organizadas para facilitar tu tiempo de alabanza y adoración.
+                    </p>
+                    <button class="btn btn-primary" id="viewSongsBtn">Ver Canciones</button>
                 </div>
             </div>
-        </div>
+        </section>
 
-        <!-- Song Reader View -->
-        <div class="view" id="view-song-reader">
-            <div class="song-reader">
-                <div class="reader-header">
-                    <button class="btn" id="btn-back-to-list">← Volver a canciones</button>
-                    <div class="reader-title" id="reader-title">Título de la canción</div>
-                    <div class="reader-meta" id="reader-meta">Autor • Tonalidad base</div>
-                    
-                    <div class="reader-controls">
-                        <div class="transpose-controls">
-                            <span style="font-size: 0.8rem; color: var(--gray-500);">Tonalidad:</span>
-                            <button class="transpose-btn" id="btn-transpose-down-reader">♭</button>
-                            <div class="current-key" id="current-key-reader">C</div>
-                            <button class="transpose-btn" id="btn-transpose-up-reader">♯</button>
-                            <button class="btn btn-sm" id="btn-reset-key-reader">Base</button>
+        <!-- Songs Section -->
+        <section id="songs" class="section songs-section">
+            <div class="container">
+                <div class="songs-layout">
+                    <!-- Sidebar con lista de canciones -->
+                    <aside class="songs-sidebar" id="songsSidebar">
+                        <div class="sidebar-header">
+                            <h3 class="sidebar-title">Lista de Canciones</h3>
+                            <button class="sidebar-toggle" id="sidebarToggle" aria-label="Cerrar sidebar">×</button>
                         </div>
                         
-                        <button class="btn btn-primary" id="btn-edit-song">Editar</button>
-                    </div>
-                </div>
-
-                <div class="song-content" id="song-content">
-                    <!-- Song sections will be rendered here -->
-                </div>
-            </div>
-        </div>
-
-        <!-- Editor View -->
-        <div class="view" id="view-edicion">
-            <div class="editor-container">
-                <!-- Editor Sidebar -->
-                <div class="editor-sidebar">
-                    <div class="sidebar-section">
-                        <h3 class="sidebar-title">Estructura</h3>
-                        <div id="sections-outline">
-                            <!-- Outline will be generated here -->
-                        </div>
-                        <button class="btn btn-sm" id="btn-add-section" style="width: 100%; margin-top: 0.5rem;">+ Sección</button>
-                    </div>
-                    
-                    <div class="sidebar-section">
-                        <h3 class="sidebar-title">Acciones</h3>
-                        <button class="btn btn-sm" id="btn-transpose-up" style="width: 100%; margin-bottom: 0.25rem;">♯ Subir tono</button>
-                        <button class="btn btn-sm" id="btn-transpose-down" style="width: 100%; margin-bottom: 0.25rem;">♭ Bajar tono</button>
-                        <button class="btn btn-sm" id="btn-reset-transpose" style="width: 100%;">Reset</button>
-                    </div>
-                </div>
-
-                <!-- Editor Main -->
-                <div class="editor-main">
-                    <div class="editor-toolbar">
-                        <div class="toolbar-left">
-                            <button class="btn btn-sm" id="btn-back-from-editor">← Volver</button>
-                            <input type="text" id="song-title-editor" placeholder="Título de la canción" 
-                                   style="font-size: 1.1rem; font-weight: 600; border: none; background: transparent; outline: none; min-width: 200px;">
+                        <div class="search-container">
+                            <input type="text" class="search-input" id="searchInput" placeholder="Buscar canción...">
                         </div>
                         
-                        <div class="toolbar-right">
-                            <div class="chips-container">
-                                <div class="chip" id="key-chip">
-                                    <span>Tonalidad:</span>
-                                    <span id="key-status">C</span>
-                                </div>
+                        <ul class="songs-list" id="songsList">
+                            <!-- Las canciones se cargarán aquí dinámicamente -->
+                        </ul>
+                    </aside>
+
+                    <!-- Área principal de la canción -->
+                    <div class="song-content" id="songContent">
+                        <div class="song-header">
+                            <button class="btn btn-secondary mobile-menu-btn" id="mobileMenuBtn">
+                                ☰ Lista de Canciones
+                            </button>
+                        </div>
+                        
+                        <article class="song-display" id="songDisplay">
+                            <div class="no-song-selected">
+                                <h3>Selecciona una canción</h3>
+                                <p>Elige una canción de la lista para ver sus acordes y letra.</p>
                             </div>
-                            <span class="save-indicator" id="save-indicator">Guardado</span>
-                            <button class="btn btn-sm" id="btn-reanalyze" style="display: none;">🔄 Reanalizar</button>
-                            <button class="btn btn-sm" id="btn-add-pair-editor">+ Par</button>
-                            <button class="btn btn-primary" id="btn-save-song">Guardar</button>
-                        </div>
-                    </div>
-
-                    <!-- Editor Content -->
-                    <div class="editor-content" id="editor-content">
-                        <!-- Sections and pairs will be rendered here -->
+                        </article>
                     </div>
                 </div>
             </div>
-        </div>
-    </div>
+        </section>
 
+        <!-- About Section -->
+        <section id="about" class="section about-section">
+            <div class="container">
+                <h2 class="section-title">Acerca de Betania Music</h2>
+                <div class="about-content">
+                    <p>
+                        Betania Music es una plataforma dedicada a compartir canciones de adoración 
+                        con la comunidad cristiana. Nuestro objetivo es facilitar el acceso a 
+                        recursos musicales que edifiquen la fe y fortalezcan la adoración.
+                    </p>
+                    <p>
+                        Todas las canciones incluyen acordes organizados para guitarra, 
+                        facilitando tanto el aprendizaje como la práctica musical en 
+                        nuestros tiempos de adoración.
+                    </p>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <p class="footer-text">
+                &copy; 2024 Betania Music. Construido con ♥ para la gloria de Dios.
+            </p>
+        </div>
+    </footer>
+
+    <!-- JavaScript -->
     <script src="script.js"></script>
 </body>
 </html>
