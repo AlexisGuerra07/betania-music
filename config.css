@@ -71,31 +71,7 @@
     --border-hover: #ba68c8;
 }
 
-/* ===== PERSONALIZACIÓN DE ESPACIADO ===== */
-
-/* Espaciado más generoso */
-.spacing-loose {
-    --spacing-xs: clamp(0.5rem, 1.5vw, 0.75rem);
-    --spacing-sm: clamp(0.75rem, 2vw, 1rem);
-    --spacing-md: clamp(1rem, 2.5vw, 1.5rem);
-    --spacing-lg: clamp(1.5rem, 3vw, 2rem);
-    --spacing-xl: clamp(2rem, 4vw, 2.5rem);
-    --spacing-2xl: clamp(2.5rem, 5vw, 4rem);
-}
-
-/* Espaciado más compacto */
-.spacing-tight {
-    --spacing-xs: clamp(0.25rem, 0.75vw, 0.375rem);
-    --spacing-sm: clamp(0.375rem, 1vw, 0.5rem);
-    --spacing-md: clamp(0.5rem, 1.5vw, 0.75rem);
-    --spacing-lg: clamp(0.75rem, 2vw, 1rem);
-    --spacing-xl: clamp(1rem, 2.5vw, 1.5rem);
-    --spacing-2xl: clamp(1.5rem, 3vw, 2rem);
-}
-
-/* ===== TEMAS DE COLORES LISTOS PARA USAR ===== */
-
-/* Tema Nocturno */
+/* Tema nocturno */
 .theme-dark {
     --bg-primary: #1a1a1a;
     --bg-secondary: #2d2d2d;
@@ -118,6 +94,28 @@
 
 .theme-dark .chord-line {
     color: #26a69a;
+}
+
+/* ===== PERSONALIZACIÓN DE ESPACIADO ===== */
+
+/* Espaciado más generoso */
+.spacing-loose {
+    --spacing-xs: clamp(0.5rem, 1.5vw, 0.75rem);
+    --spacing-sm: clamp(0.75rem, 2vw, 1rem);
+    --spacing-md: clamp(1rem, 2.5vw, 1.5rem);
+    --spacing-lg: clamp(1.5rem, 3vw, 2rem);
+    --spacing-xl: clamp(2rem, 4vw, 2.5rem);
+    --spacing-2xl: clamp(2.5rem, 5vw, 4rem);
+}
+
+/* Espaciado más compacto */
+.spacing-tight {
+    --spacing-xs: clamp(0.25rem, 0.75vw, 0.375rem);
+    --spacing-sm: clamp(0.375rem, 1vw, 0.5rem);
+    --spacing-md: clamp(0.5rem, 1.5vw, 0.75rem);
+    --spacing-lg: clamp(0.75rem, 2vw, 1rem);
+    --spacing-xl: clamp(1rem, 2.5vw, 1.5rem);
+    --spacing-2xl: clamp(1.5rem, 3vw, 2rem);
 }
 
 /* ===== PERSONALIZACIÓN DE ACORDES ===== */
