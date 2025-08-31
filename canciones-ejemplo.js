@@ -1,8 +1,10 @@
-// ===== CANCIONES DE EJEMPLO EXPANDIDAS =====
+// ===== CANCIONES DE EJEMPLO AMPLIADAS =====
 // Reemplaza la función loadDefaultSongs() en script.js con estas canciones
+// O úsalas como referencia para el formato correcto
 
-function loadDefaultSongs() {
+function loadExtendedSongs() {
     state.songs = [
+        // Canción original de tu sitio
         {
             id: '1',
             title: 'Es Él',
@@ -25,6 +27,8 @@ function loadDefaultSongs() {
                 }
             ]
         },
+        
+        // Más canciones de ejemplo en el formato correcto
         {
             id: '2',
             title: 'Cuán Grande es Él',
@@ -63,6 +67,7 @@ function loadDefaultSongs() {
                 }
             ]
         },
+        
         {
             id: '3',
             title: 'Renuévame',
@@ -101,6 +106,7 @@ function loadDefaultSongs() {
                 }
             ]
         },
+        
         {
             id: '4',
             title: 'Poderoso Dios',
@@ -139,6 +145,7 @@ function loadDefaultSongs() {
                 }
             ]
         },
+        
         {
             id: '5',
             title: 'Oceanos',
@@ -171,6 +178,7 @@ function loadDefaultSongs() {
                 }
             ]
         },
+        
         {
             id: '6',
             title: 'En Ti Confiaré',
@@ -199,6 +207,7 @@ function loadDefaultSongs() {
                 }
             ]
         },
+        
         {
             id: '7',
             title: 'Way Maker',
@@ -239,6 +248,7 @@ function loadDefaultSongs() {
                 }
             ]
         },
+        
         {
             id: '8',
             title: 'Alma Mía',
@@ -267,6 +277,7 @@ function loadDefaultSongs() {
                 }
             ]
         },
+        
         {
             id: '9',
             title: 'Digno es el Cordero',
@@ -295,6 +306,7 @@ function loadDefaultSongs() {
                 }
             ]
         },
+        
         {
             id: '10',
             title: 'Adoraré',
@@ -325,6 +337,7 @@ function loadDefaultSongs() {
                 }
             ]
         },
+        
         {
             id: '11',
             title: 'Grande y Fuerte',
@@ -353,6 +366,7 @@ function loadDefaultSongs() {
                 }
             ]
         },
+        
         {
             id: '12',
             title: 'Tu Amor No Tiene Fin',
@@ -380,8 +394,450 @@ function loadDefaultSongs() {
                     ]
                 }
             ]
+        },
+        
+        {
+            id: '13',
+            title: 'Santo Santo Santo',
+            author: 'Tradicional',
+            originalKey: 'F',
+            sections: [
+                {
+                    id: 's1',
+                    label: 'Verso 1',
+                    pairs: [
+                        { id: 'p1', chords: 'F       Bb     F', lyrics: 'Santo, Santo, Santo' },
+                        { id: 'p2', chords: 'C       F', lyrics: 'Señor omnipotente' },
+                        { id: 'p3', chords: 'Dm      Bb     F', lyrics: 'Siempre el labio mío' },
+                        { id: 'p4', chords: 'C       F', lyrics: 'Loores te dará' }
+                    ]
+                },
+                {
+                    id: 's2',
+                    label: 'Verso 2',
+                    pairs: [
+                        { id: 'p5', chords: 'F       Bb     F', lyrics: 'Santo, Santo, Santo' },
+                        { id: 'p6', chords: 'C       F', lyrics: 'Te adoran los santos' },
+                        { id: 'p7', chords: 'Dm      Bb     F', lyrics: 'Postrados delante' },
+                        { id: 'p8', chords: 'C       F', lyrics: 'Rinden su honor' }
+                    ]
+                }
+            ]
+        },
+        
+        {
+            id: '14',
+            title: 'Sublime Gracia',
+            author: 'John Newton',
+            originalKey: 'G',
+            sections: [
+                {
+                    id: 's1',
+                    label: 'Verso 1',
+                    pairs: [
+                        { id: 'p1', chords: 'G        G7       C       G', lyrics: 'Sublime gracia del Señor' },
+                        { id: 'p2', chords: '                    D', lyrics: 'Que a un infeliz salvó' },
+                        { id: 'p3', chords: 'G        G7       C       G', lyrics: 'Perdido anduve y me halló' },
+                        { id: 'p4', chords: 'Em       D        G', lyrics: 'Ciego fui, mas hoy veo yo' }
+                    ]
+                },
+                {
+                    id: 's2',
+                    label: 'Verso 2',
+                    pairs: [
+                        { id: 'p5', chords: 'G        G7       C       G', lyrics: 'Su gracia me enseñó a temer' },
+                        { id: 'p6', chords: '                    D', lyrics: 'Mis dudas ahuyentó' },
+                        { id: 'p7', chords: 'G        G7       C       G', lyrics: 'Cuán precioso fue a mi ser' },
+                        { id: 'p8', chords: 'Em       D        G', lyrics: 'Cuando en Él yo creí' }
+                    ]
+                }
+            ]
+        },
+        
+        {
+            id: '15',
+            title: 'Jesús Te Entronizo',
+            author: 'Marco Barrientos',
+            originalKey: 'E',
+            sections: [
+                {
+                    id: 's1',
+                    label: 'Coro',
+                    pairs: [
+                        { id: 'p1', chords: 'E              A      E', lyrics: 'Jesús te entronizo' },
+                        { id: 'p2', chords: 'B              E', lyrics: 'En mi corazón' },
+                        { id: 'p3', chords: 'E              A      E', lyrics: 'Jesús te entronizo' },
+                        { id: 'p4', chords: 'B              E', lyrics: 'En mi corazón' },
+                        { id: 'p5', chords: 'A              E', lyrics: 'Tuyo es el reino' },
+                        { id: 'p6', chords: 'B              C#m', lyrics: 'Tuya es la gloria' },
+                        { id: 'p7', chords: 'A              E', lyrics: 'Tuyo es el poder' },
+                        { id: 'p8', chords: 'B              E', lyrics: 'Y el honor' }
+                    ]
+                }
+            ]
         }
     ];
     
     state.filteredSongs = [...state.songs];
+}
+
+// ===== PLANTILLAS DE CANCIONES COMUNES =====
+
+/**
+ * Plantilla para canción de adoración estándar
+ */
+function createWorshipSongTemplate() {
+    return {
+        id: generateId(),
+        title: '',
+        author: '',
+        originalKey: 'C',
+        sections: [
+            {
+                id: generateId(),
+                label: 'Verso 1',
+                pairs: [
+                    { id: generateId(), chords: '', lyrics: '' }
+                ]
+            },
+            {
+                id: generateId(),
+                label: 'Coro',
+                pairs: [
+                    { id: generateId(), chords: '', lyrics: '' }
+                ]
+            },
+            {
+                id: generateId(),
+                label: 'Verso 2',
+                pairs: [
+                    { id: generateId(), chords: '', lyrics: '' }
+                ]
+            },
+            {
+                id: generateId(),
+                label: 'Puente',
+                pairs: [
+                    { id: generateId(), chords: '', lyrics: '' }
+                ]
+            }
+        ]
+    };
+}
+
+/**
+ * Plantilla para himno tradicional
+ */
+function createHymnTemplate() {
+    return {
+        id: generateId(),
+        title: '',
+        author: '',
+        originalKey: 'G',
+        sections: [
+            {
+                id: generateId(),
+                label: 'Verso 1',
+                pairs: [
+                    { id: generateId(), chords: '', lyrics: '' }
+                ]
+            },
+            {
+                id: generateId(),
+                label: 'Verso 2',
+                pairs: [
+                    { id: generateId(), chords: '', lyrics: '' }
+                ]
+            },
+            {
+                id: generateId(),
+                label: 'Verso 3',
+                pairs: [
+                    { id: generateId(), chords: '', lyrics: '' }
+                ]
+            },
+            {
+                id: generateId(),
+                label: 'Verso 4',
+                pairs: [
+                    { id: generateId(), chords: '', lyrics: '' }
+                ]
+            }
+        ]
+    };
+}
+
+// ===== CONVERSIÓN DE FORMATOS =====
+
+/**
+ * Convertir desde formato ChordPro
+ */
+function convertFromChordPro(chordProText) {
+    const lines = chordProText.split('\n');
+    const song = createEmptySong();
+    let currentSection = null;
+    
+    lines.forEach(line => {
+        line = line.trim();
+        
+        // Detectar directivas de ChordPro
+        if (line.startsWith('{title:') || line.startsWith('{t:')) {
+            song.title = line.match(/\{[^:]+:\s*([^}]+)\}/)[1];
+        } else if (line.startsWith('{artist:') || line.startsWith('{st:')) {
+            song.author = line.match(/\{[^:]+:\s*([^}]+)\}/)[1];
+        } else if (line.startsWith('{key:')) {
+            song.originalKey = line.match(/\{[^:]+:\s*([^}]+)\}/)[1];
+        } else if (line.startsWith('{start_of_') || line.startsWith('{soc}')) {
+            // Iniciar nueva sección
+            const sectionName = line.includes('verse') ? 'Verso' : 
+                              line.includes('chorus') ? 'Coro' : 'Sección';
+            currentSection = {
+                id: generateId(),
+                label: sectionName,
+                pairs: []
+            };
+            song.sections.push(currentSection);
+        } else if (line.includes('[') && line.includes(']') && currentSection) {
+            // Línea con acordes
+            const chords = line.replace(/\[([^\]]+)\]/g, '$1 ').trim();
+            const lyrics = line.replace(/\[[^\]]+\]/g, '').trim();
+            
+            currentSection.pairs.push({
+                id: generateId(),
+                chords: chords,
+                lyrics: lyrics
+            });
+        } else if (line && currentSection) {
+            // Línea de letra simple
+            currentSection.pairs.push({
+                id: generateId(),
+                chords: '',
+                lyrics: line
+            });
+        }
+    });
+    
+    return song;
+}
+
+/**
+ * Convertir a formato ChordPro
+ */
+function convertToChordPro(song) {
+    let chordPro = '';
+    
+    chordPro += `{title: ${song.title}}\n`;
+    chordPro += `{artist: ${song.author}}\n`;
+    chordPro += `{key: ${song.originalKey}}\n\n`;
+    
+    song.sections.forEach(section => {
+        chordPro += `{start_of_${section.label.toLowerCase().replace(/\s+/g, '_')}}\n`;
+        
+        section.pairs.forEach(pair => {
+            if (pair.chords && pair.lyrics) {
+                // Combinar acordes y letras en formato ChordPro
+                const chords = pair.chords.split(/\s+/).filter(Boolean);
+                const words = pair.lyrics.split(' ');
+                
+                let line = '';
+                chords.forEach((chord, index) => {
+                    if (index < words.length) {
+                        line += `[${chord}]${words[index]} `;
+                    } else {
+                        line += `[${chord}] `;
+                    }
+                });
+                
+                // Agregar palabras restantes
+                for (let i = chords.length; i < words.length; i++) {
+                    line += words[i] + ' ';
+                }
+                
+                chordPro += line.trim() + '\n';
+            } else if (pair.lyrics) {
+                chordPro += pair.lyrics + '\n';
+            } else if (pair.chords) {
+                chordPro += pair.chords + '\n';
+            }
+        });
+        
+        chordPro += `{end_of_${section.label.toLowerCase().replace(/\s+/g, '_')}}\n\n`;
+    });
+    
+    return chordPro;
+}
+
+// ===== UTILIDADES DE BACKUP AUTOMÁTICO =====
+
+/**
+ * Configurar backup automático
+ */
+function setupAutoBackup() {
+    // Backup cada 5 minutos si hay cambios
+    setInterval(() => {
+        if (state.songs.length > 0) {
+            try {
+                const currentData = JSON.stringify(state.songs);
+                const lastBackup = localStorage.getItem('betania-last-backup');
+                
+                if (currentData !== lastBackup) {
+                    localStorage.setItem('betania-last-backup', currentData);
+                    localStorage.setItem('betania-backup-timestamp', Date.now().toString());
+                    console.log('Backup automático realizado');
+                }
+            } catch (e) {
+                console.warn('Error en backup automático:', e);
+            }
+        }
+    }, 5 * 60 * 1000); // 5 minutos
+}
+
+/**
+ * Restaurar desde backup
+ */
+function restoreFromBackup() {
+    try {
+        const backup = localStorage.getItem('betania-last-backup');
+        const timestamp = localStorage.getItem('betania-backup-timestamp');
+        
+        if (backup && timestamp) {
+            const backupDate = new Date(parseInt(timestamp));
+            if (confirm(`¿Restaurar backup del ${backupDate.toLocaleString()}?`)) {
+                state.songs = JSON.parse(backup);
+                state.filteredSongs = [...state.songs];
+                renderSongsList();
+                alert('Backup restaurado exitosamente');
+            }
+        } else {
+            alert('No hay backup disponible');
+        }
+    } catch (e) {
+        alert('Error al restaurar backup: ' + e.message);
+    }
+}
+
+// ===== INTEGRACIÓN Y EXTENSIÓN =====
+
+/**
+ * Crear interfaz de importación
+ */
+function createImportInterface() {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.json,.txt';
+    input.style.display = 'none';
+    
+    input.addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if (file) {
+            if (file.name.endsWith('.json')) {
+                importSongsFromJSON(file);
+            } else {
+                // Importar como texto plano
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    const text = e.target.result;
+                    // Aquí podrías implementar parseo de otros formatos
+                    console.log('Archivo de texto:', text);
+                };
+                reader.readAsText(file);
+            }
+        }
+    });
+    
+    document.body.appendChild(input);
+    input.click();
+    document.body.removeChild(input);
+}
+
+// ===== COMANDOS EXTENDIDOS PARA CONSOLA =====
+
+/**
+ * Agregar comandos adicionales al objeto de utilidades
+ */
+function extendUtilsCommands() {
+    Object.assign(window.BetaniaUtils, {
+        // Análisis
+        analyze: {
+            songs: () => console.table(getSongsStatistics()),
+            chords: (songId) => {
+                const song = state.songs.find(s => s.id === songId);
+                if (song) {
+                    console.log('Tonalidad detectada:', detectSongKey(song));
+                    console.log('Acordes sugeridos:', getSuggestedChords(song.originalKey));
+                }
+            },
+            report: () => {
+                const report = generateSongsReport();
+                console.log(report);
+                
+                // También crear un archivo
+                const blob = new Blob([report], { type: 'text/markdown' });
+                const link = document.createElement('a');
+                link.href = URL.createObjectURL(blob);
+                link.download = 'betania-music-report.md';
+                link.click();
+                URL.revokeObjectURL(link.href);
+            }
+        },
+        
+        // Herramientas
+        tools: {
+            import: () => createImportInterface(),
+            backup: () => exportSongsToJSON(),
+            restore: () => restoreFromBackup(),
+            validate: () => {
+                state.songs.forEach(song => {
+                    const validation = validateSong(song);
+                    if (!validation.isValid) {
+                        console.warn(`Canción "${song.title}":`, validation.errors);
+                    }
+                });
+                console.log('Validación completada');
+            },
+            clean: () => {
+                state.songs = state.songs.map(cleanSong);
+                saveToStorage();
+                renderSongsList();
+                console.log('Canciones limpiadas');
+            }
+        },
+        
+        // Desarrollo
+        dev: {
+            state: () => console.log(state),
+            config: () => console.log(CONFIG),
+            elements: () => console.log(elements),
+            performance: () => {
+                console.log('Canciones cargadas:', state.songs.length);
+                console.log('Memoria aprox:', JSON.stringify(state.songs).length + ' chars');
+                console.log('Última búsqueda:', state.searchTerm);
+            }
+        }
+    });
+}
+
+// ===== INICIALIZACIÓN EXTENDIDA =====
+function initializeExtendedUtils() {
+    // Configurar backup automático
+    setupAutoBackup();
+    
+    // Extender comandos de utilidades
+    extendUtilsCommands();
+    
+    console.log('Utilidades extendidas inicializadas');
+    console.log('Comandos disponibles:');
+    console.log('- BetaniaUtils.analyze.songs()');
+    console.log('- BetaniaUtils.tools.import()');
+    console.log('- BetaniaUtils.tools.backup()');
+    console.log('- BetaniaUtils.dev.performance()');
+}
+
+// Auto-inicialización extendida
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => {
+        setTimeout(initializeExtendedUtils, 200);
+    });
+} else {
+    setTimeout(initializeExtendedUtils, 200);
 }
