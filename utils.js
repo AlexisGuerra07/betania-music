@@ -650,44 +650,31 @@ function cleanSong(song) {
     return cleaned;
 }
 
-// ===== UTILIDADES DE RENDIMIENTO =====
+// ===== FUNCIONES DE TRANSPOSICIÓN AVANZADA =====
 
-/**
- * Lazy loading para listas grandes de canciones
- */
-function setupLazyLoading() {
-    if ('IntersectionObserver' in window && state.songs.length > 50) {
-        const observer = new IntersectionObserver((entries) => {
-            entries.forEach(entry => {
-                if (entry.isIntersecting) {
-                    // Cargar más canciones si es necesario
-                    console.log('Elemento visible:', entry.target);
-                }
-            });
-        });
-        
-        // Observar elementos de canción
-        document.querySelectorAll('.song-item').forEach(item => {
-            observer.observe(item);
-        });
+function transposeUp() {
+    if (state.currentRoute === 'song-reader') {
+        const currentIndex = CONFIG.keys.indexOf(state.currentKey);
+        state.currentKey = CONFIG.keys[(currentIndex + 1) % 12];
+        renderSongReader();
     }
 }
 
-/**
- * Debounce mejorado para búsquedas
- */
-function createAdvancedDebounce(func, wait, immediate = false) {
-    let timeout;
-    return function executedFunction(...args) {
-        const later = () => {
-            timeout = null;
-            if (!immediate) func(...args);
-        };
-        const callNow = immediate && !timeout;
-        clearTimeout(timeout);
-        timeout = setTimeout(later, wait);
-        if (callNow) func(...args);
-    };
+function transposeDown() {
+    if (state.currentRoute === 'song-reader') {
+        const currentIndex = CONFIG.keys.indexOf(state.currentKey);
+        let newIndex = currentIndex - 1;
+        if (newIndex < 0) newIndex = 11;
+        state.currentKey = CONFIG.keys[newIndex];
+        renderSongReader();
+    }
+}
+
+function resetTransposition() {
+    if (state.currentRoute === 'song-reader') {
+        state.currentKey = state.originalKey;
+        renderSongReader();
+    }
 }
 
 // ===== UTILIDADES DE URL =====
@@ -732,33 +719,6 @@ function loadSongFromURL() {
     }
     
     return false;
-}
-
-// ===== FUNCIONES DE TRANSPOSICIÓN AVANZADA =====
-
-function transposeUp() {
-    if (state.currentRoute === 'song-reader') {
-        const currentIndex = CONFIG.keys.indexOf(state.currentKey);
-        state.currentKey = CONFIG.keys[(currentIndex + 1) % 12];
-        renderSongReader();
-    }
-}
-
-function transposeDown() {
-    if (state.currentRoute === 'song-reader') {
-        const currentIndex = CONFIG.keys.indexOf(state.currentKey);
-        let newIndex = currentIndex - 1;
-        if (newIndex < 0) newIndex = 11;
-        state.currentKey = CONFIG.keys[newIndex];
-        renderSongReader();
-    }
-}
-
-function resetTransposition() {
-    if (state.currentRoute === 'song-reader') {
-        state.currentKey = state.originalKey;
-        renderSongReader();
-    }
 }
 
 // ===== INTEGRACIÓN CON FUNCIONES PRINCIPALES =====
@@ -827,9 +787,6 @@ function initializeUtils() {
     
     // Extender API global
     extendBetaniaMusicAPI();
-    
-    // Configurar lazy loading si hay muchas canciones
-    setTimeout(setupLazyLoading, 1000);
     
     console.log('Utilidades adicionales inicializadas');
 }
@@ -932,32 +889,3 @@ function showHelp() {
 if (window.BetaniaMusic) {
     window.BetaniaMusic.showHelp = showHelp;
 }
-
-/* 
-===== INSTRUCCIONES DE USO =====
-
-1. Incluir después del script principal:
-   <script src="script.js"></script>
-   <script src="utils.js"></script>
-
-2. Comandos útiles en la consola del navegador:
-   - BetaniaUtils.stats() - Ver estadísticas de canciones
-   - BetaniaUtils.export() - Exportar todas las canciones
-   - BetaniaUtils.themes.dark() - Cambiar a tema oscuro
-   - BetaniaUtils.typography.large() - Tipografía más grande
-   - BetaniaUtils.addTestSongs() - Agregar canciones de prueba
-
-3. Atajos de teclado automáticos:
-   - Flechas arriba/abajo para transponer
-   - Escape para volver a la lista
-   - E para editar canción actual
-   - Ctrl+R para resetear transposición
-
-4. Funciones disponibles:
-   - Exportar/importar canciones en JSON
-   - Imprimir canciones individuales
-   - Búsqueda avanzada por acordes
-   - Detección automática de tonalidad
-   - Validación de estructuras
-   - Estadísticas y reportes
-*/
