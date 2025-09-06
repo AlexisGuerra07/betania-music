@@ -99,6 +99,10 @@
                             <span>Gestión de canciones</span>
                         </div>
                         <div class="feature">
+                            <span>🔮</span>
+                            <span>Detección automática de partes</span>
+                        </div>
+                        <div class="feature">
                             <span>💾</span>
                             <span>Guardado automático</span>
                         </div>
@@ -157,7 +161,7 @@
             </div>
         </div>
 
-        <!-- Formulario añadir canción -->
+        <!-- Formulario añadir canción CON DETECCIÓN AUTOMÁTICA -->
         <div id="add-song-form" class="add-song-form" style="display: none;">
             <div class="form-header">
                 <h2>➕ Añadir Nueva Canción</h2>
@@ -206,16 +210,80 @@
                     </div>
                 </div>
                 
-                <!-- Secciones añadidas -->
+                <!-- NUEVO: Botón de modo de detección -->
                 <div class="form-section">
+                    <div class="detection-mode-toggle">
+                        <button id="auto-detection-btn" onclick="toggleAutoDetection()" class="mode-toggle-btn">
+                            🔮 Detección Automática
+                        </button>
+                        <p class="mode-description">
+                            Cambia entre añadir secciones manualmente o pegar una canción completa para detección automática
+                        </p>
+                    </div>
+                </div>
+
+                <!-- NUEVO: Sección de detección automática -->
+                <div id="auto-detection-section" class="form-section" style="display: none;">
+                    <h3>🔮 Detección Automática de Partes</h3>
+                    <div class="auto-detection-container">
+                        <div class="form-group">
+                            <label for="full-song-text">Pega la canción completa con acordes</label>
+                            <textarea 
+                                id="full-song-text" 
+                                placeholder="Pega aquí la canción completa con sus acordes...
+
+Ejemplos de formato que detecta:
+
+CON ETIQUETAS:
+Estrofa 1:
+C         Am
+Letra aquí
+F         G
+Más letra
+
+Coro:
+F         C
+Letra del coro
+G         Am
+Final del coro
+
+SIN ETIQUETAS (detecta automáticamente):
+C         Am
+Primera sección
+F         G
+Contenido aquí
+
+F         C
+Segunda sección (probablemente coro)
+G         Am
+Más contenido
+
+CONSEJOS:
+- Separa las secciones con líneas vacías
+- Usa etiquetas como 'Estrofa 1:', 'Coro:', 'Puente:'
+- Incluye tanto acordes como letras"
+                                rows="12"
+                                oninput="processFullSongText()"
+                            ></textarea>
+                        </div>
+                        
+                        <!-- Vista previa de detección -->
+                        <div id="detection-preview" class="detection-preview">
+                            <!-- Se llena dinámicamente -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Sección manual (original) -->
+                <div id="manual-sections" class="form-section">
                     <h3>Secciones de la Canción</h3>
                     <div id="added-sections" class="added-sections">
                         <p class="no-sections">No hay secciones añadidas</p>
                     </div>
                 </div>
                 
-                <!-- Añadir sección -->
-                <div class="form-section add-section-form">
+                <!-- Añadir sección manual -->
+                <div id="manual-add-section" class="form-section add-section-form">
                     <h3>Añadir Nueva Sección</h3>
                     <div class="form-group">
                         <label for="section-name">Nombre de la Sección</label>
