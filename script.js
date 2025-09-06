@@ -1,6 +1,7 @@
 /**
  * ==========================================
  * 🎵 BETANIA MUSIC - SISTEMA COMPLETO JS
+ * CON DETECCIÓN AUTOMÁTICA DE PARTES
  * ==========================================
  */
 
@@ -21,14 +22,178 @@ const FLAT_TO_SHARP = {
 };
 
 // ==========================================
+// SISTEMA DE DETECCIÓN AUTOMÁTICA
+// ==========================================
+
+// Patrones para detectar secciones
+const sectionPatterns = {
+    'Estrofa': /(?:^|\n)\s*(?:estrofa|verso|verse)\s*(?:\d+|i+)?\s*[:\-]?\s*\n/gi,
+    'Estrofa 1': /(?:^|\n)\s*(?:estrofa|verso|verse)\s*(?:1|i|uno|primera?)\s*[:\-]?\s*\n/gi,
+    'Estrofa 2': /(?:^|\n)\s*(?:estrofa|verso|verse)\s*(?:2|ii|dos|segunda?)\s*[:\-]?\s*\n/gi,
+    'Estrofa 3': /(?:^|\n)\s*(?:estrofa|verso|verse)\s*(?:3|iii|tres|tercera?)\s*[:\-]?\s*\n/gi,
+    
+    'Coro': /(?:^|\n)\s*(?:coro|chorus|estribillo)\s*(?:\d+)?\s*[:\-]?\s*\n/gi,
+    'Coro 1': /(?:^|\n)\s*(?:coro|chorus|estribillo)\s*(?:1|i|uno|primer)\s*[:\-]?\s*\n/gi,
+    'Coro 2': /(?:^|\n)\s*(?:coro|chorus|estribillo)\s*(?:2|ii|dos|segundo)\s*[:\-]?\s*\n/gi,
+    
+    'Pre-Coro': /(?:^|\n)\s*(?:pre-?coro|pre-?chorus|precoro|prechorus)\s*[:\-]?\s*\n/gi,
+    'Puente': /(?:^|\n)\s*(?:puente|bridge)\s*[:\-]?\s*\n/gi,
+    'Intro': /(?:^|\n)\s*(?:intro|introducción|introduction)\s*[:\-]?\s*\n/gi,
+    'Outro': /(?:^|\n)\s*(?:outro|final|ending|coda)\s*[:\-]?\s*\n/gi,
+    'Solo': /(?:^|\n)\s*(?:solo|instrumental)\s*[:\-]?\s*\n/gi,
+    'Interludio': /(?:^|\n)\s*(?:interludio|interlude)\s*[:\-]?\s*\n/gi,
+    'Tag': /(?:^|\n)\s*(?:tag|repetir|repeat)\s*[:\-]?\s*\n/gi
+};
+
+/**
+ * Función principal de detección automática
+ */
+function autoDetectSections(text) {
+    if (!text.trim()) return {};
+    
+    const sections = {};
+    
+    // Primero, buscar etiquetas explícitas de secciones
+    const foundSections = {};
+    
+    for (const [sectionName, pattern] of Object.entries(sectionPatterns)) {
+        const matches = [...text.matchAll(pattern)];
+        if (matches.length > 0) {
+            foundSections[sectionName] = matches.map(match => ({
+                index: match.index,
+                match: match[0]
+            }));
+        }
+    }
+
+    // Ordenar secciones por posición en el texto
+    const sortedSections = Object.entries(foundSections)
+        .flatMap(([name, matches]) => 
+            matches.map(match => ({ name, ...match }))
+        )
+        .sort((a, b) => a.index - b.index);
+
+    if (sortedSections.length === 0) {
+        // No se encontraron etiquetas explícitas, usar detección inteligente
+        return smartDetection(text);
+    }
+
+    // Procesar secciones encontradas
+    let textPosition = 0;
+    let unassignedLines = [];
+    
+    for (let i = 0; i < sortedSections.length; i++) {
+        const section = sortedSections[i];
+        const nextSection = sortedSections[i + 1];
+        
+        // Contenido antes de esta sección
+        if (section.index > textPosition && unassignedLines.length === 0) {
+            const beforeText = text.substring(textPosition, section.index).trim();
+            if (beforeText) {
+                unassignedLines = beforeText.split('\n').filter(line => line.trim());
+            }
+        }
+        
+        // Encontrar el final de esta sección
+        const sectionStart = section.index + section.match.length;
+        const sectionEnd = nextSection ? nextSection.index : text.length;
+        const sectionContent = text.substring(sectionStart, sectionEnd).trim();
+        
+        if (sectionContent) {
+            const sectionLines = sectionContent.split('\n')
+                .filter(line => line.trim())
+                .map(line => line.trim());
+            
+            sections[section.name] = sectionLines;
+        }
+        
+        textPosition = sectionEnd;
+    }
+    
+    // Asignar líneas no asignadas como Intro si existen
+    if (unassignedLines.length > 0) {
+        sections['Intro'] = unassignedLines;
+    }
+
+    return sections;
+}
+
+/**
+ * Detección inteligente cuando no hay etiquetas explícitas
+ */
+function smartDetection(text) {
+    const lines = text.split('\n').filter(line => line.trim());
+    const sections = {};
+    
+    // Buscar patrones de acordes
+    const chordPattern = /\b[A-G][#b]?(?:m|maj|min|sus|add|dim|aug|\d)*(?:\/[A-G][#b]?)?\b/g;
+    
+    let currentSection = [];
+    let sectionCount = 1;
+    let isInChordSection = false;
+    
+    for (let i = 0; i < lines.length; i++) {
+        const line = lines[i].trim();
+        const hasChords = chordPattern.test(line);
+        const isEmptyLine = !line;
+        
+        // Detectar cambios de sección por líneas vacías o cambios de patrón
+        if (isEmptyLine || (i > 0 && hasChords !== isInChordSection)) {
+            if (currentSection.length > 0) {
+                const sectionName = guessSectionName(currentSection, sectionCount);
+                sections[sectionName] = [...currentSection];
+                currentSection = [];
+                sectionCount++;
+            }
+            if (!isEmptyLine) {
+                currentSection.push(line);
+                isInChordSection = hasChords;
+            }
+        } else {
+            currentSection.push(line);
+            isInChordSection = hasChords;
+        }
+    }
+    
+    // Última sección
+    if (currentSection.length > 0) {
+        const sectionName = guessSectionName(currentSection, sectionCount);
+        sections[sectionName] = currentSection;
+    }
+    
+    return sections;
+}
+
+/**
+ * Adivinar el nombre de la sección basado en el contenido
+ */
+function guessSectionName(lines, count) {
+    const content = lines.join(' ').toLowerCase();
+    
+    // Palabras que sugieren coro
+    const chorusWords = ['coro', 'aleluya', 'gloria', 'santo', 'alabanza', 'adorar', 'repetir'];
+    // Palabras que sugieren verso/estrofa
+    const verseWords = ['cuando', 'si', 'donde', 'como', 'era', 'fue', 'historia'];
+    // Palabras que sugieren puente
+    const bridgeWords = ['puente', 'bridge', 'solo', 'instrumental'];
+    
+    const hasChorusWords = chorusWords.some(word => content.includes(word));
+    const hasVerseWords = verseWords.some(word => content.includes(word));
+    const hasBridgeWords = bridgeWords.some(word => content.includes(word));
+    
+    if (hasBridgeWords) return 'Puente';
+    if (hasChorusWords) return count === 1 ? 'Coro' : `Coro ${count}`;
+    if (hasVerseWords || count <= 2) return `Estrofa ${count}`;
+    
+    return `Sección ${count}`;
+}
+
+// ==========================================
 // SISTEMA DE TRANSPOSICIÓN
 // ==========================================
 
 /**
  * Transpone un acorde individual
- * @param {string} chord - Acorde a transponer (ej: 'Cmaj7', 'Am', 'F#sus4')
- * @param {number} semitones - Número de semitonos a transponer
- * @returns {string} - Acorde transpuesto
  */
 function transposeChord(chord, semitones) {
     if (!chord || typeof chord !== 'string' || semitones === 0) {
@@ -67,9 +232,6 @@ function transposeChord(chord, semitones) {
 
 /**
  * Transpone una línea completa que puede contener múltiples acordes
- * @param {string} line - Línea con acordes y/o letras
- * @param {number} semitones - Número de semitonos a transponer
- * @returns {string} - Línea transpuesta
  */
 function transposeLine(line, semitones) {
     if (!line || typeof line !== 'string' || semitones === 0) {
@@ -77,7 +239,6 @@ function transposeLine(line, semitones) {
     }
     
     // Regex para encontrar acordes en la línea
-    // Busca patrones como: C, Cm, C7, Cmaj7, C/E, Csus4, Cadd9, etc.
     const chordPattern = /\b([A-G][#b]?(?:m|maj|min|sus|add|dim|aug|\+|\-|°|ø|M|\d)*(?:\/[A-G][#b]?)?)\b/g;
     
     return line.replace(chordPattern, (match) => {
@@ -87,9 +248,6 @@ function transposeLine(line, semitones) {
 
 /**
  * Calcula semitonos entre dos tonalidades
- * @param {string} fromKey - Tonalidad origen
- * @param {string} toKey - Tonalidad destino
- * @returns {number} - Número de semitonos
  */
 function calculateSemitones(fromKey, toKey) {
     const from = FLAT_TO_SHARP[fromKey] || fromKey;
@@ -110,7 +268,6 @@ function calculateSemitones(fromKey, toKey) {
 // BASE DE DATOS DE CANCIONES
 // ==========================================
 
-// Canciones de ejemplo
 const defaultSongs = [
     {
         id: 1,
@@ -206,23 +363,24 @@ let appState = {
         artist: '',
         key: 'C',
         sections: {}
-    }
+    },
+    // Nuevos estados para detección automática
+    autoDetectionMode: false,
+    detectedSections: {},
+    showDetectionPreview: false,
+    fullSongText: ''
 };
 
 // ==========================================
 // GESTIÓN DE ALMACENAMIENTO LOCAL
 // ==========================================
 
-/**
- * Cargar canciones desde localStorage
- */
 function loadSongs() {
     try {
         const saved = localStorage.getItem('betaniaMusicSongs');
         if (saved) {
             appState.songs = JSON.parse(saved);
         } else {
-            // Primera vez, usar canciones de ejemplo
             appState.songs = [...defaultSongs];
             saveSongs();
         }
@@ -232,9 +390,6 @@ function loadSongs() {
     }
 }
 
-/**
- * Guardar canciones en localStorage
- */
 function saveSongs() {
     try {
         localStorage.setItem('betaniaMusicSongs', JSON.stringify(appState.songs));
@@ -247,24 +402,18 @@ function saveSongs() {
 // FUNCIONES DE RENDERIZADO
 // ==========================================
 
-/**
- * Renderizar lista de canciones en el sidebar
- */
 function renderSongsList() {
     const container = document.getElementById('songs-container');
     const countElement = document.getElementById('songs-count');
     
-    // Filtrar canciones según búsqueda
     const filteredSongs = appState.songs.filter(song =>
         song.title.toLowerCase().includes(appState.searchTerm.toLowerCase()) ||
         song.artist.toLowerCase().includes(appState.searchTerm.toLowerCase()) ||
         song.key.toLowerCase().includes(appState.searchTerm.toLowerCase())
     );
     
-    // Actualizar contador
     countElement.textContent = `Canciones (${filteredSongs.length})`;
     
-    // Renderizar canciones
     container.innerHTML = filteredSongs.map(song => `
         <div class="song-item ${appState.currentSong?.id === song.id ? 'active' : ''}" 
              onclick="selectSong(${song.id})">
@@ -277,9 +426,6 @@ function renderSongsList() {
     `).join('');
 }
 
-/**
- * Renderizar canción actual con transposición
- */
 function renderCurrentSong() {
     const viewer = document.getElementById('song-viewer');
     const welcome = document.getElementById('welcome-screen');
@@ -293,14 +439,12 @@ function renderCurrentSong() {
     welcome.style.display = 'none';
     viewer.style.display = 'block';
     
-    // Actualizar información de la canción
     document.getElementById('song-title').textContent = appState.currentSong.title;
     document.getElementById('song-artist').textContent = appState.currentSong.artist || 'Sin artista';
     document.getElementById('original-key').textContent = `Original: ${appState.originalKey}`;
     document.getElementById('current-key').textContent = `Actual: ${appState.currentKey}`;
     document.getElementById('key-select').value = appState.currentKey;
     
-    // Información de transposición
     const semitones = calculateSemitones(appState.originalKey, appState.currentKey);
     const transposeInfo = document.getElementById('transpose-info');
     
@@ -312,7 +456,6 @@ function renderCurrentSong() {
         transposeInfo.style.display = 'none';
     }
     
-    // Renderizar secciones con transposición
     const sectionsContainer = document.getElementById('song-sections');
     sectionsContainer.innerHTML = Object.entries(appState.currentSong.sections).map(([sectionName, lines]) => `
         <div class="section">
@@ -327,9 +470,6 @@ function renderCurrentSong() {
     `).join('');
 }
 
-/**
- * Renderizar formulario de añadir canción
- */
 function renderAddForm() {
     const mainView = document.getElementById('main-view');
     const addForm = document.getElementById('add-song-form');
@@ -337,7 +477,7 @@ function renderAddForm() {
     if (appState.showAddForm) {
         mainView.style.display = 'none';
         addForm.style.display = 'block';
-        renderAddedSections();
+        renderFormContent();
     } else {
         mainView.style.display = 'grid';
         addForm.style.display = 'none';
@@ -345,11 +485,93 @@ function renderAddForm() {
 }
 
 /**
- * Renderizar secciones añadidas en el formulario
+ * Renderizar contenido del formulario según el modo
  */
+function renderFormContent() {
+    // Actualizar botón de modo automático
+    const autoBtn = document.getElementById('auto-detection-btn');
+    if (autoBtn) {
+        autoBtn.textContent = appState.autoDetectionMode ? '📝 Modo Manual' : '🔮 Detección Automática';
+        autoBtn.classList.toggle('active', appState.autoDetectionMode);
+    }
+    
+    // Mostrar/ocultar elementos según el modo
+    const manualSection = document.getElementById('manual-sections');
+    const autoSection = document.getElementById('auto-detection-section');
+    
+    if (manualSection && autoSection) {
+        if (appState.autoDetectionMode) {
+            manualSection.style.display = 'none';
+            autoSection.style.display = 'block';
+            renderDetectionPreview();
+        } else {
+            manualSection.style.display = 'block';
+            autoSection.style.display = 'none';
+            renderAddedSections();
+        }
+    }
+}
+
+/**
+ * Renderizar vista previa de detección automática
+ */
+function renderDetectionPreview() {
+    const container = document.getElementById('detection-preview');
+    const sections = appState.detectedSections;
+    
+    if (!container) return;
+    
+    if (Object.keys(sections).length === 0) {
+        container.innerHTML = `
+            <div class="no-detection">
+                <p>🎯 Pega una canción completa arriba para ver la detección automática</p>
+                <div class="detection-tips">
+                    <h4>💡 Consejos para mejor detección:</h4>
+                    <ul>
+                        <li>Usa etiquetas como "Estrofa 1:", "Coro:", "Puente:"</li>
+                        <li>Separa las secciones con líneas vacías</li>
+                        <li>Incluye tanto acordes como letras</li>
+                    </ul>
+                </div>
+            </div>
+        `;
+        return;
+    }
+    
+    container.innerHTML = `
+        <div class="preview-header">
+            <span>🔍 ${Object.keys(sections).length} secciones detectadas</span>
+            <div class="preview-actions">
+                <button onclick="acceptDetection()" class="accept-btn">✅ Aceptar</button>
+                <button onclick="editDetection()" class="edit-btn">✏️ Editar</button>
+                <button onclick="clearDetection()" class="clear-btn">🗑️ Limpiar</button>
+            </div>
+        </div>
+        <div class="sections-preview">
+            ${Object.entries(sections).map(([name, lines]) => `
+                <div class="section-preview">
+                    <div class="section-header">
+                        <input type="text" value="${name}" 
+                               onchange="updateSectionName('${name}', this.value)"
+                               class="section-name-input">
+                        <span class="line-count">${lines.length} líneas</span>
+                        <button onclick="removeSectionFromDetection('${name}')" class="remove-section-btn">✕</button>
+                    </div>
+                    <div class="section-content-preview">
+                        ${lines.slice(0, 3).map(line => `<div class="line-preview">${line}</div>`).join('')}
+                        ${lines.length > 3 ? `<div class="more-lines">... y ${lines.length - 3} líneas más</div>` : ''}
+                    </div>
+                </div>
+            `).join('')}
+        </div>
+    `;
+}
+
 function renderAddedSections() {
     const container = document.getElementById('added-sections');
     const sections = Object.keys(appState.newSong.sections);
+    
+    if (!container) return;
     
     if (sections.length === 0) {
         container.innerHTML = '<p class="no-sections">No hay secciones añadidas</p>';
@@ -368,12 +590,110 @@ function renderAddedSections() {
 }
 
 // ==========================================
-// FUNCIONES DE INTERACCIÓN
+// FUNCIONES DE DETECCIÓN AUTOMÁTICA
 // ==========================================
 
 /**
- * Seleccionar una canción
+ * Procesar texto completo para detección automática
  */
+function processFullSongText() {
+    const textArea = document.getElementById('full-song-text');
+    if (!textArea) return;
+    
+    const text = textArea.value.trim();
+    if (!text) {
+        appState.detectedSections = {};
+        renderDetectionPreview();
+        return;
+    }
+    
+    appState.fullSongText = text;
+    appState.detectedSections = autoDetectSections(text);
+    renderDetectionPreview();
+}
+
+/**
+ * Aceptar detección automática
+ */
+function acceptDetection() {
+    appState.newSong.sections = { ...appState.detectedSections };
+    appState.autoDetectionMode = false;
+    renderFormContent();
+    
+    // Mostrar mensaje de éxito
+    const message = document.createElement('div');
+    message.className = 'success-message';
+    message.textContent = `✅ ${Object.keys(appState.detectedSections).length} secciones añadidas automáticamente`;
+    document.getElementById('add-song-form').appendChild(message);
+    
+    setTimeout(() => message.remove(), 3000);
+}
+
+/**
+ * Editar detección (cambiar a modo manual con secciones pre-cargadas)
+ */
+function editDetection() {
+    appState.newSong.sections = { ...appState.detectedSections };
+    appState.autoDetectionMode = false;
+    renderFormContent();
+}
+
+/**
+ * Limpiar detección
+ */
+function clearDetection() {
+    appState.detectedSections = {};
+    appState.fullSongText = '';
+    const textArea = document.getElementById('full-song-text');
+    if (textArea) textArea.value = '';
+    renderDetectionPreview();
+}
+
+/**
+ * Actualizar nombre de sección en detección
+ */
+function updateSectionName(oldName, newName) {
+    if (oldName === newName || !newName.trim()) return;
+    
+    const sections = appState.detectedSections;
+    if (sections[oldName]) {
+        sections[newName] = sections[oldName];
+        delete sections[oldName];
+        renderDetectionPreview();
+    }
+}
+
+/**
+ * Remover sección de detección
+ */
+function removeSectionFromDetection(sectionName) {
+    delete appState.detectedSections[sectionName];
+    renderDetectionPreview();
+}
+
+/**
+ * Alternar modo de detección automática
+ */
+function toggleAutoDetection() {
+    appState.autoDetectionMode = !appState.autoDetectionMode;
+    
+    if (appState.autoDetectionMode) {
+        // Al activar, limpiar secciones manuales
+        appState.newSong.sections = {};
+    } else {
+        // Al desactivar, mantener secciones si había detección
+        if (Object.keys(appState.detectedSections).length > 0) {
+            appState.newSong.sections = { ...appState.detectedSections };
+        }
+    }
+    
+    renderFormContent();
+}
+
+// ==========================================
+// FUNCIONES DE INTERACCIÓN (EXISTENTES)
+// ==========================================
+
 function selectSong(songId) {
     appState.currentSong = appState.songs.find(song => song.id === songId);
     if (appState.currentSong) {
@@ -384,9 +704,6 @@ function selectSong(songId) {
     renderSongsList();
 }
 
-/**
- * Cambiar tonalidad
- */
 function changeKey(direction) {
     if (!appState.currentKey) return;
     
@@ -404,9 +721,6 @@ function changeKey(direction) {
     renderCurrentSong();
 }
 
-/**
- * Resetear a tonalidad original
- */
 function resetKey() {
     if (appState.originalKey) {
         appState.currentKey = appState.originalKey;
@@ -414,9 +728,6 @@ function resetKey() {
     }
 }
 
-/**
- * Añadir nueva sección al formulario
- */
 function addSection() {
     const sectionName = document.getElementById('section-name').value.trim();
     const sectionContent = document.getElementById('section-content').value.trim();
@@ -430,24 +741,17 @@ function addSection() {
     
     appState.newSong.sections[sectionName] = lines;
     
-    // Limpiar campos
     document.getElementById('section-name').value = '';
     document.getElementById('section-content').value = '';
     
     renderAddedSections();
 }
 
-/**
- * Remover sección del formulario
- */
 function removeSection(sectionName) {
     delete appState.newSong.sections[sectionName];
     renderAddedSections();
 }
 
-/**
- * Guardar nueva canción
- */
 function saveSong() {
     const title = document.getElementById('new-title').value.trim();
     const artist = document.getElementById('new-artist').value.trim();
@@ -474,13 +778,19 @@ function saveSong() {
     appState.songs.push(newSong);
     saveSongs();
     
-    // Limpiar formulario
+    // Limpiar formulario completamente
     appState.newSong = { title: '', artist: '', key: 'C', sections: {} };
+    appState.autoDetectionMode = false;
+    appState.detectedSections = {};
+    appState.fullSongText = '';
+    
     document.getElementById('new-title').value = '';
     document.getElementById('new-artist').value = '';
     document.getElementById('new-key').value = 'C';
     
-    // Cerrar formulario y mostrar canción
+    const fullSongTextArea = document.getElementById('full-song-text');
+    if (fullSongTextArea) fullSongTextArea.value = '';
+    
     appState.showAddForm = false;
     selectSong(newSong.id);
     renderAddForm();
@@ -489,19 +799,22 @@ function saveSong() {
     alert('¡Canción guardada exitosamente!');
 }
 
-/**
- * Cancelar formulario
- */
 function cancelAddForm() {
     appState.showAddForm = false;
     appState.newSong = { title: '', artist: '', key: 'C', sections: {} };
+    appState.autoDetectionMode = false;
+    appState.detectedSections = {};
+    appState.fullSongText = '';
     
-    // Limpiar campos
+    // Limpiar todos los campos
     document.getElementById('new-title').value = '';
     document.getElementById('new-artist').value = '';
     document.getElementById('new-key').value = 'C';
     document.getElementById('section-name').value = '';
     document.getElementById('section-content').value = '';
+    
+    const fullSongTextArea = document.getElementById('full-song-text');
+    if (fullSongTextArea) fullSongTextArea.value = '';
     
     renderAddForm();
 }
@@ -510,23 +823,18 @@ function cancelAddForm() {
 // EVENT LISTENERS
 // ==========================================
 
-/**
- * Configurar todos los event listeners
- */
 function setupEventListeners() {
-    // Botón añadir canción
+    // Eventos existentes
     document.getElementById('add-song-btn').addEventListener('click', () => {
         appState.showAddForm = true;
         renderAddForm();
     });
     
-    // Búsqueda
     document.getElementById('search-input').addEventListener('input', (e) => {
         appState.searchTerm = e.target.value;
         renderSongsList();
     });
     
-    // Controles de transposición
     document.getElementById('transpose-down').addEventListener('click', () => {
         changeKey('down');
     });
@@ -542,7 +850,6 @@ function setupEventListeners() {
     
     document.getElementById('reset-key').addEventListener('click', resetKey);
     
-    // Formulario añadir canción
     document.getElementById('cancel-add').addEventListener('click', cancelAddForm);
     document.getElementById('cancel-form-btn').addEventListener('click', cancelAddForm);
     document.getElementById('save-song-btn').addEventListener('click', saveSong);
@@ -572,7 +879,6 @@ function setupEventListeners() {
             }
         }
         
-        // Escape para cerrar formularios
         if (e.key === 'Escape') {
             if (appState.showAddForm) {
                 cancelAddForm();
@@ -580,7 +886,6 @@ function setupEventListeners() {
         }
     });
     
-    // Enter en campos del formulario
     document.getElementById('section-name').addEventListener('keydown', (e) => {
         if (e.key === 'Enter') {
             e.preventDefault();
@@ -588,7 +893,6 @@ function setupEventListeners() {
         }
     });
     
-    // Ctrl+Enter para añadir sección
     document.getElementById('section-content').addEventListener('keydown', (e) => {
         if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
             e.preventDefault();
@@ -601,70 +905,30 @@ function setupEventListeners() {
 // INICIALIZACIÓN
 // ==========================================
 
-/**
- * Inicializar la aplicación
- */
 function initApp() {
-    console.log('🎵 Inicializando Betania Music...');
+    console.log('🎵 Inicializando Betania Music con Detección Automática...');
     
-    // Cargar datos
     loadSongs();
-    
-    // Configurar eventos
     setupEventListeners();
-    
-    // Renderizar interfaz inicial
     renderSongsList();
     renderCurrentSong();
     renderAddForm();
     
     console.log('✅ Betania Music iniciado correctamente');
     console.log(`📊 ${appState.songs.length} canciones cargadas`);
-    
-    // Mostrar tips en consola
-    console.log(`
-🎵 BETANIA MUSIC - TIPS DE USO:
-
-📱 Atajos de teclado:
-• Ctrl + ↑/↓  : Transponer
-• Ctrl + R    : Reset tonalidad
-• Ctrl + N    : Nueva canción
-• Escape      : Cerrar formularios
-
-🎸 Transposición:
-• Maneja todos los acordes: C, Cm, C7, Cmaj7, Csus4, C/E, etc.
-• Botones ♯/♭ para cambio rápido
-• Dropdown para selección directa
-• Reset instantáneo a original
-
-💾 Guardado:
-• Automático en localStorage
-• Sincronización entre pestañas
-• Datos persistentes offline
-
-🔍 Búsqueda:
-• Por título, artista o tonalidad
-• Tiempo real mientras escribes
-• Case insensitive
-
-📱 PWA:
-• Instalar como app nativa
-• Funciona offline
-• Notificaciones de actualización
-    `);
+    console.log('🔮 Detección automática de partes activada');
 }
 
-// ==========================================
-// FUNCIONES GLOBALES (para HTML inline)
-// ==========================================
-
-// Hacer funciones disponibles globalmente para onclick en HTML
+// Hacer funciones disponibles globalmente
 window.selectSong = selectSong;
 window.removeSection = removeSection;
-
-// ==========================================
-// INICIO DE LA APLICACIÓN
-// ==========================================
+window.toggleAutoDetection = toggleAutoDetection;
+window.processFullSongText = processFullSongText;
+window.acceptDetection = acceptDetection;
+window.editDetection = editDetection;
+window.clearDetection = clearDetection;
+window.updateSectionName = updateSectionName;
+window.removeSectionFromDetection = removeSectionFromDetection;
 
 // Inicializar cuando el DOM esté listo
 if (document.readyState === 'loading') {
