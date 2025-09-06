@@ -3,174 +3,395 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Betania Music - Gestor de Canciones</title>
     
-    <!-- Google Fonts para mejores tipografías -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Source+Code+Pro:wght@400;500;600&display=swap" rel="stylesheet">
+    <!-- Meta básicos -->
+    <title>Betania Music - Sistema Musical Avanzado</title>
+    <meta name="description" content="Sistema completo de gestión musical para acordes, letras y transposición automática - Equipo de Alabanza Betania">
+    <meta name="keywords" content="música, acordes, guitarra, alabanza, canciones, transposición, betania">
+    <meta name="author" content="Equipo de Alabanza Betania">
     
+    <!-- PWA Meta Tags -->
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#079b82">
+    <meta name="background-color" content="#ffffff">
+    
+    <!-- iOS Meta Tags -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="Betania Music">
+    <link rel="apple-touch-icon" href="assets/icon-192x192.png">
+    <link rel="apple-touch-icon" sizes="152x152" href="assets/icon-152x152.png">
+    
+    <!-- Iconos -->
+    <link rel="icon" type="image/png" sizes="32x32" href="assets/icon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="assets/icon-16x16.png">
+    <link rel="shortcut icon" href="assets/icon-192x192.png">
+    
+    <!-- Estilos -->
     <link rel="stylesheet" href="styles.css">
+    
+    <!-- Preload crítico -->
+    <link rel="preload" href="script.js" as="script">
 </head>
 <body>
-    <!-- Header -->
-    <header class="header">
-        <div class="header-content">
-            <div class="logo-section" id="logo-home" style="cursor: pointer;">
-                <div class="logo-icon">
-                    <svg width="40" height="40" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <!-- Fondo circular con degradado -->
-                        <defs>
-                            <radialGradient id="logoGradient" cx="50%" cy="30%" r="70%">
-                                <stop offset="0%" style="stop-color:#ffffff;stop-opacity:1" />
-                                <stop offset="100%" style="stop-color:#e0f2f1;stop-opacity:1" />
-                            </radialGradient>
-                        </defs>
-                        <circle cx="50" cy="50" r="45" fill="url(#logoGradient)" stroke="rgba(255,255,255,0.3)" stroke-width="1"/>
-                        <!-- Llama principal -->
-                        <path d="M50 20C42 20 36 26 36 35C36 42 39 47 43 50C46 52 48 53 50 53C52 53 54 52 57 50C61 47 64 42 64 35C64 26 58 20 50 20Z" fill="rgba(255,255,255,0.9)"/>
-                        <!-- Llama interna -->
-                        <path d="M50 25C45 25 41 29 41 35C41 39 43 42 45 44C47 45 48 46 50 46C52 46 53 45 55 44C57 42 59 39 59 35C59 29 55 25 50 25Z" fill="rgba(255,255,255,0.7)"/>
-                        <!-- Núcleo de la llama -->
-                        <ellipse cx="50" cy="37" rx="5" ry="8" fill="rgba(255,255,255,0.8)"/>
-                        <!-- Punta superior -->
-                        <path d="M50 20C48 22 47 25 47 28C47 30 48 31 49 32C49.5 32.5 50 32.5 50 32.5C50 32.5 50.5 32.5 51 32C52 31 53 30 53 28C53 25 52 22 50 20Z" fill="white"/>
-                    </svg>
-                </div>
-                <div class="logo-text">Betania Music</div>
-            </div>
-            <nav>
-                <div class="nav-tabs">
-                    <button class="nav-tab active" data-route="canciones">Canciones</button>
-                    <button class="nav-tab" data-route="edicion">Edición</button>
-                </div>
-            </nav>
+    <!-- Pantalla de carga -->
+    <div id="loading-screen" class="loading-screen">
+        <div class="loading-content">
+            <div class="loading-logo">🎵</div>
+            <h2>Betania Music</h2>
+            <div class="loading-spinner"></div>
+            <p>Cargando sistema musical...</p>
         </div>
+    </div>
+
+    <!-- Header principal -->
+    <header class="app-header">
+        <div class="header-content">
+            <h1>🎵 Betania Music</h1>
+            <p>Sistema Avanzado de Gestión Musical</p>
+        </div>
+        <button id="add-song-btn" class="add-song-btn">
+            <span class="btn-icon">➕</span>
+            <span class="btn-text">Añadir Canción</span>
+        </button>
     </header>
 
-    <!-- Main App Container -->
-    <div class="app-container">
-        <!-- Songs List View -->
-        <div class="view active" id="view-canciones">
-            <div class="songs-container">
-                <div class="section-header">
-                    <h2 class="section-title">Canciones</h2>
-                    <button class="btn-add-song" id="btn-add-song">+ Añadir canción</button>
+    <!-- Contenido principal -->
+    <div class="app-content">
+        <!-- Vista principal -->
+        <div id="main-view" class="main-view">
+            <!-- Sidebar -->
+            <div class="sidebar">
+                <!-- Búsqueda -->
+                <div class="search-box">
+                    <span class="search-icon">🔍</span>
+                    <input 
+                        type="text" 
+                        id="search-input"
+                        placeholder="Buscar canciones..."
+                        autocomplete="off"
+                    >
                 </div>
-
-                <div class="search-container">
-                    <input type="text" class="search-box" id="search-box" placeholder="Buscar por título o autor...">
-                </div>
-
-                <!-- Empty State -->
-                <div class="empty-state" id="empty-state">
-                    <h3>Aún no hay canciones</h3>
-                    <p>Pulsa "Añadir canción" para crear la primera.</p>
-                </div>
-
-                <!-- Songs Grid -->
-                <div class="songs-grid" id="songs-grid" style="display: none;">
-                    <!-- Songs will be dynamically added here -->
+                
+                <!-- Lista de canciones -->
+                <div class="songs-list">
+                    <h3 id="songs-count">Canciones (0)</h3>
+                    <div id="songs-container" class="songs-container">
+                        <!-- Las canciones se cargan dinámicamente -->
+                    </div>
                 </div>
             </div>
-        </div>
 
-        <!-- Song Reader View -->
-        <div class="view" id="view-song-reader">
-            <div class="song-reader">
-                <div class="reader-header">
-                    <button class="btn" id="btn-back-to-list">← Volver a canciones</button>
-                    <div class="reader-title" id="reader-title">Título de la canción</div>
-                    <div class="reader-meta" id="reader-meta">Autor • Tonalidad base</div>
-                    
-                    <div class="reader-controls">
-                        <div class="transpose-controls">
-                            <span class="transpose-label">Tonalidad:</span>
-                            <button class="transpose-btn" id="btn-transpose-down-reader">♭</button>
-                            <div class="current-key" id="current-key-reader">C</div>
-                            <button class="transpose-btn" id="btn-transpose-up-reader">♯</button>
-                            <button class="btn btn-sm" id="btn-reset-key-reader">Base</button>
+            <!-- Contenido principal -->
+            <div class="main-content">
+                <!-- Pantalla de bienvenida -->
+                <div id="welcome-screen" class="welcome-screen">
+                    <div class="welcome-icon">🎵</div>
+                    <h2>Bienvenido a Betania Music</h2>
+                    <p>Selecciona una canción para empezar o añade una nueva</p>
+                    <div class="welcome-features">
+                        <div class="feature">
+                            <span>🎸</span>
+                            <span>Transposición automática</span>
                         </div>
-                        
-                        <button class="btn btn-primary" id="btn-edit-song">Editar</button>
+                        <div class="feature">
+                            <span>📝</span>
+                            <span>Gestión de canciones</span>
+                        </div>
+                        <div class="feature">
+                            <span>💾</span>
+                            <span>Guardado automático</span>
+                        </div>
                     </div>
                 </div>
 
-                <div class="song-content" id="song-content">
-                    <!-- Song sections will be rendered here -->
-                </div>
-            </div>
-        </div>
-
-        <!-- Editor View -->
-        <div class="view" id="view-edicion">
-            <div class="editor-container">
-                <!-- Editor Sidebar -->
-                <div class="editor-sidebar">
-                    <div class="sidebar-section">
-                        <h3 class="sidebar-title">Estructura</h3>
-                        <div id="sections-outline">
-                            <!-- Outline will be generated here -->
-                        </div>
-                        <button class="btn btn-sm" id="btn-add-section" style="width: 100%; margin-top: 0.5rem;">+ Sección</button>
-                    </div>
-                    
-                    <div class="sidebar-section">
-                        <h3 class="sidebar-title">Acciones</h3>
-                        <button class="btn btn-sm" id="btn-transpose-up" style="width: 100%; margin-bottom: 0.25rem;">♯ Subir tono</button>
-                        <button class="btn btn-sm" id="btn-transpose-down" style="width: 100%; margin-bottom: 0.25rem;">♭ Bajar tono</button>
-                        <button class="btn btn-sm" id="btn-reset-transpose" style="width: 100%;">Reset</button>
-                    </div>
-                </div>
-
-                <!-- Editor Main -->
-                <div class="editor-main">
-                    <div class="editor-toolbar">
-                        <div class="toolbar-left">
-                            <button class="btn btn-sm" id="btn-back-from-editor">← Volver</button>
-                            <input type="text" id="song-title-editor" placeholder="Título de la canción" 
-                                   class="title-input">
-                        </div>
-                        
-                        <div class="toolbar-right">
-                            <div class="chips-container">
-                                <div class="chip" id="key-chip">
-                                    <span>Tonalidad:</span>
-                                    <span id="key-status">C</span>
-                                </div>
+                <!-- Visor de canción -->
+                <div id="song-viewer" class="song-viewer" style="display: none;">
+                    <!-- Header de canción -->
+                    <div class="song-header">
+                        <div class="song-info">
+                            <h2 id="song-title">Título de la Canción</h2>
+                            <p id="song-artist" class="song-artist">Artista</p>
+                            <div class="key-info">
+                                <span id="original-key" class="key-badge original">Original: C</span>
+                                <span id="current-key" class="key-badge current">Actual: C</span>
+                                <span id="transpose-info" class="transpose-info" style="display: none;">
+                                    Transpuesta +0 semitonos
+                                </span>
                             </div>
-                            <span class="save-indicator" id="save-indicator">Guardado</span>
-                            <button class="btn btn-sm" id="btn-reanalyze" style="display: none;">🔄 Reanalizar</button>
-                            <button class="btn btn-sm" id="btn-add-pair-editor">+ Par</button>
-                            <button class="btn btn-primary" id="btn-save-song">Guardar</button>
+                        </div>
+                        
+                        <!-- Controles de transposición -->
+                        <div class="transpose-controls">
+                            <button id="transpose-down" class="transpose-btn" title="Bajar semitono">
+                                <span>🔻 ♭</span>
+                            </button>
+                            <select id="key-select" class="key-select" title="Seleccionar tonalidad">
+                                <option value="C">C</option>
+                                <option value="C#">C#</option>
+                                <option value="D">D</option>
+                                <option value="D#">D#</option>
+                                <option value="E">E</option>
+                                <option value="F">F</option>
+                                <option value="F#">F#</option>
+                                <option value="G">G</option>
+                                <option value="G#">G#</option>
+                                <option value="A">A</option>
+                                <option value="A#">A#</option>
+                                <option value="B">B</option>
+                            </select>
+                            <button id="transpose-up" class="transpose-btn" title="Subir semitono">
+                                <span>♯ 🔺</span>
+                            </button>
+                            <button id="reset-key" class="reset-btn" title="Resetear a tonalidad original">
+                                Reset
+                            </button>
                         </div>
                     </div>
-
-                    <!-- Editor Content -->
-                    <div class="editor-content" id="editor-content">
-                        <!-- Sections and pairs will be rendered here -->
+                    
+                    <!-- Secciones de la canción -->
+                    <div id="song-sections" class="song-sections">
+                        <!-- Las secciones se cargan dinámicamente -->
                     </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Formulario añadir canción -->
+        <div id="add-song-form" class="add-song-form" style="display: none;">
+            <div class="form-header">
+                <h2>➕ Añadir Nueva Canción</h2>
+                <button id="cancel-add" class="cancel-btn">✕</button>
+            </div>
+            
+            <div class="form-content">
+                <!-- Información básica -->
+                <div class="form-section">
+                    <h3>Información Básica</h3>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="new-title">Título de la Canción *</label>
+                            <input 
+                                type="text" 
+                                id="new-title" 
+                                placeholder="Ej: Entrelazados"
+                                required
+                            >
+                        </div>
+                        <div class="form-group">
+                            <label for="new-artist">Artista</label>
+                            <input 
+                                type="text" 
+                                id="new-artist" 
+                                placeholder="Ej: Lucas Conslie"
+                            >
+                        </div>
+                        <div class="form-group">
+                            <label for="new-key">Tonalidad Original *</label>
+                            <select id="new-key" required>
+                                <option value="C">C</option>
+                                <option value="C#">C#</option>
+                                <option value="D">D</option>
+                                <option value="D#">D#</option>
+                                <option value="E">E</option>
+                                <option value="F">F</option>
+                                <option value="F#">F#</option>
+                                <option value="G">G</option>
+                                <option value="G#">G#</option>
+                                <option value="A">A</option>
+                                <option value="A#">A#</option>
+                                <option value="B">B</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Secciones añadidas -->
+                <div class="form-section">
+                    <h3>Secciones de la Canción</h3>
+                    <div id="added-sections" class="added-sections">
+                        <p class="no-sections">No hay secciones añadidas</p>
+                    </div>
+                </div>
+                
+                <!-- Añadir sección -->
+                <div class="form-section add-section-form">
+                    <h3>Añadir Nueva Sección</h3>
+                    <div class="form-group">
+                        <label for="section-name">Nombre de la Sección</label>
+                        <input 
+                            type="text" 
+                            id="section-name" 
+                            placeholder="Ej: Estrofa 1, Coro, Puente, etc."
+                        >
+                    </div>
+                    <div class="form-group">
+                        <label for="section-content">Contenido (Acordes y Letras)</label>
+                        <textarea 
+                            id="section-content" 
+                            placeholder="Ej:
+C                    Am
+Nada me apartará de ti
+F                    G
+Tu amor me sostiene aquí
+
+Tips:
+- Pon los acordes sobre las letras
+- Una línea por frase
+- Usa espacios para alinear acordes"
+                            rows="8"
+                        ></textarea>
+                    </div>
+                    <button id="add-section-btn" class="add-section-btn">
+                        Añadir Sección
+                    </button>
+                </div>
+                
+                <!-- Acciones del formulario -->
+                <div class="form-actions">
+                    <button id="save-song-btn" class="save-btn">
+                        💾 Guardar Canción
+                    </button>
+                    <button id="cancel-form-btn" class="cancel-form-btn">
+                        Cancelar
+                    </button>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Modal para formularios -->
-    <div class="modal-overlay" id="modal-overlay" style="display: none;">
-        <div class="modal">
-            <div class="modal-header">
-                <h3 class="modal-title" id="modal-title">Título del Modal</h3>
-                <button class="modal-close" id="modal-close">×</button>
+    <!-- Banner de instalación PWA -->
+    <div id="install-banner" class="install-banner" style="display: none;">
+        <div class="install-content">
+            <div class="install-icon">📱</div>
+            <div class="install-text">
+                <strong>¡Instala Betania Music!</strong>
+                <p>Úsala como una app nativa</p>
             </div>
-            <div class="modal-content" id="modal-content">
-                <!-- Contenido dinámico del modal -->
-            </div>
-            <div class="modal-footer" id="modal-footer">
-                <!-- Botones dinámicos del modal -->
+            <div class="install-actions">
+                <button id="install-button" class="install-btn">Instalar</button>
+                <button id="install-dismiss" class="dismiss-btn">✕</button>
             </div>
         </div>
     </div>
 
+    <!-- Banner de actualización -->
+    <div id="update-banner" class="update-banner" style="display: none;">
+        <div class="update-content">
+            <span>🔄 Nueva versión disponible</span>
+            <button id="update-button" class="update-btn">Actualizar</button>
+            <button id="update-dismiss" class="dismiss-btn">✕</button>
+        </div>
+    </div>
+
+    <!-- Indicador offline -->
+    <div id="offline-indicator" class="offline-indicator" style="display: none;">
+        <span>📡 Sin conexión - Usando modo offline</span>
+    </div>
+
+    <!-- Script principal -->
     <script src="script.js"></script>
+    
+    <!-- PWA Registration Script -->
+    <script>
+        // Variables PWA
+        let deferredPrompt;
+
+        // Detectar instalación
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredPrompt = e;
+            showInstallBanner();
+        });
+
+        // Mostrar banner de instalación
+        function showInstallBanner() {
+            const banner = document.getElementById('install-banner');
+            if (banner) {
+                banner.style.display = 'block';
+                setTimeout(() => banner.classList.add('show'), 100);
+            }
+        }
+
+        // Instalar app
+        document.getElementById('install-button')?.addEventListener('click', async () => {
+            if (!deferredPrompt) return;
+            
+            deferredPrompt.prompt();
+            const { outcome } = await deferredPrompt.userChoice;
+            
+            deferredPrompt = null;
+            document.getElementById('install-banner').style.display = 'none';
+        });
+
+        // Cerrar banner
+        document.getElementById('install-dismiss')?.addEventListener('click', () => {
+            document.getElementById('install-banner').style.display = 'none';
+        });
+
+        // Registrar Service Worker
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', async () => {
+                try {
+                    const registration = await navigator.serviceWorker.register('sw.js');
+                    console.log('✅ SW registrado:', registration.scope);
+                    
+                    // Manejar actualizaciones
+                    registration.addEventListener('updatefound', () => {
+                        const newWorker = registration.installing;
+                        newWorker.addEventListener('statechange', () => {
+                            if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                                showUpdateBanner();
+                            }
+                        });
+                    });
+                } catch (error) {
+                    console.error('❌ Error registrando SW:', error);
+                }
+            });
+        }
+
+        function showUpdateBanner() {
+            const banner = document.getElementById('update-banner');
+            if (banner) {
+                banner.style.display = 'block';
+                setTimeout(() => banner.classList.add('show'), 100);
+            }
+        }
+
+        // Manejar actualización
+        document.getElementById('update-button')?.addEventListener('click', () => {
+            if (navigator.serviceWorker.controller) {
+                navigator.serviceWorker.controller.postMessage({ type: 'SKIP_WAITING' });
+                window.location.reload();
+            }
+        });
+
+        // Estado de conexión
+        function updateOnlineStatus() {
+            const indicator = document.getElementById('offline-indicator');
+            if (navigator.onLine) {
+                indicator.style.display = 'none';
+            } else {
+                indicator.style.display = 'block';
+            }
+        }
+
+        window.addEventListener('online', updateOnlineStatus);
+        window.addEventListener('offline', updateOnlineStatus);
+
+        // Ocultar loading screen
+        window.addEventListener('load', () => {
+            setTimeout(() => {
+                const loadingScreen = document.getElementById('loading-screen');
+                if (loadingScreen) {
+                    loadingScreen.classList.add('fade-out');
+                    setTimeout(() => {
+                        loadingScreen.style.display = 'none';
+                    }, 500);
+                }
+            }, 1000);
+        });
+    </script>
 </body>
 </html>
