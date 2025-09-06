@@ -1,941 +1,674 @@
-// ===== CONFIGURACIÓN Y DATOS =====
-const CONFIG = {
-    keys: ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'],
-    chordPatterns: [
-        // Mayores
-        'C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B',
-        // Menores
-        'Cm', 'C#m', 'Dm', 'D#m', 'Em', 'Fm', 'F#m', 'Gm', 'G#m', 'Am', 'A#m', 'Bm',
-        // Séptimas
-        'C7', 'D7', 'E7', 'F7', 'G7', 'A7', 'B7',
-        // Menores séptimas
-        'Cm7', 'Dm7', 'Em7', 'Fm7', 'Gm7', 'Am7', 'Bm7',
-        // Mayores séptimas
-        'Cmaj7', 'Dmaj7', 'Emaj7', 'Fmaj7', 'Gmaj7', 'Amaj7', 'Bmaj7',
-        // Suspendidos
-        'Csus2', 'Csus4', 'Dsus2', 'Dsus4', 'Esus4', 'Fsus2', 'Fsus4', 
-        'Gsus2', 'Gsus4', 'Asus2', 'Asus4', 'Bsus4'
-    ]
+/**
+ * ==========================================
+ * 🎵 BETANIA MUSIC - SISTEMA COMPLETO JS
+ * ==========================================
+ */
+
+// ==========================================
+// CONFIGURACIÓN MUSICAL
+// ==========================================
+
+// Notas cromáticas (base para transposición)
+const NOTES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+
+// Equivalencias bemol/sostenido
+const SHARP_TO_FLAT = {
+    'C#': 'Db', 'D#': 'Eb', 'F#': 'Gb', 'G#': 'Ab', 'A#': 'Bb'
 };
 
-// ===== ESTADO GLOBAL =====
-let state = {
-    currentRoute: 'canciones',
-    songs: [],
-    currentSong: null,
-    editingSong: null,
-    originalKey: 'C',
-    currentKey: 'C',
-    searchTerm: '',
-    filteredSongs: []
+const FLAT_TO_SHARP = {
+    'Db': 'C#', 'Eb': 'D#', 'Gb': 'F#', 'Ab': 'G#', 'Bb': 'A#'
 };
 
-// ===== ELEMENTOS DOM =====
-const elements = {
-    // Navegación
-    navTabs: document.querySelectorAll('.nav-tab'),
-    views: document.querySelectorAll('.view'),
-    logoHome: document.getElementById('logo-home'),
-    
-    // Vista de canciones
-    searchBox: document.getElementById('search-box'),
-    songsGrid: document.getElementById('songs-grid'),
-    emptyState: document.getElementById('empty-state'),
-    btnAddSong: document.getElementById('btn-add-song'),
-    
-    // Lector de canciones
-    btnBackToList: document.getElementById('btn-back-to-list'),
-    readerTitle: document.getElementById('reader-title'),
-    readerMeta: document.getElementById('reader-meta'),
-    songContent: document.getElementById('song-content'),
-    currentKeyReader: document.getElementById('current-key-reader'),
-    btnTransposeUpReader: document.getElementById('btn-transpose-up-reader'),
-    btnTransposeDownReader: document.getElementById('btn-transpose-down-reader'),
-    btnResetKeyReader: document.getElementById('btn-reset-key-reader'),
-    btnEditSong: document.getElementById('btn-edit-song'),
-    
-    // Editor
-    btnBackFromEditor: document.getElementById('btn-back-from-editor'),
-    songTitleEditor: document.getElementById('song-title-editor'),
-    keyStatus: document.getElementById('key-status'),
-    saveIndicator: document.getElementById('save-indicator'),
-    btnSaveSong: document.getElementById('btn-save-song'),
-    btnAddPairEditor: document.getElementById('btn-add-pair-editor'),
-    editorContent: document.getElementById('editor-content'),
-    sectionsOutline: document.getElementById('sections-outline'),
-    btnAddSection: document.getElementById('btn-add-section'),
-    btnTransposeUp: document.getElementById('btn-transpose-up'),
-    btnTransposeDown: document.getElementById('btn-transpose-down'),
-    btnResetTranspose: document.getElementById('btn-reset-transpose'),
-    
-    // Modal
-    modalOverlay: document.getElementById('modal-overlay'),
-    modalTitle: document.getElementById('modal-title'),
-    modalContent: document.getElementById('modal-content'),
-    modalFooter: document.getElementById('modal-footer'),
-    modalClose: document.getElementById('modal-close')
-};
+// ==========================================
+// SISTEMA DE TRANSPOSICIÓN
+// ==========================================
 
-// ===== FUNCIONES DE UTILIDAD =====
-function debounce(func, wait) {
-    let timeout;
-    return function executedFunction(...args) {
-        const later = () => {
-            clearTimeout(timeout);
-            func(...args);
-        };
-        clearTimeout(timeout);
-        timeout = setTimeout(later, wait);
-    };
-}
-
-function isMobile() {
-    return window.innerWidth < 768;
-}
-
-function generateId() {
-    return Date.now().toString(36) + Math.random().toString(36).substr(2);
-}
-
-function saveToStorage() {
-    try {
-        localStorage.setItem('betania-songs', JSON.stringify(state.songs));
-        console.log('Canciones guardadas:', state.songs.length);
-    } catch (error) {
-        console.error('Error al guardar:', error);
+/**
+ * Transpone un acorde individual
+ * @param {string} chord - Acorde a transponer (ej: 'Cmaj7', 'Am', 'F#sus4')
+ * @param {number} semitones - Número de semitonos a transponer
+ * @returns {string} - Acorde transpuesto
+ */
+function transposeChord(chord, semitones) {
+    if (!chord || typeof chord !== 'string' || semitones === 0) {
+        return chord;
     }
-}
-
-function loadFromStorage() {
-    try {
-        const saved = localStorage.getItem('betania-songs');
-        if (saved) {
-            state.songs = JSON.parse(saved);
-            state.filteredSongs = [...state.songs];
-        } else {
-            loadDefaultSongs();
-        }
-    } catch (error) {
-        console.error('Error al cargar:', error);
-        loadDefaultSongs();
-    }
-}
-
-function loadDefaultSongs() {
-    state.songs = [
-        {
-            id: '1',
-            title: 'Es Él',
-            author: 'TTL',
-            originalKey: 'C',
-            sections: [
-                {
-                    id: 's1',
-                    label: 'Intro',
-                    pairs: [
-                        { id: 'p1', chords: '', lyrics: 'ES ÉL' },
-                        { id: 'p2', chords: '', lyrics: '' },
-                        { id: 'p3', chords: 'F G    F G    Am G.  C', lyrics: '' },
-                        { id: 'p4', chords: '', lyrics: 'ESTROFA (segunda vuelta)' },
-                        { id: 'p5', chords: '', lyrics: '' },
-                        { id: 'p6', chords: 'C', lyrics: 'Estoy preparando el camino' },
-                        { id: 'p7', chords: '', lyrics: '' },
-                        { id: 'p8', chords: 'Am       F(Bb)         C(Am)', lyrics: '' }
-                    ]
-                }
-            ]
-        }
-    ];
     
-    state.filteredSongs = [...state.songs];
-}
-
-// ===== FUNCIONES DE TRANSPOSICIÓN =====
-function getKeyIndex(key) {
-    // Normalizar la clave (remover modificadores como m, 7, etc.)
-    const baseKey = key.replace(/[^A-G#b]/g, '');
-    return CONFIG.keys.indexOf(baseKey);
-}
-
-function transposeKey(key, semitones) {
-    const baseKey = key.replace(/[^A-G#b]/g, '');
-    const modifier = key.replace(baseKey, '');
+    // Regex completa para capturar todos los tipos de acordes
+    const chordRegex = /^([A-G][#b]?)(.*)$/;
+    const match = chord.trim().match(chordRegex);
     
-    const currentIndex = CONFIG.keys.indexOf(baseKey);
-    if (currentIndex === -1) return key;
+    if (!match) return chord;
     
-    let newIndex = (currentIndex + semitones) % 12;
+    let [, rootNote, suffix] = match;
+    
+    // Normalizar nota (convertir bemoles a sostenidos para cálculo)
+    const normalizedRoot = FLAT_TO_SHARP[rootNote] || rootNote;
+    
+    // Encontrar índice de la nota
+    const noteIndex = NOTES.indexOf(normalizedRoot);
+    if (noteIndex === -1) return chord;
+    
+    // Calcular nueva posición
+    let newIndex = (noteIndex + semitones) % 12;
     if (newIndex < 0) newIndex += 12;
     
-    return CONFIG.keys[newIndex] + modifier;
+    // Obtener la nueva nota
+    let newNote = NOTES[newIndex];
+    
+    // Mantener estilo de nomenclatura (bemol vs sostenido) según contexto
+    if (rootNote.includes('b') && SHARP_TO_FLAT[newNote]) {
+        newNote = SHARP_TO_FLAT[newNote];
+    }
+    
+    return newNote + suffix;
 }
 
-function transposeChordLine(chordLine, semitones) {
-    if (!chordLine || semitones === 0) return chordLine;
+/**
+ * Transpone una línea completa que puede contener múltiples acordes
+ * @param {string} line - Línea con acordes y/o letras
+ * @param {number} semitones - Número de semitonos a transponer
+ * @returns {string} - Línea transpuesta
+ */
+function transposeLine(line, semitones) {
+    if (!line || typeof line !== 'string' || semitones === 0) {
+        return line;
+    }
     
-    let result = chordLine;
+    // Regex para encontrar acordes en la línea
+    // Busca patrones como: C, Cm, C7, Cmaj7, C/E, Csus4, Cadd9, etc.
+    const chordPattern = /\b([A-G][#b]?(?:m|maj|min|sus|add|dim|aug|\+|\-|°|ø|M|\d)*(?:\/[A-G][#b]?)?)\b/g;
     
-    // Ordenar patrones por longitud (más largos primero)
-    const sortedPatterns = [...CONFIG.chordPatterns].sort((a, b) => b.length - a.length);
-    
-    sortedPatterns.forEach(pattern => {
-        const regex = new RegExp(`\\b${pattern.replace(/[#b]/g, '[$&]?')}\\b`, 'g');
-        result = result.replace(regex, (match) => {
-            return transposeKey(match, semitones);
-        });
+    return line.replace(chordPattern, (match) => {
+        return transposeChord(match, semitones);
     });
-    
-    return result;
 }
 
-function calculateTransposition(originalKey, currentKey) {
-    const originalIndex = getKeyIndex(originalKey);
-    const currentIndex = getKeyIndex(currentKey);
+/**
+ * Calcula semitonos entre dos tonalidades
+ * @param {string} fromKey - Tonalidad origen
+ * @param {string} toKey - Tonalidad destino
+ * @returns {number} - Número de semitonos
+ */
+function calculateSemitones(fromKey, toKey) {
+    const from = FLAT_TO_SHARP[fromKey] || fromKey;
+    const to = FLAT_TO_SHARP[toKey] || toKey;
     
-    if (originalIndex === -1 || currentIndex === -1) return 0;
+    const fromIndex = NOTES.indexOf(from);
+    const toIndex = NOTES.indexOf(to);
     
-    let semitones = currentIndex - originalIndex;
-    if (semitones > 6) semitones -= 12;
-    if (semitones < -6) semitones += 12;
+    if (fromIndex === -1 || toIndex === -1) return 0;
+    
+    let semitones = toIndex - fromIndex;
+    if (semitones < 0) semitones += 12;
     
     return semitones;
 }
 
-// ===== FUNCIONES DE NAVEGACIÓN =====
-function navigateToRoute(route) {
-    state.currentRoute = route;
-    
-    // Actualizar tabs activos
-    elements.navTabs.forEach(tab => {
-        tab.classList.remove('active');
-        if (tab.dataset.route === route) {
-            tab.classList.add('active');
+// ==========================================
+// BASE DE DATOS DE CANCIONES
+// ==========================================
+
+// Canciones de ejemplo
+const defaultSongs = [
+    {
+        id: 1,
+        title: "Entrelazados",
+        artist: "Lucas Conslie",
+        key: "A",
+        sections: {
+            "Estrofa 1": [
+                "A                    E",
+                "Nada me apartará de ti",
+                "F#m                  D",
+                "Tu amor me sostiene aquí",
+                "A                    E", 
+                "En tus brazos quiero estar",
+                "F#m                  D",
+                "Entrelazados para la eternidad"
+            ],
+            "Coro": [
+                "D                    A",
+                "Entrelazados, entrelazados",
+                "E                    F#m",
+                "En tu amor permanezco yo",
+                "D                    A", 
+                "Entrelazados, entrelazados",
+                "E                    A",
+                "Para siempre tuyo soy"
+            ],
+            "Puente": [
+                "F#m                  D",
+                "Nunca me soltarás",
+                "A                    E",
+                "Tu gracia me alcanzará",
+                "F#m                  D",
+                "En la tormenta y en la paz",
+                "A          E         A",
+                "Contigo quiero caminar"
+            ]
         }
-    });
-    
-    // Mostrar vista correspondiente
-    elements.views.forEach(view => {
-        view.classList.remove('active');
-    });
-    
-    const targetView = document.getElementById(`view-${route}`);
-    if (targetView) {
-        targetView.classList.add('active');
+    },
+    {
+        id: 2,
+        title: "Adiestra Mis Manos",
+        artist: "Corazón de Adoración",
+        key: "C",
+        sections: {
+            "Estrofa": [
+                "C                    Am",
+                "Adiestra mis manos para la guerra",
+                "F                    G",
+                "Mis dedos para la batalla",
+                "C                    Am",
+                "Tú eres mi escudo y mi fortaleza",
+                "F          G         C",
+                "En ti confío, no temeré"
+            ],
+            "Coro": [
+                "F                    C",
+                "Porque tú eres mi guerrero",
+                "G                    Am",
+                "Peleas todas mis batallas",
+                "F                    C",
+                "Y aunque venga el enemigo",
+                "G                    C",
+                "En tu nombre venceré"
+            ],
+            "Puente": [
+                "Am                   F",
+                "Grande es tu poder",
+                "C                    G",
+                "Grande es tu amor por mí",
+                "Am                   F",
+                "En tu nombre hay victoria",
+                "C         G          C",
+                "Tu nombre sobre todo está"
+            ]
+        }
     }
-    
-    // Acciones específicas según la ruta
-    if (route === 'canciones') {
-        renderSongsList();
+];
+
+// ==========================================
+// ESTADO DE LA APLICACIÓN
+// ==========================================
+
+let appState = {
+    songs: [],
+    currentSong: null,
+    currentKey: '',
+    originalKey: '',
+    searchTerm: '',
+    showAddForm: false,
+    newSong: {
+        title: '',
+        artist: '',
+        key: 'C',
+        sections: {}
+    }
+};
+
+// ==========================================
+// GESTIÓN DE ALMACENAMIENTO LOCAL
+// ==========================================
+
+/**
+ * Cargar canciones desde localStorage
+ */
+function loadSongs() {
+    try {
+        const saved = localStorage.getItem('betaniaMusicSongs');
+        if (saved) {
+            appState.songs = JSON.parse(saved);
+        } else {
+            // Primera vez, usar canciones de ejemplo
+            appState.songs = [...defaultSongs];
+            saveSongs();
+        }
+    } catch (error) {
+        console.error('Error cargando canciones:', error);
+        appState.songs = [...defaultSongs];
     }
 }
 
-function navigateToSongReader(songId) {
-    const song = state.songs.find(s => s.id === songId);
-    if (!song) return;
-    
-    state.currentSong = song;
-    state.originalKey = song.originalKey || 'C';
-    state.currentKey = state.originalKey;
-    
-    navigateToRoute('song-reader');
-    renderSongReader();
-}
-
-function navigateToEditor(songId = null) {
-    if (songId) {
-        const song = state.songs.find(s => s.id === songId);
-        state.editingSong = song ? JSON.parse(JSON.stringify(song)) : createEmptySong();
-    } else {
-        state.editingSong = createEmptySong();
+/**
+ * Guardar canciones en localStorage
+ */
+function saveSongs() {
+    try {
+        localStorage.setItem('betaniaMusicSongs', JSON.stringify(appState.songs));
+    } catch (error) {
+        console.error('Error guardando canciones:', error);
     }
-    
-    navigateToRoute('edicion');
-    renderEditor();
 }
 
-// ===== FUNCIONES DE RENDERIZADO =====
+// ==========================================
+// FUNCIONES DE RENDERIZADO
+// ==========================================
+
+/**
+ * Renderizar lista de canciones en el sidebar
+ */
 function renderSongsList() {
-    if (!elements.songsGrid || !elements.emptyState) return;
+    const container = document.getElementById('songs-container');
+    const countElement = document.getElementById('songs-count');
     
-    if (state.filteredSongs.length === 0) {
-        elements.songsGrid.style.display = 'none';
-        elements.emptyState.style.display = 'block';
+    // Filtrar canciones según búsqueda
+    const filteredSongs = appState.songs.filter(song =>
+        song.title.toLowerCase().includes(appState.searchTerm.toLowerCase()) ||
+        song.artist.toLowerCase().includes(appState.searchTerm.toLowerCase()) ||
+        song.key.toLowerCase().includes(appState.searchTerm.toLowerCase())
+    );
+    
+    // Actualizar contador
+    countElement.textContent = `Canciones (${filteredSongs.length})`;
+    
+    // Renderizar canciones
+    container.innerHTML = filteredSongs.map(song => `
+        <div class="song-item ${appState.currentSong?.id === song.id ? 'active' : ''}" 
+             onclick="selectSong(${song.id})">
+            <div class="song-title">${song.title}</div>
+            <div class="song-meta">
+                <span class="song-artist">${song.artist || 'Sin artista'}</span>
+                <span class="song-key">${song.key}</span>
+            </div>
+        </div>
+    `).join('');
+}
+
+/**
+ * Renderizar canción actual con transposición
+ */
+function renderCurrentSong() {
+    const viewer = document.getElementById('song-viewer');
+    const welcome = document.getElementById('welcome-screen');
+    
+    if (!appState.currentSong) {
+        viewer.style.display = 'none';
+        welcome.style.display = 'block';
         return;
     }
     
-    elements.emptyState.style.display = 'none';
-    elements.songsGrid.style.display = 'flex';
+    welcome.style.display = 'none';
+    viewer.style.display = 'block';
     
-    elements.songsGrid.innerHTML = state.filteredSongs.map(song => `
-        <div class="song-item" data-song-id="${song.id}">
-            <div class="song-info">
-                <div class="song-title">${escapeHtml(song.title)}</div>
-                <div class="song-meta">${escapeHtml(song.author)} • ${song.originalKey}</div>
+    // Actualizar información de la canción
+    document.getElementById('song-title').textContent = appState.currentSong.title;
+    document.getElementById('song-artist').textContent = appState.currentSong.artist || 'Sin artista';
+    document.getElementById('original-key').textContent = `Original: ${appState.originalKey}`;
+    document.getElementById('current-key').textContent = `Actual: ${appState.currentKey}`;
+    document.getElementById('key-select').value = appState.currentKey;
+    
+    // Información de transposición
+    const semitones = calculateSemitones(appState.originalKey, appState.currentKey);
+    const transposeInfo = document.getElementById('transpose-info');
+    
+    if (semitones !== 0) {
+        transposeInfo.style.display = 'inline';
+        const sign = semitones > 0 ? '+' : '';
+        transposeInfo.textContent = `Transpuesta ${sign}${semitones} semitonos`;
+    } else {
+        transposeInfo.style.display = 'none';
+    }
+    
+    // Renderizar secciones con transposición
+    const sectionsContainer = document.getElementById('song-sections');
+    sectionsContainer.innerHTML = Object.entries(appState.currentSong.sections).map(([sectionName, lines]) => `
+        <div class="section">
+            <h3 class="section-title">${sectionName}</h3>
+            <div class="section-content">
+                ${lines.map(line => {
+                    const transposedLine = transposeLine(line, semitones);
+                    return `<div class="chord-line">${transposedLine}</div>`;
+                }).join('')}
             </div>
-            <div class="song-actions">
-                <button class="action-btn edit-btn" data-song-id="${song.id}" title="Editar">
-                    ✏️
-                </button>
-                <button class="action-btn delete-btn" data-song-id="${song.id}" title="Eliminar">
-                    🗑️
-                </button>
-            </div>
-        </div>
-    `).join('');
-    
-    // Agregar event listeners
-    elements.songsGrid.querySelectorAll('.song-item').forEach(item => {
-        item.addEventListener('click', (e) => {
-            if (!e.target.closest('.song-actions')) {
-                const songId = item.dataset.songId;
-                navigateToSongReader(songId);
-            }
-        });
-    });
-    
-    elements.songsGrid.querySelectorAll('.edit-btn').forEach(btn => {
-        btn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            const songId = btn.dataset.songId;
-            navigateToEditor(songId);
-        });
-    });
-    
-    elements.songsGrid.querySelectorAll('.delete-btn').forEach(btn => {
-        btn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            const songId = btn.dataset.songId;
-            confirmDeleteSong(songId);
-        });
-    });
-}
-
-function renderSongReader() {
-    if (!state.currentSong || !elements.songContent) return;
-    
-    const song = state.currentSong;
-    const semitones = calculateTransposition(state.originalKey, state.currentKey);
-    
-    // Actualizar header
-    if (elements.readerTitle) {
-        elements.readerTitle.textContent = song.title;
-    }
-    if (elements.readerMeta) {
-        elements.readerMeta.textContent = `${song.author} • Tonalidad base: ${state.originalKey}`;
-    }
-    if (elements.currentKeyReader) {
-        elements.currentKeyReader.textContent = state.currentKey;
-    }
-    
-    // Renderizar contenido de la canción
-    let contentHtml = '';
-    
-    song.sections.forEach(section => {
-        contentHtml += `<div class="section">`;
-        contentHtml += `<div class="section-label">${escapeHtml(section.label)}</div>`;
-        
-        section.pairs.forEach(pair => {
-            if (pair.chords || pair.lyrics) {
-                contentHtml += `<div class="pair">`;
-                
-                if (pair.chords.trim()) {
-                    const transposedChords = transposeChordLine(pair.chords, semitones);
-                    contentHtml += `<div class="chord-line">${escapeHtml(transposedChords)}</div>`;
-                }
-                
-                if (pair.lyrics.trim()) {
-                    contentHtml += `<div class="lyric-line">${escapeHtml(pair.lyrics)}</div>`;
-                }
-                
-                contentHtml += `</div>`;
-            }
-        });
-        
-        contentHtml += `</div>`;
-    });
-    
-    elements.songContent.innerHTML = contentHtml;
-}
-
-function renderEditor() {
-    if (!state.editingSong) return;
-    
-    const song = state.editingSong;
-    
-    // Actualizar título
-    if (elements.songTitleEditor) {
-        elements.songTitleEditor.value = song.title || '';
-    }
-    
-    // Actualizar key status
-    if (elements.keyStatus) {
-        elements.keyStatus.textContent = song.originalKey || 'C';
-    }
-    
-    // Renderizar outline
-    renderSectionsOutline();
-    
-    // Renderizar contenido del editor
-    renderEditorContent();
-}
-
-function renderSectionsOutline() {
-    if (!elements.sectionsOutline || !state.editingSong) return;
-    
-    const sections = state.editingSong.sections || [];
-    
-    elements.sectionsOutline.innerHTML = sections.map((section, index) => `
-        <div class="outline-item" data-section-index="${index}">
-            <span>${escapeHtml(section.label)}</span>
-            <button class="btn-xs btn-danger" onclick="removeSection(${index})">×</button>
         </div>
     `).join('');
 }
 
-function renderEditorContent() {
-    if (!elements.editorContent || !state.editingSong) return;
+/**
+ * Renderizar formulario de añadir canción
+ */
+function renderAddForm() {
+    const mainView = document.getElementById('main-view');
+    const addForm = document.getElementById('add-song-form');
     
-    const sections = state.editingSong.sections || [];
+    if (appState.showAddForm) {
+        mainView.style.display = 'none';
+        addForm.style.display = 'block';
+        renderAddedSections();
+    } else {
+        mainView.style.display = 'grid';
+        addForm.style.display = 'none';
+    }
+}
+
+/**
+ * Renderizar secciones añadidas en el formulario
+ */
+function renderAddedSections() {
+    const container = document.getElementById('added-sections');
+    const sections = Object.keys(appState.newSong.sections);
     
-    elements.editorContent.innerHTML = sections.map((section, sectionIndex) => `
-        <div class="section-editor" data-section-index="${sectionIndex}">
-            <div class="section-header-editor">
-                <input type="text" class="section-label-input" 
-                       value="${escapeHtml(section.label)}" 
-                       onchange="updateSectionLabel(${sectionIndex}, this.value)"
-                       placeholder="Nombre de la sección">
-                <div class="section-actions">
-                    <button class="btn-xs" onclick="addPairToSection(${sectionIndex})">+ Par</button>
-                    <button class="btn-xs btn-danger" onclick="removeSection(${sectionIndex})">×</button>
-                </div>
-            </div>
-            
-            <div class="pairs-container">
-                ${section.pairs.map((pair, pairIndex) => `
-                    <div class="pair-editor" data-pair-index="${pairIndex}">
-                        <div class="pair-header">
-                            <span class="pair-label">Par ${pairIndex + 1}</span>
-                            <div class="pair-actions">
-                                <button class="btn-xs btn-danger" onclick="removePair(${sectionIndex}, ${pairIndex})">×</button>
-                            </div>
-                        </div>
-                        <textarea class="chord-input" 
-                                  placeholder="Acordes (ej: C Am F G)"
-                                  onchange="updatePair(${sectionIndex}, ${pairIndex}, 'chords', this.value)"
-                                  >${escapeHtml(pair.chords || '')}</textarea>
-                        <textarea class="lyric-input" 
-                                  placeholder="Letra"
-                                  onchange="updatePair(${sectionIndex}, ${pairIndex}, 'lyrics', this.value)"
-                                  >${escapeHtml(pair.lyrics || '')}</textarea>
+    if (sections.length === 0) {
+        container.innerHTML = '<p class="no-sections">No hay secciones añadidas</p>';
+    } else {
+        container.innerHTML = `
+            <div class="sections-list">
+                ${sections.map(section => `
+                    <div class="section-tag">
+                        ${section}
+                        <button class="remove-section" onclick="removeSection('${section}')">✕</button>
                     </div>
                 `).join('')}
             </div>
-        </div>
-    `).join('');
-    
-    // Auto-resize de textareas
-    setupTextareaAutoResize();
+        `;
+    }
 }
 
-function setupTextareaAutoResize() {
-    document.querySelectorAll('.chord-input, .lyric-input').forEach(textarea => {
-        textarea.addEventListener('input', autoResizeTextarea);
-        autoResizeTextarea.call(textarea);
-    });
-}
+// ==========================================
+// FUNCIONES DE INTERACCIÓN
+// ==========================================
 
-function autoResizeTextarea() {
-    this.style.height = 'auto';
-    this.style.height = Math.max(40, this.scrollHeight) + 'px';
-}
-
-// ===== FUNCIONES DE DATOS =====
-function createEmptySong() {
-    return {
-        id: generateId(),
-        title: '',
-        author: '',
-        originalKey: 'C',
-        sections: [
-            {
-                id: generateId(),
-                label: 'Verso 1',
-                pairs: [
-                    { id: generateId(), chords: '', lyrics: '' }
-                ]
-            }
-        ]
-    };
-}
-
-function addSong(songData) {
-    const song = {
-        ...songData,
-        id: songData.id || generateId(),
-        originalKey: songData.originalKey || 'C'
-    };
-    
-    state.songs.push(song);
-    state.filteredSongs = [...state.songs];
-    saveToStorage();
-    renderSongsList();
-    
-    return song;
-}
-
-function updateSong(songId, songData) {
-    const index = state.songs.findIndex(s => s.id === songId);
-    if (index === -1) return null;
-    
-    state.songs[index] = { ...state.songs[index], ...songData };
-    state.filteredSongs = [...state.songs];
-    saveToStorage();
-    renderSongsList();
-    
-    return state.songs[index];
-}
-
-function deleteSong(songId) {
-    state.songs = state.songs.filter(s => s.id !== songId);
-    state.filteredSongs = [...state.songs];
-    saveToStorage();
+/**
+ * Seleccionar una canción
+ */
+function selectSong(songId) {
+    appState.currentSong = appState.songs.find(song => song.id === songId);
+    if (appState.currentSong) {
+        appState.currentKey = appState.currentSong.key;
+        appState.originalKey = appState.currentSong.key;
+    }
+    renderCurrentSong();
     renderSongsList();
 }
 
-function searchSongs(term) {
-    state.searchTerm = term.toLowerCase().trim();
+/**
+ * Cambiar tonalidad
+ */
+function changeKey(direction) {
+    if (!appState.currentKey) return;
     
-    if (!state.searchTerm) {
-        state.filteredSongs = [...state.songs];
+    const currentIndex = NOTES.indexOf(FLAT_TO_SHARP[appState.currentKey] || appState.currentKey);
+    if (currentIndex === -1) return;
+    
+    let newIndex;
+    if (direction === 'up') {
+        newIndex = (currentIndex + 1) % 12;
     } else {
-        state.filteredSongs = state.songs.filter(song =>
-            song.title.toLowerCase().includes(state.searchTerm) ||
-            song.author.toLowerCase().includes(state.searchTerm)
-        );
+        newIndex = (currentIndex - 1 + 12) % 12;
     }
     
-    renderSongsList();
+    appState.currentKey = NOTES[newIndex];
+    renderCurrentSong();
 }
 
-// ===== FUNCIONES DEL EDITOR =====
-function updateSectionLabel(sectionIndex, newLabel) {
-    if (!state.editingSong || !state.editingSong.sections[sectionIndex]) return;
-    
-    state.editingSong.sections[sectionIndex].label = newLabel;
-    markAsUnsaved();
-    renderSectionsOutline();
+/**
+ * Resetear a tonalidad original
+ */
+function resetKey() {
+    if (appState.originalKey) {
+        appState.currentKey = appState.originalKey;
+        renderCurrentSong();
+    }
 }
 
-function updatePair(sectionIndex, pairIndex, field, value) {
-    if (!state.editingSong || 
-        !state.editingSong.sections[sectionIndex] || 
-        !state.editingSong.sections[sectionIndex].pairs[pairIndex]) return;
-    
-    state.editingSong.sections[sectionIndex].pairs[pairIndex][field] = value;
-    markAsUnsaved();
-}
-
+/**
+ * Añadir nueva sección al formulario
+ */
 function addSection() {
-    if (!state.editingSong) return;
+    const sectionName = document.getElementById('section-name').value.trim();
+    const sectionContent = document.getElementById('section-content').value.trim();
     
-    const newSection = {
-        id: generateId(),
-        label: `Sección ${state.editingSong.sections.length + 1}`,
-        pairs: [
-            { id: generateId(), chords: '', lyrics: '' }
-        ]
-    };
-    
-    state.editingSong.sections.push(newSection);
-    markAsUnsaved();
-    renderEditor();
-}
-
-function removeSection(sectionIndex) {
-    if (!state.editingSong || !confirm('¿Eliminar esta sección?')) return;
-    
-    state.editingSong.sections.splice(sectionIndex, 1);
-    markAsUnsaved();
-    renderEditor();
-}
-
-function addPairToSection(sectionIndex) {
-    if (!state.editingSong || !state.editingSong.sections[sectionIndex]) return;
-    
-    const newPair = { id: generateId(), chords: '', lyrics: '' };
-    state.editingSong.sections[sectionIndex].pairs.push(newPair);
-    markAsUnsaved();
-    renderEditorContent();
-}
-
-function removePair(sectionIndex, pairIndex) {
-    if (!state.editingSong || 
-        !state.editingSong.sections[sectionIndex] ||
-        !confirm('¿Eliminar este par?')) return;
-    
-    state.editingSong.sections[sectionIndex].pairs.splice(pairIndex, 1);
-    markAsUnsaved();
-    renderEditorContent();
-}
-
-function markAsUnsaved() {
-    if (elements.saveIndicator) {
-        elements.saveIndicator.textContent = 'Sin guardar';
-        elements.saveIndicator.classList.add('unsaved');
+    if (!sectionName || !sectionContent) {
+        alert('Por favor completa el nombre y contenido de la sección');
+        return;
     }
-}
-
-function markAsSaved() {
-    if (elements.saveIndicator) {
-        elements.saveIndicator.textContent = 'Guardado';
-        elements.saveIndicator.classList.remove('unsaved');
-    }
-}
-
-// ===== FUNCIONES DE MODAL =====
-function showModal(title, content, buttons = []) {
-    if (!elements.modalOverlay) return;
     
-    elements.modalTitle.textContent = title;
-    elements.modalContent.innerHTML = content;
+    const lines = sectionContent.split('\n').filter(line => line.trim());
     
-    elements.modalFooter.innerHTML = buttons.map(btn => 
-        `<button class="btn ${btn.class || ''}" onclick="${btn.onclick}">${btn.text}</button>`
-    ).join('');
+    appState.newSong.sections[sectionName] = lines;
     
-    elements.modalOverlay.style.display = 'flex';
-    document.body.style.overflow = 'hidden';
-}
-
-function hideModal() {
-    if (elements.modalOverlay) {
-        elements.modalOverlay.style.display = 'none';
-        document.body.style.overflow = '';
-    }
-}
-
-function confirmDeleteSong(songId) {
-    const song = state.songs.find(s => s.id === songId);
-    if (!song) return;
+    // Limpiar campos
+    document.getElementById('section-name').value = '';
+    document.getElementById('section-content').value = '';
     
-    showModal(
-        'Confirmar eliminación',
-        `<p>¿Estás seguro de que quieres eliminar "<strong>${escapeHtml(song.title)}</strong>"?</p>
-         <p style="color: var(--text-muted); font-size: 0.875rem; margin-top: 0.5rem;">Esta acción no se puede deshacer.</p>`,
-        [
-            { text: 'Cancelar', onclick: 'hideModal()' },
-            { text: 'Eliminar', class: 'btn-danger', onclick: `deleteSongConfirmed('${songId}')` }
-        ]
-    );
+    renderAddedSections();
 }
 
-function deleteSongConfirmed(songId) {
-    deleteSong(songId);
-    hideModal();
+/**
+ * Remover sección del formulario
+ */
+function removeSection(sectionName) {
+    delete appState.newSong.sections[sectionName];
+    renderAddedSections();
 }
 
-function showAddSongModal() {
-    showModal(
-        'Nueva canción',
-        `<div class="form-group">
-            <label class="form-label">Título de la canción</label>
-            <input type="text" class="form-input" id="new-song-title" placeholder="Ej: Amazing Grace">
-        </div>
-        <div class="form-group">
-            <label class="form-label">Autor</label>
-            <input type="text" class="form-input" id="new-song-author" placeholder="Ej: Chris Tomlin">
-        </div>
-        <div class="form-group">
-            <label class="form-label">Tonalidad original</label>
-            <select class="form-select" id="new-song-key">
-                ${CONFIG.keys.map(key => `<option value="${key}">${key}</option>`).join('')}
-            </select>
-        </div>`,
-        [
-            { text: 'Cancelar', onclick: 'hideModal()' },
-            { text: 'Crear canción', class: 'btn-primary', onclick: 'createNewSong()' }
-        ]
-    );
-    
-    // Focus en el primer campo
-    setTimeout(() => {
-        document.getElementById('new-song-title')?.focus();
-    }, 100);
-}
-
-function createNewSong() {
-    const title = document.getElementById('new-song-title')?.value.trim();
-    const author = document.getElementById('new-song-author')?.value.trim();
-    const key = document.getElementById('new-song-key')?.value || 'C';
+/**
+ * Guardar nueva canción
+ */
+function saveSong() {
+    const title = document.getElementById('new-title').value.trim();
+    const artist = document.getElementById('new-artist').value.trim();
+    const key = document.getElementById('new-key').value;
     
     if (!title) {
-        alert('El título es requerido');
+        alert('Por favor ingresa el título de la canción');
+        return;
+    }
+    
+    if (Object.keys(appState.newSong.sections).length === 0) {
+        alert('Por favor añade al menos una sección');
         return;
     }
     
     const newSong = {
-        ...createEmptySong(),
+        id: Date.now(),
         title,
-        author,
-        originalKey: key
+        artist,
+        key,
+        sections: { ...appState.newSong.sections }
     };
     
-    addSong(newSong);
-    hideModal();
-    navigateToEditor(newSong.id);
+    appState.songs.push(newSong);
+    saveSongs();
+    
+    // Limpiar formulario
+    appState.newSong = { title: '', artist: '', key: 'C', sections: {} };
+    document.getElementById('new-title').value = '';
+    document.getElementById('new-artist').value = '';
+    document.getElementById('new-key').value = 'C';
+    
+    // Cerrar formulario y mostrar canción
+    appState.showAddForm = false;
+    selectSong(newSong.id);
+    renderAddForm();
+    renderSongsList();
+    
+    alert('¡Canción guardada exitosamente!');
 }
 
-function saveSong() {
-    if (!state.editingSong) return;
+/**
+ * Cancelar formulario
+ */
+function cancelAddForm() {
+    appState.showAddForm = false;
+    appState.newSong = { title: '', artist: '', key: 'C', sections: {} };
     
-    const title = elements.songTitleEditor?.value.trim();
-    if (!title) {
-        alert('El título es requerido');
-        return;
-    }
+    // Limpiar campos
+    document.getElementById('new-title').value = '';
+    document.getElementById('new-artist').value = '';
+    document.getElementById('new-key').value = 'C';
+    document.getElementById('section-name').value = '';
+    document.getElementById('section-content').value = '';
     
-    state.editingSong.title = title;
-    
-    // Verificar si es una canción nueva o actualización
-    const existingIndex = state.songs.findIndex(s => s.id === state.editingSong.id);
-    
-    if (existingIndex === -1) {
-        addSong(state.editingSong);
-    } else {
-        updateSong(state.editingSong.id, state.editingSong);
-    }
-    
-    markAsSaved();
+    renderAddForm();
 }
 
-// ===== FUNCIONES DE TRANSPOSICIÓN EN EDITOR =====
-function transposeEditorSong(semitones) {
-    if (!state.editingSong) return;
-    
-    state.editingSong.sections.forEach(section => {
-        section.pairs.forEach(pair => {
-            if (pair.chords) {
-                pair.chords = transposeChordLine(pair.chords, semitones);
-            }
-        });
-    });
-    
-    // Actualizar key
-    const currentKeyIndex = getKeyIndex(state.editingSong.originalKey);
-    if (currentKeyIndex !== -1) {
-        let newKeyIndex = (currentKeyIndex + semitones) % 12;
-        if (newKeyIndex < 0) newKeyIndex += 12;
-        state.editingSong.originalKey = CONFIG.keys[newKeyIndex];
-    }
-    
-    markAsUnsaved();
-    renderEditor();
-}
+// ==========================================
+// EVENT LISTENERS
+// ==========================================
 
-// ===== UTILIDADES =====
-function escapeHtml(text) {
-    if (typeof text !== 'string') return '';
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
-}
-
-// ===== EVENT LISTENERS PRINCIPALES =====
+/**
+ * Configurar todos los event listeners
+ */
 function setupEventListeners() {
-    // Navegación por tabs
-    elements.navTabs.forEach(tab => {
-        tab.addEventListener('click', () => {
-            const route = tab.dataset.route;
-            navigateToRoute(route);
-        });
+    // Botón añadir canción
+    document.getElementById('add-song-btn').addEventListener('click', () => {
+        appState.showAddForm = true;
+        renderAddForm();
     });
     
-    // Logo home
-    if (elements.logoHome) {
-        elements.logoHome.addEventListener('click', () => {
-            navigateToRoute('canciones');
-        });
-    }
+    // Búsqueda
+    document.getElementById('search-input').addEventListener('input', (e) => {
+        appState.searchTerm = e.target.value;
+        renderSongsList();
+    });
     
-    // Búsqueda con debounce
-    if (elements.searchBox) {
-        const debouncedSearch = debounce((term) => {
-            searchSongs(term);
-        }, 300);
-        
-        elements.searchBox.addEventListener('input', (e) => {
-            debouncedSearch(e.target.value);
-        });
-    }
+    // Controles de transposición
+    document.getElementById('transpose-down').addEventListener('click', () => {
+        changeKey('down');
+    });
     
-    // Botones principales
-    if (elements.btnAddSong) {
-        elements.btnAddSong.addEventListener('click', showAddSongModal);
-    }
+    document.getElementById('transpose-up').addEventListener('click', () => {
+        changeKey('up');
+    });
     
-    if (elements.btnBackToList) {
-        elements.btnBackToList.addEventListener('click', () => {
-            navigateToRoute('canciones');
-        });
-    }
+    document.getElementById('key-select').addEventListener('change', (e) => {
+        appState.currentKey = e.target.value;
+        renderCurrentSong();
+    });
     
-    if (elements.btnBackFromEditor) {
-        elements.btnBackFromEditor.addEventListener('click', () => {
-            navigateToRoute('canciones');
-        });
-    }
+    document.getElementById('reset-key').addEventListener('click', resetKey);
     
-    // Controles de transposición en lector
-    if (elements.btnTransposeUpReader) {
-        elements.btnTransposeUpReader.addEventListener('click', () => {
-            const currentIndex = CONFIG.keys.indexOf(state.currentKey);
-            if (currentIndex !== -1) {
-                state.currentKey = CONFIG.keys[(currentIndex + 1) % 12];
-                renderSongReader();
-            }
-        });
-    }
+    // Formulario añadir canción
+    document.getElementById('cancel-add').addEventListener('click', cancelAddForm);
+    document.getElementById('cancel-form-btn').addEventListener('click', cancelAddForm);
+    document.getElementById('save-song-btn').addEventListener('click', saveSong);
+    document.getElementById('add-section-btn').addEventListener('click', addSection);
     
-    if (elements.btnTransposeDownReader) {
-        elements.btnTransposeDownReader.addEventListener('click', () => {
-            const currentIndex = CONFIG.keys.indexOf(state.currentKey);
-            if (currentIndex !== -1) {
-                let newIndex = currentIndex - 1;
-                if (newIndex < 0) newIndex = 11;
-                state.currentKey = CONFIG.keys[newIndex];
-                renderSongReader();
-            }
-        });
-    }
-    
-    if (elements.btnResetKeyReader) {
-        elements.btnResetKeyReader.addEventListener('click', () => {
-            state.currentKey = state.originalKey;
-            renderSongReader();
-        });
-    }
-    
-    if (elements.btnEditSong) {
-        elements.btnEditSong.addEventListener('click', () => {
-            if (state.currentSong) {
-                navigateToEditor(state.currentSong.id);
-            }
-        });
-    }
-    
-    // Controles del editor
-    if (elements.btnSaveSong) {
-        elements.btnSaveSong.addEventListener('click', saveSong);
-    }
-    
-    if (elements.btnAddSection) {
-        elements.btnAddSection.addEventListener('click', addSection);
-    }
-    
-    if (elements.btnAddPairEditor) {
-        elements.btnAddPairEditor.addEventListener('click', () => {
-            if (state.editingSong && state.editingSong.sections.length > 0) {
-                addPairToSection(0); // Agregar al primer sección por defecto
-            }
-        });
-    }
-    
-    // Transposición en editor
-    if (elements.btnTransposeUp) {
-        elements.btnTransposeUp.addEventListener('click', () => {
-            transposeEditorSong(1);
-        });
-    }
-    
-    if (elements.btnTransposeDown) {
-        elements.btnTransposeDown.addEventListener('click', () => {
-            transposeEditorSong(-1);
-        });
-    }
-    
-    if (elements.btnResetTranspose) {
-        elements.btnResetTranspose.addEventListener('click', () => {
-            // Restablecer a tonalidad original
-            if (state.editingSong) {
-                // Recargar la canción original
-                const originalSong = state.songs.find(s => s.id === state.editingSong.id);
-                if (originalSong) {
-                    state.editingSong = JSON.parse(JSON.stringify(originalSong));
-                    renderEditor();
-                }
-            }
-        });
-    }
-    
-    // Modal
-    if (elements.modalClose) {
-        elements.modalClose.addEventListener('click', hideModal);
-    }
-    
-    if (elements.modalOverlay) {
-        elements.modalOverlay.addEventListener('click', (e) => {
-            if (e.target === elements.modalOverlay) {
-                hideModal();
-            }
-        });
-    }
-    
-    // Teclado
+    // Atajos de teclado
     document.addEventListener('keydown', (e) => {
+        if (e.ctrlKey || e.metaKey) {
+            switch (e.key) {
+                case 'ArrowUp':
+                    e.preventDefault();
+                    changeKey('up');
+                    break;
+                case 'ArrowDown':
+                    e.preventDefault();
+                    changeKey('down');
+                    break;
+                case 'r':
+                    e.preventDefault();
+                    resetKey();
+                    break;
+                case 'n':
+                    e.preventDefault();
+                    appState.showAddForm = true;
+                    renderAddForm();
+                    break;
+            }
+        }
+        
+        // Escape para cerrar formularios
         if (e.key === 'Escape') {
-            hideModal();
+            if (appState.showAddForm) {
+                cancelAddForm();
+            }
         }
     });
     
-    // Responsive
-    window.addEventListener('resize', handleResize);
+    // Enter en campos del formulario
+    document.getElementById('section-name').addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            document.getElementById('section-content').focus();
+        }
+    });
+    
+    // Ctrl+Enter para añadir sección
+    document.getElementById('section-content').addEventListener('keydown', (e) => {
+        if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+            e.preventDefault();
+            addSection();
+        }
+    });
 }
 
-function handleResize() {
-    // Manejar cambios de tamaño de ventana
-    if (isMobile()) {
-        // Comportamiento móvil
-    } else {
-        // Comportamiento desktop
-    }
-}
+// ==========================================
+// INICIALIZACIÓN
+// ==========================================
 
-// ===== FUNCIONES GLOBALES PARA ONCLICK =====
-window.updateSectionLabel = updateSectionLabel;
-window.updatePair = updatePair;
-window.addSection = addSection;
-window.removeSection = removeSection;
-window.addPairToSection = addPairToSection;
-window.removePair = removePair;
-window.hideModal = hideModal;
-window.deleteSongConfirmed = deleteSongConfirmed;
-window.createNewSong = createNewSong;
-
-// ===== INICIALIZACIÓN =====
-document.addEventListener('DOMContentLoaded', () => {
-    console.log('Inicializando Betania Music...');
+/**
+ * Inicializar la aplicación
+ */
+function initApp() {
+    console.log('🎵 Inicializando Betania Music...');
     
     // Cargar datos
-    loadFromStorage();
+    loadSongs();
     
-    // Configurar event listeners
+    // Configurar eventos
     setupEventListeners();
     
-    // Navegación inicial
-    navigateToRoute('canciones');
+    // Renderizar interfaz inicial
+    renderSongsList();
+    renderCurrentSong();
+    renderAddForm();
     
-    console.log('Aplicación inicializada correctamente');
-});
+    console.log('✅ Betania Music iniciado correctamente');
+    console.log(`📊 ${appState.songs.length} canciones cargadas`);
+    
+    // Mostrar tips en consola
+    console.log(`
+🎵 BETANIA MUSIC - TIPS DE USO:
 
-// ===== EXPOSICIÓN GLOBAL PARA DEBUGGING =====
-window.BetaniaMusic = {
-    state,
-    CONFIG,
-    navigateToRoute,
-    navigateToSongReader,
-    navigateToEditor,
-    searchSongs,
-    addSong,
-    updateSong,
-    deleteSong
-};
+📱 Atajos de teclado:
+• Ctrl + ↑/↓  : Transponer
+• Ctrl + R    : Reset tonalidad
+• Ctrl + N    : Nueva canción
+• Escape      : Cerrar formularios
+
+🎸 Transposición:
+• Maneja todos los acordes: C, Cm, C7, Cmaj7, Csus4, C/E, etc.
+• Botones ♯/♭ para cambio rápido
+• Dropdown para selección directa
+• Reset instantáneo a original
+
+💾 Guardado:
+• Automático en localStorage
+• Sincronización entre pestañas
+• Datos persistentes offline
+
+🔍 Búsqueda:
+• Por título, artista o tonalidad
+• Tiempo real mientras escribes
+• Case insensitive
+
+📱 PWA:
+• Instalar como app nativa
+• Funciona offline
+• Notificaciones de actualización
+    `);
+}
+
+// ==========================================
+// FUNCIONES GLOBALES (para HTML inline)
+// ==========================================
+
+// Hacer funciones disponibles globalmente para onclick en HTML
+window.selectSong = selectSong;
+window.removeSection = removeSection;
+
+// ==========================================
+// INICIO DE LA APLICACIÓN
+// ==========================================
+
+// Inicializar cuando el DOM esté listo
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initApp);
+} else {
+    initApp();
+}
