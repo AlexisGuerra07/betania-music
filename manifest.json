@@ -1,137 +1,89 @@
 {
-  "name": "Betania Music - Sistema Musical Avanzado",
+  "name": "Betania Music - Sistema de Alabanza",
   "short_name": "Betania Music",
-  "description": "Sistema completo de gestión musical con transposición automática de acordes para el Equipo de Alabanza Betania",
-  "start_url": "/betania-music/",
+  "description": "Sistema completo de alabanza con transposición de acordes, setlists y diagramas de guitarra",
+  "start_url": "/",
   "display": "standalone",
-  "background_color": "#ffffff",
-  "theme_color": "#079b82",
-  "orientation": "portrait",
-  "scope": "/betania-music/",
+  "background_color": "#1a1a2e",
+  "theme_color": "#16213e",
+  "orientation": "portrait-primary",
+  "scope": "/",
   "lang": "es",
-  "categories": ["music", "productivity", "education"],
-  "screenshots": [
-    {
-      "src": "assets/screenshot-mobile.png",
-      "sizes": "375x812",
-      "type": "image/png",
-      "form_factor": "narrow",
-      "label": "Vista móvil de Betania Music"
-    },
-    {
-      "src": "assets/screenshot-desktop.png", 
-      "sizes": "1920x1080",
-      "type": "image/png",
-      "form_factor": "wide",
-      "label": "Vista de escritorio de Betania Music"
-    }
-  ],
   "icons": [
     {
-      "src": "assets/icon-16x16.png",
-      "sizes": "16x16",
-      "type": "image/png",
-      "purpose": "any"
-    },
-    {
-      "src": "assets/icon-32x32.png",
-      "sizes": "32x32",
-      "type": "image/png",
-      "purpose": "any"
-    },
-    {
-      "src": "assets/icon-72x72.png",
+      "src": "icon-72.png",
       "sizes": "72x72",
       "type": "image/png",
       "purpose": "any maskable"
     },
     {
-      "src": "assets/icon-96x96.png",
+      "src": "icon-96.png",
       "sizes": "96x96",
       "type": "image/png",
       "purpose": "any maskable"
     },
     {
-      "src": "assets/icon-128x128.png",
+      "src": "icon-128.png",
       "sizes": "128x128",
       "type": "image/png",
       "purpose": "any maskable"
     },
     {
-      "src": "assets/icon-144x144.png",
+      "src": "icon-144.png",
       "sizes": "144x144",
       "type": "image/png",
       "purpose": "any maskable"
     },
     {
-      "src": "assets/icon-152x152.png",
+      "src": "icon-152.png",
       "sizes": "152x152",
       "type": "image/png",
       "purpose": "any maskable"
     },
     {
-      "src": "assets/icon-192x192.png",
+      "src": "icon-192.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any maskable"
     },
     {
-      "src": "assets/icon-384x384.png",
+      "src": "icon-384.png",
       "sizes": "384x384",
       "type": "image/png",
       "purpose": "any maskable"
     },
     {
-      "src": "assets/icon-512x512.png",
+      "src": "icon-512.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any maskable"
     }
   ],
+  "categories": ["music", "entertainment", "utilities"],
   "shortcuts": [
     {
-      "name": "Ver Canciones",
-      "short_name": "Canciones",
-      "description": "Explorar repertorio de canciones",
-      "url": "/betania-music/?view=songs",
+      "name": "Nueva Canción",
+      "short_name": "Nueva",
+      "description": "Crear una nueva canción",
+      "url": "/?action=new",
       "icons": [
         {
-          "src": "assets/icon-192x192.png",
-          "sizes": "192x192",
-          "type": "image/png"
+          "src": "icon-192.png",
+          "sizes": "192x192"
         }
       ]
     },
     {
-      "name": "Añadir Canción",
-      "short_name": "Añadir",
-      "description": "Crear nueva canción con acordes",
-      "url": "/betania-music/?action=add",
+      "name": "Setlist",
+      "short_name": "Setlist",
+      "description": "Administrar setlist",
+      "url": "/?action=setlist",
       "icons": [
         {
-          "src": "assets/icon-192x192.png",
-          "sizes": "192x192",
-          "type": "image/png"
-        }
-      ]
-    },
-    {
-      "name": "Búsqueda Rápida",
-      "short_name": "Buscar",
-      "description": "Buscar canciones por título o artista",
-      "url": "/betania-music/?action=search",
-      "icons": [
-        {
-          "src": "assets/icon-192x192.png",
-          "sizes": "192x192",
-          "type": "image/png"
+          "src": "icon-192.png",
+          "sizes": "192x192"
         }
       ]
     }
-  ],
-  "related_applications": [],
-  "prefer_related_applications": false,
-  "edge_side_panel": {
-    "preferred_width": 400
-  }
+  ]
 }
