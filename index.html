@@ -5,53 +5,47 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Betania Music - Gestor de Canciones</title>
     <link rel="stylesheet" href="styles.css">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
 </head>
 <body>
-    <div id="app" class="app">
-        <!-- Header -->
+    <div class="app">
+        <!-- Header Principal -->
         <header class="header">
             <div class="header-content">
                 <h1 class="logo">🎵 Betania Music</h1>
                 <nav class="nav">
-                    <button id="homeBtn" class="nav-btn active">
-                        <i class="fas fa-home"></i> Inicio
-                    </button>
-                    <button id="addBtn" class="nav-btn">
-                        <i class="fas fa-plus"></i> Añadir
-                    </button>
+                    <button id="homeBtn" class="nav-btn active">🏠 Inicio</button>
+                    <button id="addBtn" class="nav-btn">➕ Añadir</button>
                 </nav>
             </div>
         </header>
 
-        <!-- Vista Lista de Canciones -->
+        <!-- Vista: Lista de Canciones -->
         <div id="songList" class="view">
             <div class="container">
                 <div class="page-header">
                     <h2>🎼 Mis Canciones</h2>
                     <button id="addNewBtn" class="btn btn-primary">
-                        <i class="fas fa-plus"></i> Añadir Nueva Canción
+                        ➕ Añadir Nueva Canción
                     </button>
                 </div>
 
                 <!-- Buscador -->
-                <div class="search-box">
+                <div class="search-container">
                     <input type="text" id="searchInput" placeholder="Buscar canciones..." class="search-input">
-                    <i class="fas fa-search search-icon"></i>
                 </div>
 
                 <!-- Lista de canciones -->
                 <div id="songsContainer" class="songs-grid">
-                    <!-- Las canciones se cargan dinámicamente -->
+                    <!-- Las canciones se cargan aquí dinámicamente -->
                 </div>
             </div>
         </div>
 
-        <!-- Vista Añadir/Editar Canción -->
+        <!-- Vista: Añadir/Editar Canción -->
         <div id="addSong" class="view hidden">
             <div class="container">
                 <div class="page-header">
-                    <h2 id="addTitle">➕ Añadir Nueva Canción</h2>
+                    <h2 id="formTitle">➕ Añadir Nueva Canción</h2>
                     <div class="header-actions">
                         <button id="reAnalyzeBtn" class="btn btn-warning hidden">
                             🔄 Re-analizar
@@ -62,75 +56,75 @@
                     </div>
                 </div>
 
-                <!-- Formulario de canción -->
+                <!-- Formulario -->
                 <div class="form-container">
-                    <div class="form-group">
-                        <label for="songTitle">Título de la canción</label>
-                        <input type="text" id="songTitle" class="form-input" placeholder="Ingresa el título">
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label for="songTitle">Título de la canción</label>
+                            <input type="text" id="songTitle" class="form-input" placeholder="Ingresa el título">
+                        </div>
+
+                        <div class="form-group">
+                            <label for="artist">Artista</label>
+                            <input type="text" id="artist" class="form-input" placeholder="Ingresa el artista">
+                        </div>
+
+                        <div class="form-group">
+                            <label for="originalKey">Tonalidad Original</label>
+                            <select id="originalKey" class="form-select">
+                                <option value="C">C</option>
+                                <option value="C#">C#</option>
+                                <option value="D">D</option>
+                                <option value="D#">D#</option>
+                                <option value="E">E</option>
+                                <option value="F">F</option>
+                                <option value="F#">F#</option>
+                                <option value="G">G</option>
+                                <option value="G#">G#</option>
+                                <option value="A">A</option>
+                                <option value="A#">A#</option>
+                                <option value="B">B</option>
+                            </select>
+                        </div>
                     </div>
 
-                    <div class="form-group">
-                        <label for="artist">Artista</label>
-                        <input type="text" id="artist" class="form-input" placeholder="Ingresa el artista">
-                    </div>
-
-                    <div class="form-group">
-                        <label for="originalKey">Tonalidad Original</label>
-                        <select id="originalKey" class="form-select">
-                            <option value="C">C</option>
-                            <option value="C#">C#</option>
-                            <option value="D">D</option>
-                            <option value="D#">D#</option>
-                            <option value="E">E</option>
-                            <option value="F">F</option>
-                            <option value="F#">F#</option>
-                            <option value="G">G</option>
-                            <option value="G#">G#</option>
-                            <option value="A">A</option>
-                            <option value="A#">A#</option>
-                            <option value="B">B</option>
-                        </select>
-                    </div>
-
-                    <!-- Secciones de la canción -->
+                    <!-- Secciones -->
                     <div class="sections-container">
                         <div class="sections-header">
                             <h3>Secciones de la Canción</h3>
                             <button id="addSectionBtn" class="btn btn-outline">
-                                <i class="fas fa-plus"></i> Añadir Sección
+                                ➕ Añadir Sección
                             </button>
                         </div>
                         <div id="sectionsContainer">
-                            <!-- Las secciones se cargan dinámicamente -->
+                            <!-- Las secciones se cargan aquí -->
                         </div>
                     </div>
 
                     <!-- Botones de acción -->
                     <div class="form-actions">
                         <button id="cancelBtn" class="btn btn-ghost">Cancelar</button>
-                        <button id="saveBtn" class="btn btn-primary">
-                            💾 Guardar Canción
-                        </button>
+                        <button id="saveBtn" class="btn btn-primary">💾 Guardar Canción</button>
                     </div>
                 </div>
             </div>
         </div>
 
-        <!-- Vista Individual de Canción -->
+        <!-- Vista: Ver Canción -->
         <div id="songView" class="view hidden">
             <div class="container">
-                <!-- Header de la canción -->
+                <!-- Header de canción -->
                 <div class="song-header">
                     <button id="backBtn" class="btn btn-ghost">
-                        <i class="fas fa-arrow-left"></i> Volver
+                        ← Volver
                     </button>
                     <div class="song-info">
-                        <h1 id="currentSongTitle">Título de la Canción</h1>
+                        <h1 id="currentSongTitle">Título</h1>
                         <p id="currentArtist">Artista</p>
                     </div>
                     <div class="song-controls">
                         <button id="editCurrentBtn" class="btn btn-secondary">
-                            <i class="fas fa-edit"></i> Editar
+                            ✏️ Editar
                         </button>
                     </div>
                 </div>
@@ -149,25 +143,26 @@
 
                 <!-- Contenido de la canción -->
                 <div id="songContent" class="song-content">
-                    <!-- El contenido se carga dinámicamente -->
+                    <!-- El contenido se carga aquí -->
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Modal Pegar Canción -->
+    <!-- Modal: Pegar Canción -->
     <div id="pasteModal" class="modal hidden">
+        <div class="modal-overlay"></div>
         <div class="modal-content">
             <div class="modal-header">
                 <h3>📋 Pegar Canción Completa</h3>
-                <button id="closePasteModal" class="close-btn">&times;</button>
+                <button id="closePasteModal" class="close-btn">×</button>
             </div>
             <div class="modal-body">
                 <p class="modal-description">
                     Pega aquí la canción completa con sus acordes y letras. 
                     El sistema detectará automáticamente las partes (intro, estrofa, coro, etc.)
                 </p>
-                <textarea id="pasteText" placeholder="Pega aquí la canción completa con sus partes marcadas (ej: Intro, Estrofa, Coro, etc.)" class="paste-textarea"></textarea>
+                <textarea id="pasteText" placeholder="Pega aquí la canción completa..." class="paste-textarea"></textarea>
             </div>
             <div class="modal-footer">
                 <button id="cancelPaste" class="btn btn-ghost">Cancelar</button>
@@ -176,18 +171,19 @@
         </div>
     </div>
 
-    <!-- Modal Re-analizar -->
+    <!-- Modal: Re-analizar -->
     <div id="reAnalyzeModal" class="modal hidden">
+        <div class="modal-overlay"></div>
         <div class="modal-content">
             <div class="modal-header">
                 <h3>🔄 Re-analizar Canción</h3>
-                <button id="closeReAnalyzeModal" class="close-btn">&times;</button>
+                <button id="closeReAnalyzeModal" class="close-btn">×</button>
             </div>
             <div class="modal-body">
                 <p class="modal-description">
                     Modifica el texto y vuelve a analizar para detectar las partes automáticamente
                 </p>
-                <textarea id="reAnalyzeText" placeholder="Modifica el texto de la canción aquí..." class="paste-textarea"></textarea>
+                <textarea id="reAnalyzeText" placeholder="Modifica el texto aquí..." class="paste-textarea"></textarea>
             </div>
             <div class="modal-footer">
                 <button id="cancelReAnalyze" class="btn btn-ghost">Cancelar</button>
@@ -196,19 +192,20 @@
         </div>
     </div>
 
-    <!-- Modal Confirmar Eliminación -->
+    <!-- Modal: Confirmar Eliminación -->
     <div id="deleteModal" class="modal hidden">
+        <div class="modal-overlay"></div>
         <div class="modal-content">
             <div class="modal-header">
                 <h3>⚠️ Confirmar Eliminación</h3>
-                <button id="closeDeleteModal" class="close-btn">&times;</button>
+                <button id="closeDeleteModal" class="close-btn">×</button>
             </div>
             <div class="modal-body">
                 <p class="modal-description">
                     ¿Estás seguro de que quieres eliminar esta canción? Esta acción no se puede deshacer.
                 </p>
-                <div class="delete-song-info">
-                    <strong id="deleteSongTitle">Título de la canción</strong>
+                <div class="delete-info">
+                    <strong id="deleteSongTitle">Título</strong>
                     <p id="deleteSongArtist">Artista</p>
                 </div>
             </div>
