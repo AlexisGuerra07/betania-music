@@ -1,1070 +1,837 @@
+/**
+ * ==========================================
+ * 🎵 BETANIA MUSIC - ESTILOS COMPLETOS
+ * CON EDITAR/ELIMINAR/RE-ANALIZAR
+ * ==========================================
+ */
+
 /* ==========================================
-   🎵 BETANIA MUSIC - SISTEMA COMPLETO CSS
-   CON DETECCIÓN AUTOMÁTICA
+   VARIABLES CSS Y RESET
    ========================================== */
 
-/* Reset y variables */
+:root {
+    --primary-color: #0d9488;
+    --primary-hover: #0f766e;
+    --secondary-color: #3b82f6;
+    --secondary-hover: #2563eb;
+    --warning-color: #f59e0b;
+    --warning-hover: #d97706;
+    --danger-color: #ef4444;
+    --danger-hover: #dc2626;
+    --success-color: #10b981;
+    --gray-50: #f9fafb;
+    --gray-100: #f3f4f6;
+    --gray-200: #e5e7eb;
+    --gray-300: #d1d5db;
+    --gray-600: #4b5563;
+    --gray-700: #374151;
+    --gray-800: #1f2937;
+    --gray-900: #111827;
+    --shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+    --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+}
+
 * {
     margin: 0;
     padding: 0;
     box-sizing: border-box;
 }
 
-:root {
-    --primary-color: #079b82;
-    --primary-dark: #065f54;
-    --primary-light: #0ba89b;
-    --success-color: #10b981;
-    --warning-color: #f59e0b;
-    --error-color: #ef4444;
-    --gray-50: #f9fafb;
-    --gray-100: #f3f4f6;
-    --gray-200: #e5e7eb;
-    --gray-300: #d1d5db;
-    --gray-400: #9ca3af;
-    --gray-500: #6b7280;
-    --gray-600: #4b5563;
-    --gray-700: #374151;
-    --gray-800: #1f2937;
-    --gray-900: #111827;
-    --white: #ffffff;
-    --border-radius: 12px;
-    --border-radius-lg: 15px;
-    --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-    --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-    --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
-    --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
-    --transition: all 0.3s ease;
-}
-
-/* Fuentes */
 body {
-    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background-color: var(--gray-50);
+    color: var(--gray-900);
     line-height: 1.5;
-    color: var(--gray-800);
-    background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
-    min-height: 100vh;
-    overflow-x: hidden;
-}
-
-/* ==========================================
-   LOADING SCREEN
-   ========================================== */
-.loading-screen {
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: linear-gradient(135deg, var(--primary-color), var(--primary-light));
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 9999;
-    transition: opacity 0.5s ease-out;
-}
-
-.loading-screen.fade-out {
-    opacity: 0;
-}
-
-.loading-content {
-    text-align: center;
-    color: white;
-}
-
-.loading-logo {
-    font-size: 5rem;
-    margin-bottom: 20px;
-    animation: pulse 2s infinite;
-}
-
-.loading-content h2 {
-    font-size: 2rem;
-    font-weight: 600;
-    margin: 20px 0 10px 0;
-    letter-spacing: 1px;
-}
-
-.loading-content p {
-    font-size: 1rem;
-    opacity: 0.9;
-    margin-top: 20px;
-}
-
-.loading-spinner {
-    width: 40px;
-    height: 40px;
-    border: 3px solid rgba(255, 255, 255, 0.3);
-    border-top: 3px solid white;
-    border-radius: 50%;
-    margin: 20px auto;
-    animation: spin 1s linear infinite;
-}
-
-@keyframes pulse {
-    0%, 100% { transform: scale(1); }
-    50% { transform: scale(1.1); }
-}
-
-@keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
-}
-
-/* ==========================================
-   HEADER
-   ========================================== */
-.app-header {
-    background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-light) 100%);
-    color: white;
-    padding: 20px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    box-shadow: var(--shadow-lg);
-    position: sticky;
-    top: 0;
-    z-index: 100;
-}
-
-.header-content h1 {
-    font-size: 2rem;
-    font-weight: 700;
-    margin: 0;
-}
-
-.header-content p {
-    margin: 5px 0 0 0;
-    opacity: 0.9;
-    font-size: 1rem;
-}
-
-.add-song-btn {
-    background: rgba(255, 255, 255, 0.2);
-    color: white;
-    border: 2px solid rgba(255, 255, 255, 0.3);
-    padding: 12px 24px;
-    border-radius: 25px;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    font-weight: 600;
-    font-size: 1rem;
-    transition: var(--transition);
-    backdrop-filter: blur(10px);
-}
-
-.add-song-btn:hover {
-    background: rgba(255, 255, 255, 0.3);
-    transform: translateY(-2px);
-    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
 }
 
 /* ==========================================
    LAYOUT PRINCIPAL
    ========================================== */
-.app-content {
-    padding: 20px;
-    max-width: 1400px;
-    margin: 0 auto;
+
+.app {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
 }
 
-.main-view {
-    display: grid;
-    grid-template-columns: 350px 1fr;
-    gap: 20px;
-    min-height: 80vh;
+.header {
+    background: linear-gradient(135deg, var(--primary-color), var(--primary-hover));
+    color: white;
+    padding: 1rem 0;
+    box-shadow: var(--shadow-md);
+}
+
+.header-content {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 1rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.logo {
+    font-size: 1.5rem;
+    font-weight: bold;
+}
+
+.nav {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.nav-btn {
+    background: rgba(255, 255, 255, 0.1);
+    color: white;
+    border: none;
+    padding: 0.5rem 1rem;
+    border-radius: 0.5rem;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.nav-btn:hover {
+    background: rgba(255, 255, 255, 0.2);
+}
+
+.nav-btn.active {
+    background: rgba(255, 255, 255, 0.3);
 }
 
 /* ==========================================
-   SIDEBAR
+   VISTAS PRINCIPALES
    ========================================== */
-.sidebar {
-    background: var(--white);
-    border-radius: var(--border-radius-lg);
-    padding: 25px;
-    box-shadow: var(--shadow-lg);
-    height: fit-content;
-    position: sticky;
-    top: 120px;
+
+.view {
+    flex: 1;
+    padding: 2rem 0;
 }
+
+.view.hidden {
+    display: none;
+}
+
+.container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 1rem;
+}
+
+.page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+    flex-wrap: wrap;
+    gap: 1rem;
+}
+
+.page-header h2 {
+    font-size: 2rem;
+    color: var(--gray-800);
+}
+
+.header-actions {
+    display: flex;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+}
+
+/* ==========================================
+   BOTONES
+   ========================================== */
+
+.btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    border: none;
+    border-radius: 0.5rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    text-decoration: none;
+    font-size: 0.875rem;
+}
+
+.btn-primary {
+    background-color: var(--primary-color);
+    color: white;
+}
+
+.btn-primary:hover {
+    background-color: var(--primary-hover);
+}
+
+.btn-secondary {
+    background-color: var(--secondary-color);
+    color: white;
+}
+
+.btn-secondary:hover {
+    background-color: var(--secondary-hover);
+}
+
+.btn-warning {
+    background-color: var(--warning-color);
+    color: white;
+}
+
+.btn-warning:hover {
+    background-color: var(--warning-hover);
+}
+
+.btn-danger {
+    background-color: var(--danger-color);
+    color: white;
+}
+
+.btn-danger:hover {
+    background-color: var(--danger-hover);
+}
+
+.btn-ghost {
+    background-color: transparent;
+    color: var(--gray-600);
+    border: 1px solid var(--gray-300);
+}
+
+.btn-ghost:hover {
+    background-color: var(--gray-100);
+    color: var(--gray-800);
+}
+
+.btn-outline {
+    background-color: transparent;
+    color: var(--primary-color);
+    border: 1px solid var(--primary-color);
+}
+
+.btn-outline:hover {
+    background-color: var(--primary-color);
+    color: white;
+}
+
+/* ==========================================
+   BÚSQUEDA
+   ========================================== */
 
 .search-box {
     position: relative;
-    margin-bottom: 25px;
+    margin-bottom: 2rem;
+    max-width: 400px;
+}
+
+.search-input {
+    width: 100%;
+    padding: 0.75rem 1rem 0.75rem 2.5rem;
+    border: 1px solid var(--gray-300);
+    border-radius: 0.5rem;
+    font-size: 1rem;
+    transition: all 0.3s ease;
+}
+
+.search-input:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px rgba(13, 148, 136, 0.1);
 }
 
 .search-icon {
     position: absolute;
-    left: 15px;
+    left: 0.75rem;
     top: 50%;
     transform: translateY(-50%);
-    font-size: 1.2rem;
     color: var(--gray-400);
 }
 
-.search-box input {
-    width: 100%;
-    padding: 15px 15px 15px 45px;
-    border: 2px solid var(--gray-200);
-    border-radius: var(--border-radius);
-    font-size: 1rem;
-    transition: var(--transition);
-    background: var(--gray-50);
-}
-
-.search-box input:focus {
-    outline: none;
-    border-color: var(--primary-color);
-    background: var(--white);
-    box-shadow: 0 0 0 3px rgba(7, 155, 130, 0.1);
-}
-
-.songs-list h3 {
-    margin: 0 0 20px 0;
-    color: var(--gray-700);
-    font-size: 1.2rem;
-    font-weight: 600;
-}
-
-.songs-container {
-    max-height: 60vh;
-    overflow-y: auto;
-    scrollbar-width: thin;
-    scrollbar-color: var(--gray-300) transparent;
-}
-
-.songs-container::-webkit-scrollbar {
-    width: 6px;
-}
-
-.songs-container::-webkit-scrollbar-track {
-    background: transparent;
-}
-
-.songs-container::-webkit-scrollbar-thumb {
-    background: var(--gray-300);
-    border-radius: 3px;
-}
-
-.song-item {
-    padding: 15px;
-    border-radius: var(--border-radius);
-    margin-bottom: 12px;
-    cursor: pointer;
-    transition: var(--transition);
-    border: 2px solid transparent;
-    background: var(--gray-50);
-}
-
-.song-item:hover {
-    background: var(--white);
-    transform: translateX(8px);
-    box-shadow: var(--shadow);
-}
-
-.song-item.active {
-    background: #ecfdf5;
-    border-color: var(--primary-color);
-    box-shadow: 0 0 0 3px rgba(7, 155, 130, 0.1);
-}
-
-.song-item .song-title {
-    font-weight: 600;
-    color: var(--gray-800);
-    margin-bottom: 8px;
-    font-size: 1rem;
-}
-
-.song-item .song-meta {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    font-size: 0.875rem;
-}
-
-.song-item .song-artist {
-    color: var(--gray-600);
-    font-style: italic;
-}
-
-.song-item .song-key {
-    background: var(--primary-color);
-    color: white;
-    padding: 4px 10px;
-    border-radius: 15px;
-    font-weight: 600;
-    font-size: 0.8rem;
-}
-
 /* ==========================================
-   CONTENIDO PRINCIPAL
+   LISTA DE CANCIONES
    ========================================== */
-.main-content {
-    background: var(--white);
-    border-radius: var(--border-radius-lg);
-    padding: 30px;
-    box-shadow: var(--shadow-lg);
-    min-height: 600px;
-}
 
-/* Pantalla de bienvenida */
-.welcome-screen {
-    text-align: center;
-    padding: 80px 20px;
-    color: var(--gray-600);
-}
-
-.welcome-icon {
-    font-size: 5rem;
-    margin-bottom: 30px;
-    color: var(--gray-300);
-}
-
-.welcome-screen h2 {
-    font-size: 2.5rem;
-    color: var(--gray-800);
-    margin-bottom: 15px;
-    font-weight: 700;
-}
-
-.welcome-screen p {
-    font-size: 1.2rem;
-    margin-bottom: 40px;
-    color: var(--gray-600);
-}
-
-.welcome-features {
+.songs-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-    gap: 20px;
-    max-width: 800px;
-    margin: 0 auto;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 1.5rem;
 }
 
-.feature {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    padding: 20px;
-    background: var(--gray-50);
-    border-radius: var(--border-radius);
-    transition: var(--transition);
-}
-
-.feature:hover {
-    background: var(--white);
+.song-card {
+    background: white;
+    border-radius: 0.75rem;
     box-shadow: var(--shadow);
-    transform: translateY(-3px);
+    overflow: hidden;
+    transition: all 0.3s ease;
 }
 
-.feature span:first-child {
-    font-size: 1.5rem;
+.song-card:hover {
+    box-shadow: var(--shadow-lg);
+    transform: translateY(-2px);
 }
 
-.feature span:last-child {
-    font-weight: 500;
-    color: var(--gray-700);
+.song-info {
+    padding: 1.5rem;
 }
 
-/* ==========================================
-   VISOR DE CANCIÓN
-   ========================================== */
-.song-header {
-    margin-bottom: 40px;
-    padding-bottom: 25px;
-    border-bottom: 3px solid var(--gray-100);
-}
-
-.song-info h2 {
-    font-size: 2.5rem;
+.song-title {
+    font-size: 1.25rem;
+    font-weight: bold;
     color: var(--gray-800);
-    margin-bottom: 8px;
-    font-weight: 700;
+    margin-bottom: 0.5rem;
 }
 
 .song-artist {
-    font-size: 1.3rem;
     color: var(--gray-600);
-    font-style: italic;
-    margin-bottom: 20px;
+    margin-bottom: 0.5rem;
 }
 
-.key-info {
-    display: flex;
-    gap: 15px;
-    flex-wrap: wrap;
-    margin-bottom: 25px;
+.song-key {
+    font-size: 0.875rem;
+    color: var(--gray-500);
+    margin-bottom: 1rem;
 }
 
-.key-badge {
-    padding: 8px 16px;
-    border-radius: 20px;
-    font-size: 0.9rem;
-    font-weight: 600;
-}
-
-.key-badge.original {
-    background: var(--gray-100);
-    color: var(--gray-700);
-}
-
-.key-badge.current {
-    background: var(--primary-color);
-    color: white;
-}
-
-.transpose-info {
-    background: #fef3c7;
-    color: #92400e;
-    padding: 8px 16px;
-    border-radius: 20px;
-    font-size: 0.9rem;
-    font-weight: 600;
-}
-
-.transpose-controls {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    padding: 20px;
-    background: var(--gray-50);
-    border-radius: var(--border-radius);
-    border: 2px solid var(--gray-200);
-    margin-top: 20px;
-}
-
-.transpose-btn {
-    background: var(--primary-color);
-    color: white;
-    border: none;
-    padding: 12px 16px;
-    border-radius: var(--border-radius);
-    cursor: pointer;
-    font-weight: 600;
-    font-size: 1rem;
-    transition: var(--transition);
-    display: flex;
-    align-items: center;
-    gap: 6px;
-}
-
-.transpose-btn:hover {
-    background: var(--primary-dark);
-    transform: translateY(-2px);
-    box-shadow: var(--shadow);
-}
-
-.key-select {
-    padding: 12px 16px;
-    border: 2px solid var(--gray-200);
-    border-radius: var(--border-radius);
-    font-weight: 600;
-    font-size: 1.1rem;
-    background: var(--white);
-    color: var(--gray-800);
-    cursor: pointer;
-    transition: var(--transition);
-}
-
-.key-select:focus {
-    outline: none;
-    border-color: var(--primary-color);
-    box-shadow: 0 0 0 3px rgba(7, 155, 130, 0.1);
-}
-
-.reset-btn {
-    background: var(--gray-500);
-    color: white;
-    border: none;
-    padding: 12px 16px;
-    border-radius: var(--border-radius);
-    cursor: pointer;
-    font-weight: 600;
-    transition: var(--transition);
-}
-
-.reset-btn:hover {
-    background: var(--gray-600);
-    transform: translateY(-2px);
-}
-
-/* ==========================================
-   SECCIONES DE CANCIÓN
-   ========================================== */
-.song-sections {
-    margin-top: 30px;
-}
-
-.section {
-    margin-bottom: 35px;
-    padding: 25px;
-    background: var(--gray-50);
-    border-radius: var(--border-radius);
-    border-left: 5px solid var(--primary-color);
-    transition: var(--transition);
-}
-
-.section:hover {
-    background: var(--white);
-    box-shadow: var(--shadow);
-}
-
-.section-title {
-    font-size: 1.3rem;
-    font-weight: 700;
-    color: var(--primary-color);
-    margin-bottom: 20px;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-}
-
-.section-content {
-    font-family: 'Monaco', 'Menlo', 'Courier New', monospace;
-    line-height: 1.8;
-    font-size: 1rem;
-    color: var(--gray-800);
-}
-
-.chord-line {
-    white-space: pre;
-    margin-bottom: 10px;
-    font-weight: 500;
-}
-
-/* ==========================================
-   FORMULARIO AÑADIR CANCIÓN
-   ========================================== */
-.add-song-form {
-    background: var(--white);
-    border-radius: var(--border-radius-lg);
-    box-shadow: var(--shadow-xl);
-    overflow: hidden;
-    max-width: 900px;
-    margin: 0 auto;
-}
-
-.form-header {
-    background: var(--primary-color);
-    color: white;
-    padding: 25px 30px;
+.song-actions {
+    padding: 0 1.5rem 1.5rem;
     display: flex;
     justify-content: space-between;
     align-items: center;
+    gap: 0.5rem;
 }
 
-.form-header h2 {
-    font-size: 1.8rem;
-    font-weight: 600;
-    margin: 0;
-}
-
-.cancel-btn {
-    background: rgba(255, 255, 255, 0.2);
-    color: white;
+.action-btn {
+    background: none;
     border: none;
-    width: 40px;
-    height: 40px;
-    border-radius: 50%;
+    padding: 0.5rem;
+    border-radius: 0.375rem;
     cursor: pointer;
-    font-size: 1.2rem;
-    transition: var(--transition);
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
-.cancel-btn:hover {
-    background: rgba(255, 255, 255, 0.3);
-    transform: scale(1.1);
+.edit-btn {
+    color: var(--secondary-color);
 }
 
-.form-content {
-    padding: 30px;
+.edit-btn:hover {
+    background-color: rgba(59, 130, 246, 0.1);
 }
 
-.form-section {
-    margin-bottom: 35px;
-    padding-bottom: 25px;
-    border-bottom: 2px solid var(--gray-100);
+.delete-btn {
+    color: var(--danger-color);
 }
 
-.form-section:last-child {
-    border-bottom: none;
-    margin-bottom: 0;
+.delete-btn:hover {
+    background-color: rgba(239, 68, 68, 0.1);
 }
 
-.form-section h3 {
-    font-size: 1.3rem;
-    color: var(--gray-800);
-    margin-bottom: 20px;
-    font-weight: 600;
+.no-songs {
+    text-align: center;
+    padding: 3rem;
+    color: var(--gray-500);
 }
 
-.form-row {
-    display: grid;
-    grid-template-columns: 2fr 1fr 120px;
-    gap: 20px;
+/* ==========================================
+   FORMULARIOS
+   ========================================== */
+
+.form-container {
+    background: white;
+    border-radius: 0.75rem;
+    padding: 2rem;
+    box-shadow: var(--shadow);
 }
 
 .form-group {
-    margin-bottom: 20px;
+    margin-bottom: 1.5rem;
 }
 
 .form-group label {
     display: block;
-    font-weight: 600;
+    margin-bottom: 0.5rem;
+    font-weight: 500;
     color: var(--gray-700);
-    margin-bottom: 8px;
-    font-size: 0.95rem;
 }
 
-.form-group input,
-.form-group select,
-.form-group textarea {
+.form-input,
+.form-select {
     width: 100%;
-    padding: 12px 16px;
-    border: 2px solid var(--gray-200);
-    border-radius: var(--border-radius);
+    padding: 0.75rem;
+    border: 1px solid var(--gray-300);
+    border-radius: 0.5rem;
     font-size: 1rem;
-    transition: var(--transition);
-    background: var(--white);
+    transition: all 0.3s ease;
 }
 
-.form-group input:focus,
-.form-group select:focus,
-.form-group textarea:focus {
+.form-input:focus,
+.form-select:focus {
     outline: none;
     border-color: var(--primary-color);
-    box-shadow: 0 0 0 3px rgba(7, 155, 130, 0.1);
-}
-
-.form-group textarea {
-    font-family: 'Monaco', 'Menlo', 'Courier New', monospace;
-    resize: vertical;
-    min-height: 150px;
-    line-height: 1.6;
-}
-
-.added-sections {
-    min-height: 100px;
-    padding: 20px;
-    background: var(--gray-50);
-    border-radius: var(--border-radius);
-    border: 2px dashed var(--gray-300);
-}
-
-.no-sections {
-    color: var(--gray-500);
-    font-style: italic;
-    text-align: center;
-    padding: 20px;
-}
-
-.sections-list {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 12px;
-}
-
-.section-tag {
-    background: var(--primary-color);
-    color: white;
-    padding: 8px 16px;
-    border-radius: 20px;
-    font-size: 0.9rem;
-    font-weight: 600;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-}
-
-.section-tag .remove-section {
-    background: rgba(255, 255, 255, 0.3);
-    border: none;
-    color: white;
-    width: 20px;
-    height: 20px;
-    border-radius: 50%;
-    cursor: pointer;
-    font-size: 0.8rem;
-    transition: var(--transition);
-}
-
-.section-tag .remove-section:hover {
-    background: rgba(255, 255, 255, 0.5);
-}
-
-.add-section-form {
-    background: var(--gray-50);
-    padding: 25px;
-    border-radius: var(--border-radius);
-    border: 2px dashed var(--gray-300);
-}
-
-.add-section-btn {
-    background: var(--success-color);
-    color: white;
-    border: none;
-    padding: 12px 24px;
-    border-radius: var(--border-radius);
-    cursor: pointer;
-    font-weight: 600;
-    font-size: 1rem;
-    transition: var(--transition);
-}
-
-.add-section-btn:hover {
-    background: #059669;
-    transform: translateY(-2px);
-    box-shadow: var(--shadow);
+    box-shadow: 0 0 0 3px rgba(13, 148, 136, 0.1);
 }
 
 .form-actions {
     display: flex;
-    gap: 20px;
-    justify-content: center;
-    margin-top: 40px;
-    padding-top: 25px;
-    border-top: 2px solid var(--gray-100);
-}
-
-.save-btn {
-    background: var(--success-color);
-    color: white;
-    border: none;
-    padding: 15px 35px;
-    border-radius: var(--border-radius);
-    cursor: pointer;
-    font-weight: 600;
-    font-size: 1.1rem;
-    transition: var(--transition);
-}
-
-.save-btn:hover {
-    background: #059669;
-    transform: translateY(-2px);
-    box-shadow: var(--shadow);
-}
-
-.cancel-form-btn {
-    background: var(--gray-500);
-    color: white;
-    border: none;
-    padding: 15px 35px;
-    border-radius: var(--border-radius);
-    cursor: pointer;
-    font-weight: 600;
-    font-size: 1.1rem;
-    transition: var(--transition);
-}
-
-.cancel-form-btn:hover {
-    background: var(--gray-600);
-    transform: translateY(-2px);
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 2rem;
+    gap: 1rem;
 }
 
 /* ==========================================
-   🔮 ESTILOS PARA DETECCIÓN AUTOMÁTICA
+   SECCIONES DE CANCIONES
    ========================================== */
 
-/* Botón de modo de detección */
-.detection-mode-toggle {
-    text-align: center;
-    padding: 20px;
-    background: var(--gray-50);
-    border-radius: var(--border-radius);
-    border: 2px dashed var(--gray-300);
-    margin-bottom: 20px;
+.sections-container {
+    margin-top: 2rem;
 }
 
-.mode-toggle-btn {
-    background: linear-gradient(135deg, var(--primary-color), var(--primary-light));
-    color: white;
-    border: none;
-    padding: 15px 30px;
-    border-radius: 25px;
-    font-size: 1.1rem;
-    font-weight: 600;
-    cursor: pointer;
-    transition: var(--transition);
-    margin-bottom: 10px;
-    box-shadow: 0 4px 15px rgba(7, 155, 130, 0.3);
-}
-
-.mode-toggle-btn:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 6px 20px rgba(7, 155, 130, 0.4);
-}
-
-.mode-toggle-btn.active {
-    background: linear-gradient(135deg, var(--warning-color), #f59e0b);
-    box-shadow: 0 4px 15px rgba(245, 158, 11, 0.3);
-}
-
-.mode-description {
-    color: var(--gray-600);
-    font-size: 0.9rem;
-    max-width: 400px;
-    margin: 0 auto;
-    line-height: 1.5;
-}
-
-/* Container de detección automática */
-.auto-detection-container {
-    background: #f0f9ff;
-    border-radius: var(--border-radius);
-    padding: 25px;
-    border: 2px solid #bfdbfe;
-}
-
-.auto-detection-container .form-group label {
-    color: var(--primary-color);
-    font-weight: 700;
-    font-size: 1.1rem;
-    margin-bottom: 10px;
-}
-
-.auto-detection-container textarea {
-    font-family: 'Monaco', 'Menlo', 'Courier New', monospace;
-    min-height: 300px;
-    background: white;
-    border: 2px solid var(--primary-color);
-    border-radius: var(--border-radius);
-    transition: var(--transition);
-}
-
-.auto-detection-container textarea:focus {
-    border-color: var(--primary-dark);
-    box-shadow: 0 0 0 3px rgba(7, 155, 130, 0.2);
-}
-
-/* Vista previa de detección */
-.detection-preview {
-    margin-top: 25px;
-    border-radius: var(--border-radius);
-    overflow: hidden;
-    background: white;
-    border: 2px solid var(--gray-200);
-}
-
-/* Header de vista previa */
-.preview-header {
-    background: var(--primary-color);
-    color: white;
-    padding: 15px 20px;
+.sections-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    font-weight: 600;
+    margin-bottom: 1rem;
 }
 
-.preview-actions {
-    display: flex;
-    gap: 8px;
+.sections-header h3 {
+    font-size: 1.25rem;
+    color: var(--gray-800);
 }
 
-.preview-actions button {
-    background: rgba(255, 255, 255, 0.2);
-    color: white;
-    border: 1px solid rgba(255, 255, 255, 0.3);
-    padding: 6px 12px;
-    border-radius: 15px;
-    cursor: pointer;
-    font-size: 0.8rem;
-    font-weight: 600;
-    transition: var(--transition);
-}
-
-.preview-actions button:hover {
-    background: rgba(255, 255, 255, 0.3);
-    transform: translateY(-1px);
-}
-
-.accept-btn { background: var(--success-color) !important; border-color: var(--success-color) !important; }
-.edit-btn { background: var(--warning-color) !important; border-color: var(--warning-color) !important; }
-.clear-btn { background: var(--error-color) !important; border-color: var(--error-color) !important; }
-
-/* Secciones detectadas */
-.sections-preview {
-    max-height: 400px;
-    overflow-y: auto;
-    padding: 20px;
-}
-
-.section-preview {
-    background: white;
+.section-item {
+    background: var(--gray-50);
     border: 1px solid var(--gray-200);
-    border-radius: var(--border-radius);
-    margin-bottom: 15px;
-    overflow: hidden;
-    transition: var(--transition);
-    animation: slideInUp 0.3s ease-out;
-}
-
-.section-preview:hover {
-    box-shadow: var(--shadow);
-    transform: translateY(-2px);
+    border-radius: 0.5rem;
+    padding: 1rem;
+    margin-bottom: 1rem;
 }
 
 .section-header {
-    background: var(--gray-50);
-    padding: 12px 15px;
     display: flex;
     justify-content: space-between;
     align-items: center;
-    border-bottom: 1px solid var(--gray-200);
+    margin-bottom: 1rem;
 }
 
 .section-name-input {
-    background: transparent;
-    border: 1px solid transparent;
-    font-weight: 600;
-    color: var(--primary-color);
-    text-transform: uppercase;
-    font-size: 0.9rem;
-    letter-spacing: 0.5px;
-    padding: 4px 8px;
-    border-radius: 4px;
-    transition: var(--transition);
+    flex: 1;
+    padding: 0.5rem;
+    border: 1px solid var(--gray-300);
+    border-radius: 0.375rem;
+    font-weight: 500;
+    margin-right: 0.5rem;
 }
 
-.section-name-input:focus {
-    outline: none;
-    border-color: var(--primary-color);
-    background: white;
-}
-
-.section-preview:hover .section-name-input {
-    background: rgba(7, 155, 130, 0.05);
-}
-
-.line-count {
-    background: var(--primary-color);
-    color: white;
-    padding: 3px 8px;
-    border-radius: 10px;
-    font-size: 0.75rem;
-    font-weight: 600;
-}
-
-.remove-section-btn {
-    background: var(--error-color);
+.remove-btn {
+    background: var(--danger-color);
     color: white;
     border: none;
-    width: 24px;
-    height: 24px;
+    width: 2rem;
+    height: 2rem;
     border-radius: 50%;
     cursor: pointer;
-    font-size: 0.8rem;
-    font-weight: 600;
-    transition: var(--transition);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s ease;
 }
 
-.remove-section-btn:hover {
-    background: #dc2626;
-    transform: scale(1.1);
+.remove-btn:hover {
+    background: var(--danger-hover);
 }
 
-.section-content-preview {
-    padding: 15px;
-    font-family: 'Monaco', 'Menlo', 'Courier New', monospace;
-    font-size: 0.85rem;
-    line-height: 1.6;
+.section-inputs {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
 }
 
-.line-preview {
-    color: var(--gray-700);
-    margin-bottom: 4px;
-    white-space: pre;
+.section-textarea {
+    width: 100%;
+    min-height: 100px;
+    padding: 0.75rem;
+    border: 1px solid var(--gray-300);
+    border-radius: 0.375rem;
+    font-family: 'Courier New', monospace;
+    font-size: 0.875rem;
+    resize: vertical;
 }
 
-.more-lines {
-    color: var(--gray-500);
-    font-style: italic;
-    margin-top: 8px;
-    font-size: 0.8rem;
+.section-textarea:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px rgba(13, 148, 136, 0.1);
 }
 
-/* Estado sin detección */
-.no-detection {
+.section-textarea.chords {
+    background-color: #fef3c7;
+}
+
+.section-textarea.lyrics {
+    background-color: #f0f9ff;
+}
+
+.no-sections {
     text-align: center;
-    padding: 40px 20px;
     color: var(--gray-500);
-}
-
-.no-detection p {
-    font-size: 1.1rem;
-    margin-bottom: 25px;
-}
-
-.detection-tips {
+    padding: 2rem;
     background: var(--gray-50);
-    border-radius: var(--border-radius);
-    padding: 20px;
-    text-align: left;
-    border: 1px solid var(--gray-200);
-    max-width: 400px;
-    margin: 0 auto;
+    border-radius: 0.5rem;
+    border: 2px dashed var(--gray-300);
 }
 
-.detection-tips h4 {
-    color: var(--primary-color);
-    margin-bottom: 15px;
-    font-size: 1rem;
-    text-align: center;
+/* ==========================================
+   VISTA DE CANCIÓN
+   ========================================== */
+
+.song-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+    background: white;
+    padding: 1.5rem;
+    border-radius: 0.75rem;
+    box-shadow: var(--shadow);
+    flex-wrap: wrap;
+    gap: 1rem;
 }
 
-.detection-tips ul {
-    list-style: none;
-    padding: 0;
+.song-info h1 {
+    font-size: 2rem;
+    color: var(--gray-800);
+    margin-bottom: 0.5rem;
 }
 
-.detection-tips li {
-    margin-bottom: 8px;
-    padding-left: 20px;
-    position: relative;
-    font-size: 0.9rem;
-    line-height: 1.4;
+.song-info p {
+    color: var(--gray-600);
+    font-size: 1.125rem;
 }
 
-.detection-tips li::before {
-    content: "✨";
-    position: absolute;
-    left: 0;
-    top: 0;
+.song-controls {
+    display: flex;
+    gap: 0.5rem;
 }
 
-/* Mensaje de éxito */
-.success-message {
-    position: fixed;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    background: var(--success-color);
+.key-controls {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: white;
+    padding: 1rem 1.5rem;
+    border-radius: 0.75rem;
+    box-shadow: var(--shadow);
+    margin-bottom: 2rem;
+}
+
+.key-display {
+    font-size: 1.125rem;
+    font-weight: 500;
+}
+
+.current-key {
+    background: var(--primary-color);
     color: white;
-    padding: 15px 25px;
-    border-radius: var(--border-radius);
-    font-weight: 600;
-    z-index: 10000;
-    box-shadow: var(--shadow-xl);
-    animation: successFadeIn 0.3s ease-out;
+    padding: 0.25rem 0.75rem;
+    border-radius: 0.375rem;
+    font-weight: bold;
+    margin-left: 0.5rem;
 }
 
-@keyframes successFadeIn {
-    from {
-        opacity: 0;
-        transform: translate(-50%, -50%) scale(0.8);
+.key-buttons {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.key-btn {
+    background: var(--primary-color);
+    color: white;
+    border: none;
+    width: 3rem;
+    height: 3rem;
+    border-radius: 50%;
+    font-size: 1.25rem;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.key-btn:hover {
+    background: var(--primary-hover);
+    transform: scale(1.05);
+}
+
+.song-content {
+    background: white;
+    border-radius: 0.75rem;
+    padding: 2rem;
+    box-shadow: var(--shadow);
+}
+
+.song-section {
+    margin-bottom: 2rem;
+    padding-bottom: 1.5rem;
+    border-bottom: 1px solid var(--gray-200);
+}
+
+.song-section:last-child {
+    border-bottom: none;
+    margin-bottom: 0;
+}
+
+.section-title {
+    background: var(--primary-color);
+    color: white;
+    padding: 0.5rem 1rem;
+    border-radius: 0.375rem;
+    font-size: 1rem;
+    font-weight: bold;
+    margin-bottom: 1rem;
+    display: inline-block;
+}
+
+.section-content {
+    font-family: 'Courier New', monospace;
+    line-height: 1.8;
+}
+
+.chords-line {
+    color: var(--primary-color);
+    font-weight: bold;
+    margin-bottom: 0.5rem;
+    white-space: pre-wrap;
+}
+
+.lyrics-line {
+    color: var(--gray-700);
+    margin-bottom: 1rem;
+    white-space: pre-wrap;
+}
+
+/* ==========================================
+   MODALES
+   ========================================== */
+
+.modal {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    padding: 1rem;
+}
+
+.modal.hidden {
+    display: none;
+}
+
+.modal-content {
+    background: white;
+    border-radius: 0.75rem;
+    box-shadow: var(--shadow-lg);
+    width: 100%;
+    max-width: 600px;
+    max-height: 90vh;
+    overflow-y: auto;
+}
+
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1.5rem;
+    border-bottom: 1px solid var(--gray-200);
+}
+
+.modal-header h3 {
+    font-size: 1.25rem;
+    font-weight: bold;
+    color: var(--gray-800);
+}
+
+.close-btn {
+    background: none;
+    border: none;
+    font-size: 1.5rem;
+    color: var(--gray-500);
+    cursor: pointer;
+    width: 2rem;
+    height: 2rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 0.375rem;
+    transition: all 0.3s ease;
+}
+
+.close-btn:hover {
+    background: var(--gray-100);
+    color: var(--gray-700);
+}
+
+.modal-body {
+    padding: 1.5rem;
+}
+
+.modal-description {
+    color: var(--gray-600);
+    margin-bottom: 1rem;
+    line-height: 1.5;
+}
+
+.paste-textarea {
+    width: 100%;
+    height: 16rem;
+    padding: 1rem;
+    border: 1px solid var(--gray-300);
+    border-radius: 0.5rem;
+    font-family: 'Courier New', monospace;
+    font-size: 0.875rem;
+    resize: vertical;
+    transition: all 0.3s ease;
+}
+
+.paste-textarea:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px rgba(13, 148, 136, 0.1);
+}
+
+.modal-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.75rem;
+    padding: 1.5rem;
+    border-top: 1px solid var(--gray-200);
+}
+
+.delete-song-info {
+    background: var(--gray-50);
+    border: 1px solid var(--gray-200);
+    border-radius: 0.5rem;
+    padding: 1rem;
+    margin-top: 1rem;
+}
+
+.delete-song-info strong {
+    color: var(--gray-800);
+    display: block;
+    margin-bottom: 0.25rem;
+}
+
+.delete-song-info p {
+    color: var(--gray-600);
+    margin: 0;
+}
+
+/* ==========================================
+   RESPONSIVE DESIGN
+   ========================================== */
+
+@media (max-width: 768px) {
+    .header-content {
+        flex-direction: column;
+        gap: 1rem;
     }
-    to {
-        opacity: 1;
-        transform: translate(-50%, -50%) scale(1);
+    
+    .page-header {
+        flex-direction: column;
+        align-items: stretch;
+        text-align: center;
+    }
+    
+    .header-actions {
+        justify-content: center;
+    }
+    
+    .songs-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .song-header {
+        flex-direction: column;
+        text-align: center;
+    }
+    
+    .key-controls {
+        flex-direction: column;
+        gap: 1rem;
+    }
+    
+    .section-inputs {
+        grid-template-columns: 1fr;
+    }
+    
+    .form-actions {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    
+    .song-actions {
+        flex-direction: column;
+        gap: 0.75rem;
+    }
+    
+    .action-btn {
+        justify-content: flex-start;
+        padding: 0.75rem;
+    }
+    
+    .modal-content {
+        margin: 1rem;
+        max-width: calc(100% - 2rem);
+    }
+    
+    .modal-footer {
+        flex-direction: column;
     }
 }
 
-@keyframes slideInUp {
+@media (max-width: 480px) {
+    .container {
+        padding: 0 0.5rem;
+    }
+    
+    .view {
+        padding: 1rem 0;
+    }
+    
+    .form-container {
+        padding: 1rem;
+    }
+    
+    .song-content {
+        padding: 1rem;
+    }
+    
+    .page-header h2 {
+        font-size: 1.5rem;
+    }
+    
+    .song-info h1 {
+        font-size: 1.5rem;
+    }
+}
+
+/* ==========================================
+   ANIMACIONES Y TRANSICIONES
+   ========================================== */
+
+@keyframes fadeIn {
     from {
         opacity: 0;
-        transform: translateY(20px);
+        transform: translateY(10px);
     }
     to {
         opacity: 1;
@@ -1072,460 +839,59 @@ body {
     }
 }
 
-/* Scroll personalizado para preview */
-.sections-preview::-webkit-scrollbar {
-    width: 8px;
-}
-
-.sections-preview::-webkit-scrollbar-track {
-    background: var(--gray-100);
-    border-radius: 4px;
-}
-
-.sections-preview::-webkit-scrollbar-thumb {
-    background: var(--primary-color);
-    border-radius: 4px;
-}
-
-.sections-preview::-webkit-scrollbar-thumb:hover {
-    background: var(--primary-dark);
+.song-card,
+.section-item,
+.form-container {
+    animation: fadeIn 0.3s ease-out;
 }
 
 /* ==========================================
-   PWA ELEMENTS
+   UTILIDADES
    ========================================== */
-.install-banner {
-    position: fixed;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    background: var(--primary-color);
-    color: white;
-    padding: 15px;
-    transform: translateY(100%);
-    transition: transform 0.3s ease-out;
-    z-index: 1000;
-    box-shadow: var(--shadow-xl);
+
+.hidden {
+    display: none !important;
 }
 
-.install-banner.show {
-    transform: translateY(0);
-}
-
-.install-content {
-    display: flex;
-    align-items: center;
-    gap: 15px;
-    max-width: 500px;
-    margin: 0 auto;
-}
-
-.install-icon {
-    font-size: 2rem;
-    flex-shrink: 0;
-}
-
-.install-text {
-    flex: 1;
-}
-
-.install-text strong {
-    display: block;
-    font-size: 1.1rem;
-    margin-bottom: 2px;
-}
-
-.install-text p {
-    font-size: 0.9rem;
-    opacity: 0.9;
-    margin: 0;
-}
-
-.install-actions {
-    display: flex;
-    gap: 10px;
-    align-items: center;
-}
-
-.install-btn {
-    background: white;
-    color: var(--primary-color);
-    border: none;
-    padding: 8px 16px;
-    border-radius: 20px;
-    font-weight: 600;
-    cursor: pointer;
-    transition: var(--transition);
-    white-space: nowrap;
-}
-
-.install-btn:hover {
-    background: #f0f9ff;
-    transform: translateY(-1px);
-}
-
-.dismiss-btn {
-    background: transparent;
-    color: white;
-    border: 1px solid rgba(255, 255, 255, 0.3);
-    padding: 8px 12px;
-    border-radius: 50%;
-    cursor: pointer;
-    transition: var(--transition);
-    font-size: 1rem;
-    line-height: 1;
-}
-
-.dismiss-btn:hover {
-    background: rgba(255, 255, 255, 0.1);
-}
-
-.update-banner {
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    background: var(--warning-color);
-    color: white;
-    padding: 12px;
-    transform: translateY(-100%);
-    transition: transform 0.3s ease-out;
-    z-index: 1001;
-    box-shadow: var(--shadow-xl);
-}
-
-.update-banner.show {
-    transform: translateY(0);
-}
-
-.update-content {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 15px;
-    max-width: 500px;
-    margin: 0 auto;
-}
-
-.update-btn {
-    background: white;
-    color: var(--warning-color);
-    border: none;
-    padding: 6px 14px;
-    border-radius: 15px;
-    font-weight: 600;
-    cursor: pointer;
-    transition: var(--transition);
-    font-size: 0.9rem;
-}
-
-.update-btn:hover {
-    background: #fff7ed;
-    transform: translateY(-1px);
-}
-
-.offline-indicator {
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    background: var(--error-color);
-    color: white;
-    padding: 10px;
+.text-center {
     text-align: center;
-    font-size: 0.9rem;
-    z-index: 1002;
-    animation: slideDown 0.3s ease-out;
 }
 
-@keyframes slideDown {
-    from { transform: translateY(-100%); }
-    to { transform: translateY(0); }
-}
+.mb-0 { margin-bottom: 0; }
+.mb-1 { margin-bottom: 0.25rem; }
+.mb-2 { margin-bottom: 0.5rem; }
+.mb-3 { margin-bottom: 0.75rem; }
+.mb-4 { margin-bottom: 1rem; }
+
+.mt-0 { margin-top: 0; }
+.mt-1 { margin-top: 0.25rem; }
+.mt-2 { margin-top: 0.5rem; }
+.mt-3 { margin-top: 0.75rem; }
+.mt-4 { margin-top: 1rem; }
 
 /* ==========================================
-   RESPONSIVE DESIGN
+   ESTADOS DE CARGA Y ÉXITO
    ========================================== */
-@media (max-width: 1024px) {
-    .main-view {
-        grid-template-columns: 300px 1fr;
-    }
+
+.loading {
+    opacity: 0.6;
+    pointer-events: none;
 }
 
-@media (max-width: 768px) {
-    .app-header {
-        flex-direction: column;
-        gap: 15px;
-        text-align: center;
-        padding: 15px;
-    }
-
-    .header-content h1 {
-        font-size: 1.5rem;
-    }
-
-    .app-content {
-        padding: 15px;
-    }
-
-    .main-view {
-        grid-template-columns: 1fr;
-        gap: 15px;
-    }
-
-    .sidebar {
-        position: static;
-        order: 2;
-    }
-
-    .main-content {
-        order: 1;
-        padding: 20px;
-    }
-
-    .form-row {
-        grid-template-columns: 1fr;
-    }
-
-    .transpose-controls {
-        flex-wrap: wrap;
-        gap: 8px;
-    }
-
-    .song-header .song-info h2 {
-        font-size: 1.8rem;
-    }
-
-    .welcome-screen {
-        padding: 40px 15px;
-    }
-
-    .welcome-icon {
-        font-size: 3rem;
-    }
-
-    .welcome-screen h2 {
-        font-size: 1.8rem;
-    }
-
-    .install-content {
-        padding: 0 10px;
-        flex-wrap: wrap;
-    }
-
-    .install-text strong {
-        font-size: 1rem;
-    }
-
-    .install-text p {
-        font-size: 0.8rem;
-    }
-
-    .form-actions {
-        flex-direction: column;
-        align-items: center;
-    }
-
-    /* Detección automática responsive */
-    .auto-detection-container {
-        padding: 15px;
-    }
-    
-    .auto-detection-container textarea {
-        min-height: 250px;
-        font-size: 0.9rem;
-    }
-    
-    .preview-header {
-        flex-direction: column;
-        gap: 10px;
-        text-align: center;
-    }
-    
-    .preview-actions {
-        justify-content: center;
-        flex-wrap: wrap;
-    }
-    
-    .sections-preview {
-        padding: 15px;
-        max-height: 300px;
-    }
-    
-    .section-header {
-        flex-direction: column;
-        gap: 10px;
-        align-items: stretch;
-    }
-    
-    .section-name-input {
-        text-align: center;
-    }
-    
-    .mode-toggle-btn {
-        padding: 12px 20px;
-        font-size: 1rem;
-    }
-    
-    .detection-tips {
-        padding: 15px;
-    }
+.success-message {
+    background: var(--success-color);
+    color: white;
+    padding: 0.75rem 1rem;
+    border-radius: 0.5rem;
+    margin-bottom: 1rem;
+    text-align: center;
 }
 
-@media (max-width: 480px) {
-    .header-content h1 {
-        font-size: 1.3rem;
-    }
-
-    .add-song-btn {
-        padding: 10px 16px;
-        font-size: 0.9rem;
-    }
-
-    .sidebar {
-        padding: 20px;
-    }
-
-    .main-content {
-        padding: 15px;
-    }
-
-    .section {
-        padding: 20px;
-    }
-
-    .form-content {
-        padding: 20px;
-    }
-
-    .song-sections .chord-line {
-        font-size: 0.9rem;
-    }
-
-    /* Detección automática móvil */
-    .detection-mode-toggle {
-        padding: 15px;
-    }
-    
-    .mode-description {
-        font-size: 0.8rem;
-    }
-    
-    .section-content-preview {
-        font-size: 0.8rem;
-        padding: 12px;
-    }
-    
-    .preview-actions button {
-        padding: 5px 10px;
-        font-size: 0.75rem;
-    }
-}
-
-/* ==========================================
-   ACCESSIBILITY & INTERACTIONS
-   ========================================== */
-@media (prefers-reduced-motion: reduce) {
-    * {
-        animation-duration: 0.01ms !important;
-        animation-iteration-count: 1 !important;
-        transition-duration: 0.01ms !important;
-    }
-}
-
-@media (prefers-contrast: high) {
-    :root {
-        --gray-200: #000000;
-        --gray-300: #000000;
-    }
-}
-
-/* Focus styles */
-button:focus,
-input:focus,
-select:focus,
-textarea:focus {
-    outline: 2px solid var(--primary-color);
-    outline-offset: 2px;
-}
-
-.section-name-input:focus-visible,
-.remove-section-btn:focus-visible,
-.mode-toggle-btn:focus-visible {
-    outline: 2px solid var(--primary-color);
-    outline-offset: 2px;
-}
-
-/* Smooth scrolling */
-html {
-    scroll-behavior: smooth;
-}
-
-/* Prevent text selection on buttons */
-button {
-    -webkit-tap-highlight-color: transparent;
-    -webkit-touch-callout: none;
-    -webkit-user-select: none;
-    user-select: none;
-}
-
-/* Custom scrollbar for webkit browsers */
-.songs-container::-webkit-scrollbar {
-    width: 8px;
-}
-
-.songs-container::-webkit-scrollbar-track {
-    background: var(--gray-100);
-    border-radius: 4px;
-}
-
-.songs-container::-webkit-scrollbar-thumb {
-    background: var(--gray-300);
-    border-radius: 4px;
-}
-
-.songs-container::-webkit-scrollbar-thumb:hover {
-    background: var(--gray-400);
-}
-
-/* Print styles */
-@media print {
-    .app-header,
-    .sidebar,
-    .transpose-controls,
-    .install-banner,
-    .update-banner,
-    .offline-indicator {
-        display: none !important;
-    }
-
-    .main-view {
-        grid-template-columns: 1fr;
-    }
-
-    .main-content {
-        box-shadow: none;
-        padding: 0;
-    }
-
-    .section {
-        break-inside: avoid;
-        background: white !important;
-        border: 1px solid #ccc;
-        margin-bottom: 20px;
-    }
-
-    .song-header {
-        border-bottom: 2px solid #000;
-    }
-}
-
-/* High DPI screens */
-@media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi) {
-    .loading-logo,
-    .welcome-icon,
-    .install-icon {
-        image-rendering: -webkit-optimize-contrast;
-        image-rendering: crisp-edges;
-    }
+.error-message {
+    background: var(--danger-color);
+    color: white;
+    padding: 0.75rem 1rem;
+    border-radius: 0.5rem;
+    margin-bottom: 1rem;
+    text-align: center;
 }
