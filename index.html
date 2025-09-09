@@ -3,174 +3,205 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Betania Music - Gestor de Canciones</title>
     
-    <!-- Google Fonts para mejores tipografías -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Source+Code+Pro:wght@400;500;600&display=swap" rel="stylesheet">
+    <!-- PWA Meta Tags -->
+    <title>Betania Music - Sistema de Alabanza</title>
+    <meta name="description" content="Sistema completo de alabanza con transposición de acordes, setlists y diagramas de guitarra">
     
-    <link rel="stylesheet" href="styles.css">
+    <!-- Manifest -->
+    <link rel="manifest" href="/manifest.json">
+    
+    <!-- Meta tags para PWA -->
+    <meta name="theme-color" content="#16213e">
+    <meta name="background-color" content="#1a1a2e">
+    <meta name="display" content="standalone">
+    <meta name="orientation" content="portrait-primary">
+    
+    <!-- iOS Meta Tags -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Betania Music">
+    
+    <!-- iOS Icons -->
+    <link rel="apple-touch-icon" href="/icons/icon-152x152.png">
+    <link rel="apple-touch-icon" sizes="152x152" href="/icons/icon-152x152.png">
+    <link rel="apple-touch-icon" sizes="167x167" href="/icons/icon-192x192.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="/icons/icon-192x192.png">
+    
+    <!-- Standard favicon -->
+    <link rel="icon" type="image/png" sizes="32x32" href="/icons/icon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="/icons/icon-16x16.png">
+    
+    <!-- Windows Meta Tags -->
+    <meta name="msapplication-TileColor" content="#16213e">
+    <meta name="msapplication-TileImage" content="/icons/icon-144x144.png">
+    <meta name="msapplication-config" content="/browserconfig.xml">
+    
+    <!-- Open Graph Meta Tags -->
+    <meta property="og:title" content="Betania Music - Sistema de Alabanza">
+    <meta property="og:description" content="Sistema completo de alabanza con transposición de acordes y setlists">
+    <meta property="og:image" content="/icons/icon-512x512.png">
+    <meta property="og:url" content="https://alexisguerra07.github.io/betania-music/">
+    <meta property="og:type" content="website">
+    <meta property="og:locale" content="es_ES">
+    
+    <!-- Twitter Card Meta Tags -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Betania Music - Sistema de Alabanza">
+    <meta name="twitter:description" content="Sistema completo de alabanza con transposición de acordes y setlists">
+    <meta name="twitter:image" content="/icons/icon-512x512.png">
+    
+    <!-- Preload crítico -->
+    <link rel="preload" href="/pwa-installer.js" as="script">
+    
+    <!-- CSS existente de tu aplicación -->
+    <style>
+        /* Tu CSS actual aquí */
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #1a1a2e;
+            color: white;
+            overflow-x: hidden;
+        }
+        
+        /* Estilos específicos para PWA */
+        .pwa-banner {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 10px;
+            text-align: center;
+            font-size: 14px;
+            position: relative;
+        }
+        
+        .pwa-banner.hidden {
+            display: none;
+        }
+        
+        /* Optimización para pantalla completa */
+        @media (display-mode: standalone) {
+            .pwa-banner {
+                display: none;
+            }
+            
+            body {
+                padding-top: env(safe-area-inset-top);
+                padding-bottom: env(safe-area-inset-bottom);
+            }
+        }
+        
+        /* Splash screen personalizado */
+        .splash-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+            opacity: 1;
+            transition: opacity 0.5s ease-out;
+        }
+        
+        .splash-screen.fade-out {
+            opacity: 0;
+            pointer-events: none;
+        }
+        
+        .splash-logo {
+            width: 120px;
+            height: 120px;
+            background: url('/icons/icon-192x192.png') center/contain no-repeat;
+            margin-bottom: 20px;
+            animation: pulse 2s infinite;
+        }
+        
+        .splash-text {
+            color: white;
+            font-size: 24px;
+            font-weight: 600;
+            margin-bottom: 10px;
+        }
+        
+        .splash-subtitle {
+            color: rgba(255,255,255,0.7);
+            font-size: 16px;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+    </style>
 </head>
 <body>
-    <!-- Header -->
-    <header class="header">
-        <div class="header-content">
-            <div class="logo-section" id="logo-home" style="cursor: pointer;">
-                <div class="logo-icon">
-                    <svg width="40" height="40" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <!-- Fondo circular con degradado -->
-                        <defs>
-                            <radialGradient id="logoGradient" cx="50%" cy="30%" r="70%">
-                                <stop offset="0%" style="stop-color:#ffffff;stop-opacity:1" />
-                                <stop offset="100%" style="stop-color:#e0f2f1;stop-opacity:1" />
-                            </radialGradient>
-                        </defs>
-                        <circle cx="50" cy="50" r="45" fill="url(#logoGradient)" stroke="rgba(255,255,255,0.3)" stroke-width="1"/>
-                        <!-- Llama principal -->
-                        <path d="M50 20C42 20 36 26 36 35C36 42 39 47 43 50C46 52 48 53 50 53C52 53 54 52 57 50C61 47 64 42 64 35C64 26 58 20 50 20Z" fill="rgba(255,255,255,0.9)"/>
-                        <!-- Llama interna -->
-                        <path d="M50 25C45 25 41 29 41 35C41 39 43 42 45 44C47 45 48 46 50 46C52 46 53 45 55 44C57 42 59 39 59 35C59 29 55 25 50 25Z" fill="rgba(255,255,255,0.7)"/>
-                        <!-- Núcleo de la llama -->
-                        <ellipse cx="50" cy="37" rx="5" ry="8" fill="rgba(255,255,255,0.8)"/>
-                        <!-- Punta superior -->
-                        <path d="M50 20C48 22 47 25 47 28C47 30 48 31 49 32C49.5 32.5 50 32.5 50 32.5C50 32.5 50.5 32.5 51 32C52 31 53 30 53 28C53 25 52 22 50 20Z" fill="white"/>
-                    </svg>
-                </div>
-                <div class="logo-text">Betania Music</div>
-            </div>
-            <nav>
-                <div class="nav-tabs">
-                    <button class="nav-tab active" data-route="canciones">Canciones</button>
-                    <button class="nav-tab" data-route="edicion">Edición</button>
-                </div>
-            </nav>
-        </div>
-    </header>
-
-    <!-- Main App Container -->
-    <div class="app-container">
-        <!-- Songs List View -->
-        <div class="view active" id="view-canciones">
-            <div class="songs-container">
-                <div class="section-header">
-                    <h2 class="section-title">Canciones</h2>
-                    <button class="btn-add-song" id="btn-add-song">+ Añadir canción</button>
-                </div>
-
-                <div class="search-container">
-                    <input type="text" class="search-box" id="search-box" placeholder="Buscar por título o autor...">
-                </div>
-
-                <!-- Empty State -->
-                <div class="empty-state" id="empty-state">
-                    <h3>Aún no hay canciones</h3>
-                    <p>Pulsa "Añadir canción" para crear la primera.</p>
-                </div>
-
-                <!-- Songs Grid -->
-                <div class="songs-grid" id="songs-grid" style="display: none;">
-                    <!-- Songs will be dynamically added here -->
-                </div>
-            </div>
-        </div>
-
-        <!-- Song Reader View -->
-        <div class="view" id="view-song-reader">
-            <div class="song-reader">
-                <div class="reader-header">
-                    <button class="btn" id="btn-back-to-list">← Volver a canciones</button>
-                    <div class="reader-title" id="reader-title">Título de la canción</div>
-                    <div class="reader-meta" id="reader-meta">Autor • Tonalidad base</div>
-                    
-                    <div class="reader-controls">
-                        <div class="transpose-controls">
-                            <span class="transpose-label">Tonalidad:</span>
-                            <button class="transpose-btn" id="btn-transpose-down-reader">♭</button>
-                            <div class="current-key" id="current-key-reader">C</div>
-                            <button class="transpose-btn" id="btn-transpose-up-reader">♯</button>
-                            <button class="btn btn-sm" id="btn-reset-key-reader">Base</button>
-                        </div>
-                        
-                        <button class="btn btn-primary" id="btn-edit-song">Editar</button>
-                    </div>
-                </div>
-
-                <div class="song-content" id="song-content">
-                    <!-- Song sections will be rendered here -->
-                </div>
-            </div>
-        </div>
-
-        <!-- Editor View -->
-        <div class="view" id="view-edicion">
-            <div class="editor-container">
-                <!-- Editor Sidebar -->
-                <div class="editor-sidebar">
-                    <div class="sidebar-section">
-                        <h3 class="sidebar-title">Estructura</h3>
-                        <div id="sections-outline">
-                            <!-- Outline will be generated here -->
-                        </div>
-                        <button class="btn btn-sm" id="btn-add-section" style="width: 100%; margin-top: 0.5rem;">+ Sección</button>
-                    </div>
-                    
-                    <div class="sidebar-section">
-                        <h3 class="sidebar-title">Acciones</h3>
-                        <button class="btn btn-sm" id="btn-transpose-up" style="width: 100%; margin-bottom: 0.25rem;">♯ Subir tono</button>
-                        <button class="btn btn-sm" id="btn-transpose-down" style="width: 100%; margin-bottom: 0.25rem;">♭ Bajar tono</button>
-                        <button class="btn btn-sm" id="btn-reset-transpose" style="width: 100%;">Reset</button>
-                    </div>
-                </div>
-
-                <!-- Editor Main -->
-                <div class="editor-main">
-                    <div class="editor-toolbar">
-                        <div class="toolbar-left">
-                            <button class="btn btn-sm" id="btn-back-from-editor">← Volver</button>
-                            <input type="text" id="song-title-editor" placeholder="Título de la canción" 
-                                   class="title-input">
-                        </div>
-                        
-                        <div class="toolbar-right">
-                            <div class="chips-container">
-                                <div class="chip" id="key-chip">
-                                    <span>Tonalidad:</span>
-                                    <span id="key-status">C</span>
-                                </div>
-                            </div>
-                            <span class="save-indicator" id="save-indicator">Guardado</span>
-                            <button class="btn btn-sm" id="btn-reanalyze" style="display: none;">🔄 Reanalizar</button>
-                            <button class="btn btn-sm" id="btn-add-pair-editor">+ Par</button>
-                            <button class="btn btn-primary" id="btn-save-song">Guardar</button>
-                        </div>
-                    </div>
-
-                    <!-- Editor Content -->
-                    <div class="editor-content" id="editor-content">
-                        <!-- Sections and pairs will be rendered here -->
-                    </div>
-                </div>
-            </div>
-        </div>
+    <!-- Splash Screen -->
+    <div class="splash-screen" id="splash-screen">
+        <div class="splash-logo"></div>
+        <div class="splash-text">Betania Music</div>
+        <div class="splash-subtitle">Sistema de Alabanza</div>
+    </div>
+    
+    <!-- Banner para instalación PWA -->
+    <div class="pwa-banner" id="pwa-banner">
+        📱 ¡Instala Betania Music en tu dispositivo para una mejor experiencia!
+        <button onclick="document.getElementById('pwa-install-btn').click()" style="
+            background: rgba(255,255,255,0.2);
+            border: none;
+            color: white;
+            padding: 5px 10px;
+            margin-left: 10px;
+            border-radius: 4px;
+            cursor: pointer;
+        ">Instalar</button>
+        <button onclick="document.getElementById('pwa-banner').classList.add('hidden')" style="
+            background: none;
+            border: none;
+            color: white;
+            padding: 5px;
+            margin-left: 5px;
+            cursor: pointer;
+            font-size: 16px;
+        ">×</button>
+    </div>
+    
+    <!-- Contenido principal de tu aplicación -->
+    <div id="app">
+        <!-- Tu aplicación React/HTML actual va aquí -->
     </div>
 
-    <!-- Modal para formularios -->
-    <div class="modal-overlay" id="modal-overlay" style="display: none;">
-        <div class="modal">
-            <div class="modal-header">
-                <h3 class="modal-title" id="modal-title">Título del Modal</h3>
-                <button class="modal-close" id="modal-close">×</button>
-            </div>
-            <div class="modal-content" id="modal-content">
-                <!-- Contenido dinámico del modal -->
-            </div>
-            <div class="modal-footer" id="modal-footer">
-                <!-- Botones dinámicos del modal -->
-            </div>
-        </div>
-    </div>
-
-    <script src="script.js"></script>
+    <!-- Scripts -->
+    <script src="/pwa-installer.js"></script>
+    
+    <!-- Script para manejar splash screen -->
+    <script>
+        // Ocultar splash screen cuando la app esté lista
+        window.addEventListener('load', () => {
+            setTimeout(() => {
+                const splash = document.getElementById('splash-screen');
+                splash.classList.add('fade-out');
+                setTimeout(() => {
+                    splash.style.display = 'none';
+                }, 500);
+            }, 1500); // Mostrar splash por 1.5 segundos
+        });
+        
+        // Ocultar banner PWA si ya está instalada
+        if (window.matchMedia('(display-mode: standalone)').matches || 
+            window.navigator.standalone === true) {
+            document.getElementById('pwa-banner').style.display = 'none';
+        }
+    </script>
+    
+    <!-- Tu JavaScript actual de la aplicación -->
+    <script>
+        // Aquí va tu código JavaScript existente
+    </script>
 </body>
 </html>
