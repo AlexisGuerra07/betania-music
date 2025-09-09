@@ -1,7 +1,7 @@
 /**
  * ==========================================
- * 🎵 BETANIA MUSIC - SISTEMA LIMPIO
- * SIN CONFLICTOS - ARCHIVO ÚNICO
+ * 🎵 BETANIA MUSIC - SISTEMA COMPLETO
+ * CÓDIGO JAVASCRIPT CORREGIDO
  * ==========================================
  */
 
@@ -31,7 +31,12 @@ let songSections = [];
 // ==========================================
 
 document.addEventListener('DOMContentLoaded', function() {
+    // IMPORTANTE: Ocultar todos los modales primero
+    hideAllModals();
+    
+    // Luego mostrar pantalla de carga
     showLoadingScreen();
+    
     setTimeout(() => {
         initializeApp();
         hideLoadingScreen();
@@ -39,16 +44,24 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 function showLoadingScreen() {
-    document.getElementById('loadingScreen').classList.remove('hidden');
-    document.getElementById('app').classList.add('hidden');
+    const loadingScreen = document.getElementById('loadingScreen');
+    const app = document.getElementById('app');
+    
+    if (loadingScreen) loadingScreen.classList.remove('hidden');
+    if (app) app.classList.add('hidden');
 }
 
 function hideLoadingScreen() {
-    document.getElementById('loadingScreen').classList.add('fade-out');
-    setTimeout(() => {
-        document.getElementById('loadingScreen').classList.add('hidden');
-        document.getElementById('app').classList.remove('hidden');
-    }, 500);
+    const loadingScreen = document.getElementById('loadingScreen');
+    const app = document.getElementById('app');
+    
+    if (loadingScreen) {
+        loadingScreen.classList.add('fade-out');
+        setTimeout(() => {
+            loadingScreen.classList.add('hidden');
+            if (app) app.classList.remove('hidden');
+        }, 500);
+    }
 }
 
 function initializeApp() {
@@ -63,29 +76,63 @@ function initializeApp() {
 }
 
 // ==========================================
+// OCULTAR MODALES AL INICIO
+// ==========================================
+
+function hideAllModals() {
+    const modals = ['pasteModal', 'reAnalyzeModal', 'deleteModal'];
+    modals.forEach(modalId => {
+        const modal = document.getElementById(modalId);
+        if (modal) {
+            modal.classList.add('hidden');
+        }
+    });
+    
+    // También resetear el body
+    if (document.body) {
+        document.body.style.overflow = '';
+    }
+}
+
+// ==========================================
 // EVENT LISTENERS
 // ==========================================
 
 function setupEventListeners() {
     // Navegación
-    document.getElementById('homeBtn').addEventListener('click', () => showView('home'));
-    document.getElementById('addBtn').addEventListener('click', () => showAddView());
-    document.getElementById('addNewSongBtn').addEventListener('click', () => showAddView());
+    const homeBtn = document.getElementById('homeBtn');
+    const addBtn = document.getElementById('addBtn');
+    const addNewSongBtn = document.getElementById('addNewSongBtn');
+    
+    if (homeBtn) homeBtn.addEventListener('click', () => showView('home'));
+    if (addBtn) addBtn.addEventListener('click', () => showAddView());
+    if (addNewSongBtn) addNewSongBtn.addEventListener('click', () => showAddView());
     
     // Formulario
-    document.getElementById('saveBtn').addEventListener('click', saveSong);
-    document.getElementById('cancelBtn').addEventListener('click', () => showView('home'));
-    document.getElementById('addSectionBtn').addEventListener('click', addNewSection);
+    const saveBtn = document.getElementById('saveBtn');
+    const cancelBtn = document.getElementById('cancelBtn');
+    const addSectionBtn = document.getElementById('addSectionBtn');
+    
+    if (saveBtn) saveBtn.addEventListener('click', saveSong);
+    if (cancelBtn) cancelBtn.addEventListener('click', () => showView('home'));
+    if (addSectionBtn) addSectionBtn.addEventListener('click', addNewSection);
     
     // Búsqueda
-    document.getElementById('searchInput').addEventListener('input', handleSearch);
+    const searchInput = document.getElementById('searchInput');
+    if (searchInput) searchInput.addEventListener('input', handleSearch);
     
     // Vista de canción
-    document.getElementById('backBtn').addEventListener('click', () => showView('home'));
-    document.getElementById('editCurrentBtn').addEventListener('click', editCurrentSong);
-    document.getElementById('keyUp').addEventListener('click', () => changeKey(1));
-    document.getElementById('keyDown').addEventListener('click', () => changeKey(-1));
-    document.getElementById('keyReset').addEventListener('click', resetKey);
+    const backBtn = document.getElementById('backBtn');
+    const editCurrentBtn = document.getElementById('editCurrentBtn');
+    const keyUpBtn = document.getElementById('keyUp');
+    const keyDownBtn = document.getElementById('keyDown');
+    const keyResetBtn = document.getElementById('keyReset');
+    
+    if (backBtn) backBtn.addEventListener('click', () => showView('home'));
+    if (editCurrentBtn) editCurrentBtn.addEventListener('click', editCurrentSong);
+    if (keyUpBtn) keyUpBtn.addEventListener('click', () => changeKey(1));
+    if (keyDownBtn) keyDownBtn.addEventListener('click', () => changeKey(-1));
+    if (keyResetBtn) keyResetBtn.addEventListener('click', resetKey);
     
     // Modales
     setupModalListeners();
@@ -93,25 +140,41 @@ function setupEventListeners() {
 
 function setupModalListeners() {
     // Modal Pegar Canción
-    document.getElementById('pasteBtn').addEventListener('click', () => showModal('pasteModal'));
-    document.getElementById('closePasteModal').addEventListener('click', () => hideModal('pasteModal'));
-    document.getElementById('cancelPaste').addEventListener('click', () => hideModal('pasteModal'));
-    document.getElementById('processPaste').addEventListener('click', processPastedSong);
+    const pasteBtn = document.getElementById('pasteBtn');
+    const closePasteModal = document.getElementById('closePasteModal');
+    const cancelPaste = document.getElementById('cancelPaste');
+    const processPaste = document.getElementById('processPaste');
+    
+    if (pasteBtn) pasteBtn.addEventListener('click', () => showModal('pasteModal'));
+    if (closePasteModal) closePasteModal.addEventListener('click', () => hideModal('pasteModal'));
+    if (cancelPaste) cancelPaste.addEventListener('click', () => hideModal('pasteModal'));
+    if (processPaste) processPaste.addEventListener('click', processPastedSong);
     
     // Modal Re-analizar
-    document.getElementById('reAnalyzeBtn').addEventListener('click', showReAnalyzeModal);
-    document.getElementById('closeReAnalyzeModal').addEventListener('click', () => hideModal('reAnalyzeModal'));
-    document.getElementById('cancelReAnalyze').addEventListener('click', () => hideModal('reAnalyzeModal'));
-    document.getElementById('processReAnalyze').addEventListener('click', processReAnalysis);
+    const reAnalyzeBtn = document.getElementById('reAnalyzeBtn');
+    const closeReAnalyzeModal = document.getElementById('closeReAnalyzeModal');
+    const cancelReAnalyze = document.getElementById('cancelReAnalyze');
+    const processReAnalyze = document.getElementById('processReAnalyze');
+    
+    if (reAnalyzeBtn) reAnalyzeBtn.addEventListener('click', showReAnalyzeModal);
+    if (closeReAnalyzeModal) closeReAnalyzeModal.addEventListener('click', () => hideModal('reAnalyzeModal'));
+    if (cancelReAnalyze) cancelReAnalyze.addEventListener('click', () => hideModal('reAnalyzeModal'));
+    if (processReAnalyze) processReAnalyze.addEventListener('click', processReAnalysis);
     
     // Modal Eliminar
-    document.getElementById('closeDeleteModal').addEventListener('click', () => hideModal('deleteModal'));
-    document.getElementById('cancelDelete').addEventListener('click', () => hideModal('deleteModal'));
+    const closeDeleteModal = document.getElementById('closeDeleteModal');
+    const cancelDelete = document.getElementById('cancelDelete');
+    
+    if (closeDeleteModal) closeDeleteModal.addEventListener('click', () => hideModal('deleteModal'));
+    if (cancelDelete) cancelDelete.addEventListener('click', () => hideModal('deleteModal'));
     
     // Cerrar modales al hacer clic en overlay
     document.querySelectorAll('.modal-overlay').forEach(overlay => {
         overlay.addEventListener('click', (e) => {
-            hideModal(e.target.closest('.modal').id);
+            const modal = e.target.closest('.modal');
+            if (modal) {
+                hideModal(modal.id);
+            }
         });
     });
 }
@@ -127,7 +190,10 @@ function showView(viewName) {
     });
     
     // Mostrar vista seleccionada
-    document.getElementById(viewName + 'View').classList.add('active');
+    const targetView = document.getElementById(viewName + 'View');
+    if (targetView) {
+        targetView.classList.add('active');
+    }
     
     // Actualizar navegación
     document.querySelectorAll('.nav-btn').forEach(btn => {
@@ -135,10 +201,12 @@ function showView(viewName) {
     });
     
     if (viewName === 'home') {
-        document.getElementById('homeBtn').classList.add('active');
+        const homeBtn = document.getElementById('homeBtn');
+        if (homeBtn) homeBtn.classList.add('active');
         renderSongsList();
     } else if (viewName === 'add') {
-        document.getElementById('addBtn').classList.add('active');
+        const addBtn = document.getElementById('addBtn');
+        if (addBtn) addBtn.classList.add('active');
     }
 }
 
@@ -174,9 +242,18 @@ function saveSongs() {
 }
 
 function saveSong() {
-    const title = document.getElementById('songTitle').value.trim();
-    const artist = document.getElementById('songArtist').value.trim();
-    const key = document.getElementById('songKey').value;
+    const titleInput = document.getElementById('songTitle');
+    const artistInput = document.getElementById('songArtist');
+    const keyInput = document.getElementById('songKey');
+    
+    if (!titleInput || !artistInput || !keyInput) {
+        showToast('Error: No se encontraron los campos del formulario', 'error');
+        return;
+    }
+    
+    const title = titleInput.value.trim();
+    const artist = artistInput.value.trim();
+    const key = keyInput.value;
     
     if (!title) {
         showToast('Por favor ingresa un título para la canción', 'error');
@@ -220,16 +297,24 @@ function editSong(songId) {
     editingSong = song;
     
     // Llenar formulario
-    document.getElementById('songTitle').value = song.title;
-    document.getElementById('songArtist').value = song.artist;
-    document.getElementById('songKey').value = song.key;
+    const titleInput = document.getElementById('songTitle');
+    const artistInput = document.getElementById('songArtist');
+    const keyInput = document.getElementById('songKey');
+    
+    if (titleInput) titleInput.value = song.title;
+    if (artistInput) artistInput.value = song.artist;
+    if (keyInput) keyInput.value = song.key;
     
     songSections = [...song.sections];
     
     // Actualizar interfaz
-    document.getElementById('addTitle').textContent = '✏️ Editar Canción';
-    document.getElementById('saveBtn').innerHTML = '💾 Actualizar Canción';
-    document.getElementById('reAnalyzeBtn').classList.remove('hidden');
+    const addTitle = document.getElementById('addTitle');
+    const saveBtn = document.getElementById('saveBtn');
+    const reAnalyzeBtn = document.getElementById('reAnalyzeBtn');
+    
+    if (addTitle) addTitle.textContent = '✏️ Editar Canción';
+    if (saveBtn) saveBtn.innerHTML = '💾 Actualizar Canción';
+    if (reAnalyzeBtn) reAnalyzeBtn.classList.remove('hidden');
     
     renderSections();
     showView('add');
@@ -239,31 +324,45 @@ function deleteSong(songId) {
     const song = allSongs.find(s => s.id === songId);
     if (!song) return;
     
-    document.getElementById('deleteSongTitle').textContent = song.title;
-    document.getElementById('deleteSongArtist').textContent = song.artist;
+    const deleteSongTitle = document.getElementById('deleteSongTitle');
+    const deleteSongArtist = document.getElementById('deleteSongArtist');
+    
+    if (deleteSongTitle) deleteSongTitle.textContent = song.title;
+    if (deleteSongArtist) deleteSongArtist.textContent = song.artist;
     
     showModal('deleteModal');
     
-    document.getElementById('confirmDelete').onclick = () => {
-        allSongs = allSongs.filter(s => s.id !== songId);
-        saveSongs();
-        renderSongsList();
-        hideModal('deleteModal');
-        showToast('Canción eliminada', 'success');
-    };
+    const confirmDelete = document.getElementById('confirmDelete');
+    if (confirmDelete) {
+        confirmDelete.onclick = () => {
+            allSongs = allSongs.filter(s => s.id !== songId);
+            saveSongs();
+            renderSongsList();
+            hideModal('deleteModal');
+            showToast('Canción eliminada', 'success');
+        };
+    }
 }
 
 function clearForm() {
-    document.getElementById('songTitle').value = '';
-    document.getElementById('songArtist').value = '';
-    document.getElementById('songKey').value = 'C';
+    const titleInput = document.getElementById('songTitle');
+    const artistInput = document.getElementById('songArtist');
+    const keyInput = document.getElementById('songKey');
+    
+    if (titleInput) titleInput.value = '';
+    if (artistInput) artistInput.value = '';
+    if (keyInput) keyInput.value = 'C';
     
     songSections = [];
     editingSong = null;
     
-    document.getElementById('addTitle').textContent = '➕ Añadir Nueva Canción';
-    document.getElementById('saveBtn').innerHTML = '💾 Guardar Canción';
-    document.getElementById('reAnalyzeBtn').classList.add('hidden');
+    const addTitle = document.getElementById('addTitle');
+    const saveBtn = document.getElementById('saveBtn');
+    const reAnalyzeBtn = document.getElementById('reAnalyzeBtn');
+    
+    if (addTitle) addTitle.textContent = '➕ Añadir Nueva Canción';
+    if (saveBtn) saveBtn.innerHTML = '💾 Guardar Canción';
+    if (reAnalyzeBtn) reAnalyzeBtn.classList.add('hidden');
     
     renderSections();
 }
@@ -275,7 +374,11 @@ function clearForm() {
 function renderSongsList() {
     const container = document.getElementById('songsGrid');
     const emptyState = document.getElementById('emptyState');
-    const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+    const searchInput = document.getElementById('searchInput');
+    
+    if (!container || !emptyState) return;
+    
+    const searchTerm = searchInput ? searchInput.value.toLowerCase() : '';
     
     let filteredSongs = allSongs;
     if (searchTerm) {
@@ -307,7 +410,7 @@ function renderSongsList() {
             <div class="song-card-content">
                 <div class="song-sections-preview">
                     ${song.sections.slice(0, 2).map(section => 
-                        `<span class="section-tag">${section.name}</span>`
+                        `<span class="section-tag">${escapeHtml(section.name)}</span>`
                     ).join('')}
                     ${song.sections.length > 2 ? `<span class="section-tag more">+${song.sections.length - 2}</span>` : ''}
                 </div>
@@ -331,6 +434,8 @@ function renderSongsList() {
 function renderSections() {
     const container = document.getElementById('sectionsContainer');
     const noSectionsMsg = document.getElementById('noSectionsMsg');
+    
+    if (!container || !noSectionsMsg) return;
     
     if (songSections.length === 0) {
         container.classList.add('hidden');
@@ -383,7 +488,8 @@ function addNewSection() {
     
     // Enfocar en el nombre de la nueva sección
     setTimeout(() => {
-        const lastInput = document.querySelector('.section-name-input:last-of-type');
+        const inputs = document.querySelectorAll('.section-name-input');
+        const lastInput = inputs[inputs.length - 1];
         if (lastInput) lastInput.focus();
     }, 100);
 }
@@ -634,9 +740,13 @@ function viewSong(songId) {
     originalKey = currentSong.key;
     currentKey = currentSong.key;
     
-    document.getElementById('currentSongTitle').textContent = currentSong.title;
-    document.getElementById('currentSongArtist').textContent = currentSong.artist;
-    document.getElementById('currentKey').textContent = currentKey;
+    const titleElement = document.getElementById('currentSongTitle');
+    const artistElement = document.getElementById('currentSongArtist');
+    const keyElement = document.getElementById('currentKey');
+    
+    if (titleElement) titleElement.textContent = currentSong.title;
+    if (artistElement) artistElement.textContent = currentSong.artist;
+    if (keyElement) keyElement.textContent = currentKey;
     
     renderSongContent();
     showView('song');
@@ -646,6 +756,8 @@ function renderSongContent() {
     if (!currentSong) return;
     
     const container = document.getElementById('songContent');
+    if (!container) return;
+    
     const semitones = calculateSemitones(originalKey, currentKey);
     
     container.innerHTML = currentSong.sections.map(section => `
@@ -664,13 +776,17 @@ function changeKey(direction) {
     const newIndex = (currentIndex + direction + 12) % 12;
     currentKey = NOTES[newIndex];
     
-    document.getElementById('currentKey').textContent = currentKey;
+    const keyElement = document.getElementById('currentKey');
+    if (keyElement) keyElement.textContent = currentKey;
+    
     renderSongContent();
 }
 
 function resetKey() {
     currentKey = originalKey;
-    document.getElementById('currentKey').textContent = currentKey;
+    const keyElement = document.getElementById('currentKey');
+    if (keyElement) keyElement.textContent = currentKey;
+    
     renderSongContent();
 }
 
@@ -685,17 +801,26 @@ function editCurrentSong() {
 // ==========================================
 
 function showModal(modalId) {
-    document.getElementById(modalId).classList.remove('hidden');
-    document.body.style.overflow = 'hidden';
+    const modal = document.getElementById(modalId);
+    if (modal) {
+        modal.classList.remove('hidden');
+        document.body.style.overflow = 'hidden';
+    }
 }
 
 function hideModal(modalId) {
-    document.getElementById(modalId).classList.add('hidden');
-    document.body.style.overflow = '';
+    const modal = document.getElementById(modalId);
+    if (modal) {
+        modal.classList.add('hidden');
+        document.body.style.overflow = '';
+    }
 }
 
 function processPastedSong() {
-    const text = document.getElementById('pasteText').value.trim();
+    const pasteTextElement = document.getElementById('pasteText');
+    if (!pasteTextElement) return;
+    
+    const text = pasteTextElement.value.trim();
     if (!text) {
         showToast('Por favor pega el contenido de la canción', 'error');
         return;
@@ -710,7 +835,7 @@ function processPastedSong() {
     songSections.push(...detectedSections);
     renderSections();
     
-    document.getElementById('pasteText').value = '';
+    pasteTextElement.value = '';
     hideModal('pasteModal');
     showToast(`Se detectaron ${detectedSections.length} secciones`, 'success');
 }
@@ -722,12 +847,19 @@ function showReAnalyzeModal() {
         `${section.name}:\n${section.chords}\n${section.lyrics}\n`
     ).join('\n');
     
-    document.getElementById('reAnalyzeText').value = songText;
+    const reAnalyzeTextElement = document.getElementById('reAnalyzeText');
+    if (reAnalyzeTextElement) {
+        reAnalyzeTextElement.value = songText;
+    }
+    
     showModal('reAnalyzeModal');
 }
 
 function processReAnalysis() {
-    const text = document.getElementById('reAnalyzeText').value.trim();
+    const reAnalyzeTextElement = document.getElementById('reAnalyzeText');
+    if (!reAnalyzeTextElement) return;
+    
+    const text = reAnalyzeTextElement.value.trim();
     if (!text) {
         showToast('Por favor modifica el contenido para re-analizar', 'error');
         return;
@@ -742,7 +874,7 @@ function processReAnalysis() {
     songSections = detectedSections;
     renderSections();
     
-    document.getElementById('reAnalyzeText').value = '';
+    reAnalyzeTextElement.value = '';
     hideModal('reAnalyzeModal');
     showToast('Canción re-analizada correctamente', 'success');
 }
@@ -765,6 +897,8 @@ function escapeHtml(text) {
 function showToast(message, type = 'info') {
     const toast = document.getElementById('toast');
     const toastMessage = document.getElementById('toastMessage');
+    
+    if (!toast || !toastMessage) return;
     
     toastMessage.textContent = message;
     toast.className = `toast ${type}`;
@@ -815,3 +949,17 @@ if ('serviceWorker' in navigator) {
             .catch(error => console.log('SW registration failed'));
     });
 }
+
+// ==========================================
+// FUNCIONES GLOBALES (para onclick en HTML)
+// ==========================================
+
+// Estas funciones deben estar en el scope global para que funcionen los onclick
+window.editSong = editSong;
+window.deleteSong = deleteSong;
+window.viewSong = viewSong;
+window.updateSectionName = updateSectionName;
+window.updateSectionChords = updateSectionChords;
+window.updateSectionLyrics = updateSectionLyrics;
+window.removeSection = removeSection;
+window.showView = showView;
