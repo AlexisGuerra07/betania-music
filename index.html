@@ -3,226 +3,174 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Betania Music</title>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-        
-        body {
-            font-family: Arial, sans-serif;
-            background: #f0f9ff;
-            color: #333;
-        }
-        
-        .header {
-            background: #0d9488;
-            color: white;
-            padding: 1rem;
-            text-align: center;
-        }
-        
-        .container {
-            max-width: 800px;
-            margin: 2rem auto;
-            padding: 0 1rem;
-        }
-        
-        .song-list {
-            background: white;
-            border-radius: 10px;
-            padding: 1.5rem;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-        }
-        
-        .song-item {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 1rem;
-            border-bottom: 1px solid #e5e7eb;
-            cursor: pointer;
-        }
-        
-        .song-item:hover {
-            background: #f9fafb;
-        }
-        
-        .song-item:last-child {
-            border-bottom: none;
-        }
-        
-        .song-info h3 {
-            color: #0d9488;
-            margin-bottom: 0.25rem;
-        }
-        
-        .song-info p {
-            color: #6b7280;
-            font-size: 0.875rem;
-        }
-        
-        .song-key {
-            background: #0d9488;
-            color: white;
-            padding: 0.25rem 0.75rem;
-            border-radius: 20px;
-            font-size: 0.875rem;
-            font-weight: bold;
-        }
-        
-        /* Vista de canción */
-        .song-view {
-            display: none;
-            background: white;
-            border-radius: 10px;
-            padding: 2rem;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-        }
-        
-        .song-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 2rem;
-            flex-wrap: wrap;
-            gap: 1rem;
-        }
-        
-        .song-title {
-            color: #0d9488;
-            font-size: 2rem;
-            margin: 0;
-        }
-        
-        .controls {
-            display: flex;
-            align-items: center;
-            gap: 1rem;
-        }
-        
-        .key-display {
-            font-size: 1.125rem;
-            font-weight: bold;
-        }
-        
-        .key-btn {
-            background: #0d9488;
-            color: white;
-            border: none;
-            padding: 0.5rem 1rem;
-            border-radius: 5px;
-            cursor: pointer;
-            font-size: 1rem;
-        }
-        
-        .key-btn:hover {
-            background: #0f766e;
-        }
-        
-        .back-btn {
-            background: #6b7280;
-            color: white;
-            border: none;
-            padding: 0.5rem 1rem;
-            border-radius: 5px;
-            cursor: pointer;
-        }
-        
-        .back-btn:hover {
-            background: #4b5563;
-        }
-        
-        .song-content {
-            margin-top: 2rem;
-        }
-        
-        .section {
-            margin-bottom: 2rem;
-            padding: 1.5rem;
-            background: #f9fafb;
-            border-radius: 8px;
-            border-left: 4px solid #0d9488;
-        }
-        
-        .section-title {
-            color: #0d9488;
-            font-weight: bold;
-            margin-bottom: 1rem;
-            font-size: 1.125rem;
-        }
-        
-        .chords {
-            font-family: 'Courier New', monospace;
-            font-weight: bold;
-            color: #0d9488;
-            margin-bottom: 0.5rem;
-            font-size: 1rem;
-            line-height: 1.5;
-        }
-        
-        .lyrics {
-            font-family: 'Courier New', monospace;
-            color: #374151;
-            line-height: 1.5;
-            white-space: pre-line;
-        }
-        
-        .hidden {
-            display: none;
-        }
-        
-        /* Responsive */
-        @media (max-width: 768px) {
-            .song-header {
-                flex-direction: column;
-                text-align: center;
-            }
-            
-            .song-title {
-                font-size: 1.5rem;
-            }
-            
-            .controls {
-                justify-content: center;
-            }
-        }
-    </style>
+    <title>Betania Music - Gestor de Canciones</title>
+    
+    <!-- Google Fonts para mejores tipografías -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Source+Code+Pro:wght@400;500;600&display=swap" rel="stylesheet">
+    
+    <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-    <div class="header">
-        <h1>🎵 Betania Music</h1>
-        <p>Sistema Musical Simple</p>
-    </div>
-    
-    <div class="container">
-        <!-- Lista de Canciones -->
-        <div id="songList" class="song-list">
-            <h2 style="margin-bottom: 1rem; color: #0d9488;">Mis Canciones</h2>
-            <div id="songsContainer">
-                <!-- Las canciones se cargarán aquí -->
+    <!-- Header -->
+    <header class="header">
+        <div class="header-content">
+            <div class="logo-section" id="logo-home" style="cursor: pointer;">
+                <div class="logo-icon">
+                    <svg width="40" height="40" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <!-- Fondo circular con degradado -->
+                        <defs>
+                            <radialGradient id="logoGradient" cx="50%" cy="30%" r="70%">
+                                <stop offset="0%" style="stop-color:#ffffff;stop-opacity:1" />
+                                <stop offset="100%" style="stop-color:#e0f2f1;stop-opacity:1" />
+                            </radialGradient>
+                        </defs>
+                        <circle cx="50" cy="50" r="45" fill="url(#logoGradient)" stroke="rgba(255,255,255,0.3)" stroke-width="1"/>
+                        <!-- Llama principal -->
+                        <path d="M50 20C42 20 36 26 36 35C36 42 39 47 43 50C46 52 48 53 50 53C52 53 54 52 57 50C61 47 64 42 64 35C64 26 58 20 50 20Z" fill="rgba(255,255,255,0.9)"/>
+                        <!-- Llama interna -->
+                        <path d="M50 25C45 25 41 29 41 35C41 39 43 42 45 44C47 45 48 46 50 46C52 46 53 45 55 44C57 42 59 39 59 35C59 29 55 25 50 25Z" fill="rgba(255,255,255,0.7)"/>
+                        <!-- Núcleo de la llama -->
+                        <ellipse cx="50" cy="37" rx="5" ry="8" fill="rgba(255,255,255,0.8)"/>
+                        <!-- Punta superior -->
+                        <path d="M50 20C48 22 47 25 47 28C47 30 48 31 49 32C49.5 32.5 50 32.5 50 32.5C50 32.5 50.5 32.5 51 32C52 31 53 30 53 28C53 25 52 22 50 20Z" fill="white"/>
+                    </svg>
+                </div>
+                <div class="logo-text">Betania Music</div>
             </div>
+            <nav>
+                <div class="nav-tabs">
+                    <button class="nav-tab active" data-route="canciones">Canciones</button>
+                    <button class="nav-tab" data-route="edicion">Edición</button>
+                </div>
+            </nav>
         </div>
-        
-        <!-- Vista de Canción -->
-        <div id="songView" class="song-view">
-            <div class="song-header">
-                <h1 id="currentSongTitle" class="song-title">Título</h1>
-                <div class="controls">
-                    <button class="back-btn" onclick="showSongList()">← Volver</button>
-                    <span class="key-display">Tonalidad: <span id="currentKey">C</span></span>
-                    <button class="key-btn" onclick="changeKey(-1)">♭</button>
-                    <button class="key-btn" onclick="changeKey(1)">♯</button>
+    </header>
+
+    <!-- Main App Container -->
+    <div class="app-container">
+        <!-- Songs List View -->
+        <div class="view active" id="view-canciones">
+            <div class="songs-container">
+                <div class="section-header">
+                    <h2 class="section-title">Canciones</h2>
+                    <button class="btn-add-song" id="btn-add-song">+ Añadir canción</button>
+                </div>
+
+                <div class="search-container">
+                    <input type="text" class="search-box" id="search-box" placeholder="Buscar por título o autor...">
+                </div>
+
+                <!-- Empty State -->
+                <div class="empty-state" id="empty-state">
+                    <h3>Aún no hay canciones</h3>
+                    <p>Pulsa "Añadir canción" para crear la primera.</p>
+                </div>
+
+                <!-- Songs Grid -->
+                <div class="songs-grid" id="songs-grid" style="display: none;">
+                    <!-- Songs will be dynamically added here -->
                 </div>
             </div>
-            <div id="songContent" class="song-content">
-                <!-- El contenido de la canción se cargará aquí -->
+        </div>
+
+        <!-- Song Reader View -->
+        <div class="view" id="view-song-reader">
+            <div class="song-reader">
+                <div class="reader-header">
+                    <button class="btn" id="btn-back-to-list">← Volver a canciones</button>
+                    <div class="reader-title" id="reader-title">Título de la canción</div>
+                    <div class="reader-meta" id="reader-meta">Autor • Tonalidad base</div>
+                    
+                    <div class="reader-controls">
+                        <div class="transpose-controls">
+                            <span class="transpose-label">Tonalidad:</span>
+                            <button class="transpose-btn" id="btn-transpose-down-reader">♭</button>
+                            <div class="current-key" id="current-key-reader">C</div>
+                            <button class="transpose-btn" id="btn-transpose-up-reader">♯</button>
+                            <button class="btn btn-sm" id="btn-reset-key-reader">Base</button>
+                        </div>
+                        
+                        <button class="btn btn-primary" id="btn-edit-song">Editar</button>
+                    </div>
+                </div>
+
+                <div class="song-content" id="song-content">
+                    <!-- Song sections will be rendered here -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Editor View -->
+        <div class="view" id="view-edicion">
+            <div class="editor-container">
+                <!-- Editor Sidebar -->
+                <div class="editor-sidebar">
+                    <div class="sidebar-section">
+                        <h3 class="sidebar-title">Estructura</h3>
+                        <div id="sections-outline">
+                            <!-- Outline will be generated here -->
+                        </div>
+                        <button class="btn btn-sm" id="btn-add-section" style="width: 100%; margin-top: 0.5rem;">+ Sección</button>
+                    </div>
+                    
+                    <div class="sidebar-section">
+                        <h3 class="sidebar-title">Acciones</h3>
+                        <button class="btn btn-sm" id="btn-transpose-up" style="width: 100%; margin-bottom: 0.25rem;">♯ Subir tono</button>
+                        <button class="btn btn-sm" id="btn-transpose-down" style="width: 100%; margin-bottom: 0.25rem;">♭ Bajar tono</button>
+                        <button class="btn btn-sm" id="btn-reset-transpose" style="width: 100%;">Reset</button>
+                    </div>
+                </div>
+
+                <!-- Editor Main -->
+                <div class="editor-main">
+                    <div class="editor-toolbar">
+                        <div class="toolbar-left">
+                            <button class="btn btn-sm" id="btn-back-from-editor">← Volver</button>
+                            <input type="text" id="song-title-editor" placeholder="Título de la canción" 
+                                   class="title-input">
+                        </div>
+                        
+                        <div class="toolbar-right">
+                            <div class="chips-container">
+                                <div class="chip" id="key-chip">
+                                    <span>Tonalidad:</span>
+                                    <span id="key-status">C</span>
+                                </div>
+                            </div>
+                            <span class="save-indicator" id="save-indicator">Guardado</span>
+                            <button class="btn btn-sm" id="btn-reanalyze" style="display: none;">🔄 Reanalizar</button>
+                            <button class="btn btn-sm" id="btn-add-pair-editor">+ Par</button>
+                            <button class="btn btn-primary" id="btn-save-song">Guardar</button>
+                        </div>
+                    </div>
+
+                    <!-- Editor Content -->
+                    <div class="editor-content" id="editor-content">
+                        <!-- Sections and pairs will be rendered here -->
+                    </div>
+                </div>
             </div>
         </div>
     </div>
-    
+
+    <!-- Modal para formularios -->
+    <div class="modal-overlay" id="modal-overlay" style="display: none;">
+        <div class="modal">
+            <div class="modal-header">
+                <h3 class="modal-title" id="modal-title">Título del Modal</h3>
+                <button class="modal-close" id="modal-close">×</button>
+            </div>
+            <div class="modal-content" id="modal-content">
+                <!-- Contenido dinámico del modal -->
+            </div>
+            <div class="modal-footer" id="modal-footer">
+                <!-- Botones dinámicos del modal -->
+            </div>
+        </div>
+    </div>
+
     <script src="script.js"></script>
 </body>
 </html>
