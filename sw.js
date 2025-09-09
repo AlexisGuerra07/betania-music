@@ -2,10 +2,11 @@ const CACHE_NAME = 'betania-music-v1.0.0';
 const urlsToCache = [
   '/',
   '/index.html',
+  '/styles.css',
+  '/app.js',
   '/manifest.json',
-  '/icons/icon-192x192.png',
-  '/icons/icon-512x512.png',
-  // Agregar aquí todos tus archivos CSS, JS, etc.
+  '/icon-192.png',
+  '/icon-512.png'
 ];
 
 // Instalación del Service Worker
@@ -20,6 +21,9 @@ self.addEventListener('install', (event) => {
       .then(() => {
         console.log('[SW] Todos los archivos en cache');
         return self.skipWaiting();
+      })
+      .catch((error) => {
+        console.log('[SW] Error en instalación:', error);
       })
   );
 });
@@ -38,6 +42,7 @@ self.addEventListener('activate', (event) => {
         })
       );
     }).then(() => {
+      console.log('[SW] Service Worker activado');
       return self.clients.claim();
     })
   );
@@ -47,6 +52,11 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
   // Solo cachear requests GET
   if (event.request.method !== 'GET') {
+    return;
+  }
+
+  // Ignorar requests a otros dominios
+  if (!event.request.url.startsWith(self.location.origin)) {
     return;
   }
 
@@ -76,11 +86,19 @@ self.addEventListener('fetch', (event) => {
             });
 
           return response;
-        }).catch(() => {
+        }).catch((error) => {
+          console.log('[SW] Fetch falló:', error);
+          
           // Si falla el fetch y es una navegación, devolver página offline
           if (event.request.destination === 'document') {
-            return caches.match('/');
+            return caches.match('/index.html');
           }
+          
+          // Para otros recursos, devolver una respuesta vacía
+          return new Response('Recurso no disponible offline', {
+            status: 503,
+            statusText: 'Service Unavailable'
+          });
         });
       })
   );
@@ -91,35 +109,40 @@ self.addEventListener('message', (event) => {
   if (event.data && event.data.type === 'SKIP_WAITING') {
     self.skipWaiting();
   }
+  
+  if (event.data && event.data.type === 'GET_VERSION') {
+    event.ports[0].postMessage({ version: CACHE_NAME });
+  }
 });
 
-// Notificaciones push (opcional)
+// Notificaciones push (opcional - para futuras funcionalidades)
 self.addEventListener('push', (event) => {
+  const title = 'Betania Music';
   const options = {
     body: event.data ? event.data.text() : 'Nueva actualización disponible',
-    icon: '/icons/icon-192x192.png',
-    badge: '/icons/icon-72x72.png',
+    icon: '/icon-192.png',
+    badge: '/icon-72.png',
     vibrate: [100, 50, 100],
     data: {
       dateOfArrival: Date.now(),
-      primaryKey: 1
+      primaryKey: 'betania-music'
     },
     actions: [
       {
         action: 'explore',
-        title: 'Abrir Betania Music',
-        icon: '/icons/icon-192x192.png'
+        title: 'Abrir App',
+        icon: '/icon-192.png'
       },
       {
         action: 'close',
-        title: 'Cerrar notificación',
-        icon: '/icons/icon-192x192.png'
+        title: 'Cerrar',
+        icon: '/icon-192.png'
       }
     ]
   };
 
   event.waitUntil(
-    self.registration.showNotification('Betania Music', options)
+    self.registration.showNotification(title, options)
   );
 });
 
@@ -129,7 +152,33 @@ self.addEventListener('notificationclick', (event) => {
 
   if (event.action === 'explore') {
     event.waitUntil(
-      clients.openWindow('/')
+      clients.matchAll().then((clientList) => {
+        // Si ya hay una ventana abierta, enfocarla
+        for (const client of clientList) {
+          if (client.url === '/' && 'focus' in client) {
+            return client.focus();
+          }
+        }
+        // Si no hay ventana abierta, abrir una nueva
+        if (clients.openWindow) {
+          return clients.openWindow('/');
+        }
+      })
     );
   }
+});
+
+// Sincronización en segundo plano (opcional)
+self.addEventListener('sync', (event) => {
+  if (event.tag === 'background-sync') {
+    event.waitUntil(
+      // Aquí puedes agregar lógica para sincronizar datos
+      console.log('[SW] Sincronización en segundo plano')
+    );
+  }
+});
+
+// Manejo de actualizaciones
+self.addEventListener('updatefound', () => {
+  console.log('[SW] Nueva versión encontrada');
 });
