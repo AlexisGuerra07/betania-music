@@ -3,313 +3,226 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Betania Music - Gestor Musical</title>
-    
-    <!-- Meta tags -->
-    <meta name="description" content="Sistema de gestión musical para alabanza cristiana con transposición automática">
-    <meta name="keywords" content="música, alabanza, acordes, canciones, cristiano">
-    <meta name="author" content="Betania Music">
-    
-    <!-- PWA Meta tags -->
-    <meta name="theme-color" content="#0d9488">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="default">
-    <meta name="apple-mobile-web-app-title" content="Betania Music">
-    
-    <!-- Favicon -->
-    <link rel="icon" type="image/png" href="logo.png">
-    <link rel="apple-touch-icon" href="logo.png">
-    
-    <!-- Manifest -->
-    <link rel="manifest" href="manifest.json">
-    
-    <!-- CSS - SOLO ESTE ARCHIVO -->
-    <link rel="stylesheet" href="styles.css">
+    <title>Betania Music</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: Arial, sans-serif;
+            background: #f0f9ff;
+            color: #333;
+        }
+        
+        .header {
+            background: #0d9488;
+            color: white;
+            padding: 1rem;
+            text-align: center;
+        }
+        
+        .container {
+            max-width: 800px;
+            margin: 2rem auto;
+            padding: 0 1rem;
+        }
+        
+        .song-list {
+            background: white;
+            border-radius: 10px;
+            padding: 1.5rem;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        .song-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1rem;
+            border-bottom: 1px solid #e5e7eb;
+            cursor: pointer;
+        }
+        
+        .song-item:hover {
+            background: #f9fafb;
+        }
+        
+        .song-item:last-child {
+            border-bottom: none;
+        }
+        
+        .song-info h3 {
+            color: #0d9488;
+            margin-bottom: 0.25rem;
+        }
+        
+        .song-info p {
+            color: #6b7280;
+            font-size: 0.875rem;
+        }
+        
+        .song-key {
+            background: #0d9488;
+            color: white;
+            padding: 0.25rem 0.75rem;
+            border-radius: 20px;
+            font-size: 0.875rem;
+            font-weight: bold;
+        }
+        
+        /* Vista de canción */
+        .song-view {
+            display: none;
+            background: white;
+            border-radius: 10px;
+            padding: 2rem;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        .song-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+        
+        .song-title {
+            color: #0d9488;
+            font-size: 2rem;
+            margin: 0;
+        }
+        
+        .controls {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+        
+        .key-display {
+            font-size: 1.125rem;
+            font-weight: bold;
+        }
+        
+        .key-btn {
+            background: #0d9488;
+            color: white;
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 1rem;
+        }
+        
+        .key-btn:hover {
+            background: #0f766e;
+        }
+        
+        .back-btn {
+            background: #6b7280;
+            color: white;
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        
+        .back-btn:hover {
+            background: #4b5563;
+        }
+        
+        .song-content {
+            margin-top: 2rem;
+        }
+        
+        .section {
+            margin-bottom: 2rem;
+            padding: 1.5rem;
+            background: #f9fafb;
+            border-radius: 8px;
+            border-left: 4px solid #0d9488;
+        }
+        
+        .section-title {
+            color: #0d9488;
+            font-weight: bold;
+            margin-bottom: 1rem;
+            font-size: 1.125rem;
+        }
+        
+        .chords {
+            font-family: 'Courier New', monospace;
+            font-weight: bold;
+            color: #0d9488;
+            margin-bottom: 0.5rem;
+            font-size: 1rem;
+            line-height: 1.5;
+        }
+        
+        .lyrics {
+            font-family: 'Courier New', monospace;
+            color: #374151;
+            line-height: 1.5;
+            white-space: pre-line;
+        }
+        
+        .hidden {
+            display: none;
+        }
+        
+        /* Responsive */
+        @media (max-width: 768px) {
+            .song-header {
+                flex-direction: column;
+                text-align: center;
+            }
+            
+            .song-title {
+                font-size: 1.5rem;
+            }
+            
+            .controls {
+                justify-content: center;
+            }
+        }
+    </style>
 </head>
 <body>
-    <!-- Loading Screen -->
-    <div id="loadingScreen" class="loading-screen">
-        <div class="loading-content">
-            <div class="loading-logo">🎵</div>
-            <h2>Betania Music</h2>
-            <div class="loading-spinner"></div>
-            <p>Cargando sistema musical...</p>
+    <div class="header">
+        <h1>🎵 Betania Music</h1>
+        <p>Sistema Musical Simple</p>
+    </div>
+    
+    <div class="container">
+        <!-- Lista de Canciones -->
+        <div id="songList" class="song-list">
+            <h2 style="margin-bottom: 1rem; color: #0d9488;">Mis Canciones</h2>
+            <div id="songsContainer">
+                <!-- Las canciones se cargarán aquí -->
+            </div>
         </div>
-    </div>
-
-    <!-- App Principal -->
-    <div id="app" class="app hidden">
-        <!-- Header -->
-        <header class="header">
-            <div class="header-container">
-                <div class="logo-section">
-                    <div class="logo">🎵</div>
-                    <div class="logo-text">
-                        <h1>Betania Music</h1>
-                        <p>Sistema Musical</p>
-                    </div>
-                </div>
-                
-                <!-- Navegación -->
-                <nav class="nav">
-                    <button id="homeBtn" class="nav-btn active" data-view="home">
-                        🏠 <span>Inicio</span>
-                    </button>
-                    <button id="addBtn" class="nav-btn" data-view="add">
-                        ➕ <span>Añadir</span>
-                    </button>
-                </nav>
-            </div>
-        </header>
-
-        <!-- Vista: Inicio (Lista de Canciones) -->
-        <main id="homeView" class="view active">
-            <div class="container">
-                <!-- Header de sección -->
-                <div class="section-header">
-                    <h2>🎼 Mis Canciones</h2>
-                    <button id="addNewSongBtn" class="btn btn-primary">
-                        ➕ Nueva Canción
-                    </button>
-                </div>
-
-                <!-- Búsqueda -->
-                <div class="search-container">
-                    <div class="search-box">
-                        <input type="text" id="searchInput" placeholder="Buscar canciones..." class="search-input">
-                        <div class="search-icon">🔍</div>
-                    </div>
-                </div>
-
-                <!-- Lista de canciones -->
-                <div id="songsGrid" class="songs-grid">
-                    <!-- Canciones se cargan aquí -->
-                </div>
-
-                <!-- Estado vacío -->
-                <div id="emptyState" class="empty-state hidden">
-                    <div class="empty-icon">🎵</div>
-                    <h3>No hay canciones</h3>
-                    <p>Añade tu primera canción para comenzar</p>
-                    <button class="btn btn-primary" onclick="showView('add')">
-                        ➕ Añadir Primera Canción
-                    </button>
+        
+        <!-- Vista de Canción -->
+        <div id="songView" class="song-view">
+            <div class="song-header">
+                <h1 id="currentSongTitle" class="song-title">Título</h1>
+                <div class="controls">
+                    <button class="back-btn" onclick="showSongList()">← Volver</button>
+                    <span class="key-display">Tonalidad: <span id="currentKey">C</span></span>
+                    <button class="key-btn" onclick="changeKey(-1)">♭</button>
+                    <button class="key-btn" onclick="changeKey(1)">♯</button>
                 </div>
             </div>
-        </main>
-
-        <!-- Vista: Añadir/Editar Canción -->
-        <main id="addView" class="view">
-            <div class="container">
-                <!-- Header de sección -->
-                <div class="section-header">
-                    <h2 id="addTitle">➕ Añadir Nueva Canción</h2>
-                    <div class="header-actions">
-                        <button id="reAnalyzeBtn" class="btn btn-warning hidden">
-                            🔄 Re-analizar
-                        </button>
-                        <button id="pasteBtn" class="btn btn-secondary">
-                            📋 Pegar Canción
-                        </button>
-                    </div>
-                </div>
-
-                <!-- Formulario -->
-                <div class="form-card">
-                    <!-- Información básica -->
-                    <div class="form-section">
-                        <h3>📝 Información de la Canción</h3>
-                        <div class="form-grid">
-                            <div class="form-group">
-                                <label for="songTitle">Título *</label>
-                                <input type="text" id="songTitle" placeholder="Título de la canción" required>
-                            </div>
-                            <div class="form-group">
-                                <label for="songArtist">Artista</label>
-                                <input type="text" id="songArtist" placeholder="Nombre del artista">
-                            </div>
-                            <div class="form-group">
-                                <label for="songKey">Tonalidad Original</label>
-                                <select id="songKey">
-                                    <option value="C">C (Do)</option>
-                                    <option value="C#">C# (Do#)</option>
-                                    <option value="D">D (Re)</option>
-                                    <option value="D#">D# (Re#)</option>
-                                    <option value="E">E (Mi)</option>
-                                    <option value="F">F (Fa)</option>
-                                    <option value="F#">F# (Fa#)</option>
-                                    <option value="G">G (Sol)</option>
-                                    <option value="G#">G# (Sol#)</option>
-                                    <option value="A">A (La)</option>
-                                    <option value="A#">A# (La#)</option>
-                                    <option value="B">B (Si)</option>
-                                </select>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Secciones -->
-                    <div class="form-section">
-                        <div class="section-header-small">
-                            <h3>🎵 Secciones de la Canción</h3>
-                            <button id="addSectionBtn" class="btn btn-outline">
-                                ➕ Añadir Sección
-                            </button>
-                        </div>
-                        <div id="sectionsContainer" class="sections-container">
-                            <!-- Secciones se cargan aquí -->
-                        </div>
-                        <div id="noSectionsMsg" class="no-sections">
-                            <p>No hay secciones añadidas. Usa el botón "📋 Pegar Canción" para detectar automáticamente las partes.</p>
-                        </div>
-                    </div>
-
-                    <!-- Botones de acción -->
-                    <div class="form-actions">
-                        <button id="cancelBtn" class="btn btn-ghost">
-                            ❌ Cancelar
-                        </button>
-                        <button id="saveBtn" class="btn btn-primary">
-                            💾 Guardar Canción
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </main>
-
-        <!-- Vista: Ver Canción -->
-        <main id="songView" class="view">
-            <div class="container">
-                <!-- Header de canción -->
-                <div class="song-header">
-                    <button id="backBtn" class="btn btn-ghost">
-                        ← Volver
-                    </button>
-                    <div class="song-info">
-                        <h1 id="currentSongTitle">Título</h1>
-                        <p id="currentSongArtist">Artista</p>
-                    </div>
-                    <div class="song-actions">
-                        <button id="editCurrentBtn" class="btn btn-secondary">
-                            ✏️ Editar
-                        </button>
-                    </div>
-                </div>
-
-                <!-- Controles de tonalidad -->
-                <div class="key-controls">
-                    <div class="key-info">
-                        <span class="key-label">Tonalidad:</span>
-                        <span id="currentKey" class="current-key">C</span>
-                    </div>
-                    <div class="key-buttons">
-                        <button id="keyDown" class="key-btn" title="Bajar medio tono">♭</button>
-                        <button id="keyReset" class="key-btn reset" title="Tonalidad original">⟲</button>
-                        <button id="keyUp" class="key-btn" title="Subir medio tono">♯</button>
-                    </div>
-                </div>
-
-                <!-- Contenido de la canción -->
-                <div id="songContent" class="song-content">
-                    <!-- Secciones se cargan aquí -->
-                </div>
-            </div>
-        </main>
-    </div>
-
-    <!-- Modal: Pegar Canción -->
-    <div id="pasteModal" class="modal">
-        <div class="modal-overlay"></div>
-        <div class="modal-container">
-            <div class="modal-header">
-                <h3>📋 Pegar Canción Completa</h3>
-                <button id="closePasteModal" class="modal-close">×</button>
-            </div>
-            <div class="modal-body">
-                <p class="modal-description">
-                    Pega aquí la canción completa con acordes y letras. El sistema detectará automáticamente las partes como Estrofa, Coro, Puente, etc.
-                </p>
-                <div class="paste-container">
-                    <textarea id="pasteText" placeholder="Ejemplo:
-
-Estrofa 1:
-C           Am
-El nos ama con amor eterno
-F           G
-Nada nos separará
-
-Coro:
-F           C
-Aleluya, cantamos tu amor
-G           Am
-Por siempre te adoramos" class="paste-textarea"></textarea>
-                </div>
-                <div class="modal-tip">
-                    💡 <strong>Tip:</strong> Puedes usar etiquetas como "Estrofa:", "Coro:", "Puente:" o dejar que el sistema detecte automáticamente.
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button id="cancelPaste" class="btn btn-ghost">Cancelar</button>
-                <button id="processPaste" class="btn btn-primary">🔍 Procesar</button>
+            <div id="songContent" class="song-content">
+                <!-- El contenido de la canción se cargará aquí -->
             </div>
         </div>
     </div>
-
-    <!-- Modal: Re-analizar -->
-    <div id="reAnalyzeModal" class="modal">
-        <div class="modal-overlay"></div>
-        <div class="modal-container">
-            <div class="modal-header">
-                <h3>🔄 Re-analizar Canción</h3>
-                <button id="closeReAnalyzeModal" class="modal-close">×</button>
-            </div>
-            <div class="modal-body">
-                <p class="modal-description">
-                    Modifica el texto de la canción y vuelve a analizar para detectar las partes correctamente.
-                </p>
-                <div class="paste-container">
-                    <textarea id="reAnalyzeText" placeholder="Modifica el texto aquí..." class="paste-textarea"></textarea>
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button id="cancelReAnalyze" class="btn btn-ghost">Cancelar</button>
-                <button id="processReAnalyze" class="btn btn-primary">🔍 Re-analizar</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- Modal: Confirmar Eliminación -->
-    <div id="deleteModal" class="modal">
-        <div class="modal-overlay"></div>
-        <div class="modal-container small">
-            <div class="modal-header">
-                <h3>⚠️ Confirmar Eliminación</h3>
-                <button id="closeDeleteModal" class="modal-close">×</button>
-            </div>
-            <div class="modal-body">
-                <p class="modal-description">
-                    ¿Estás seguro de que quieres eliminar esta canción? Esta acción no se puede deshacer.
-                </p>
-                <div class="delete-song-info">
-                    <strong id="deleteSongTitle">Título</strong>
-                    <span id="deleteSongArtist">Artista</span>
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button id="cancelDelete" class="btn btn-ghost">Cancelar</button>
-                <button id="confirmDelete" class="btn btn-danger">🗑️ Eliminar</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- Toast de notificaciones -->
-    <div id="toast" class="toast hidden">
-        <div class="toast-content">
-            <span id="toastMessage">Mensaje</span>
-        </div>
-    </div>
-
-    <!-- JavaScript - SOLO ESTE ARCHIVO -->
+    
     <script src="script.js"></script>
 </body>
 </html>
