@@ -6,202 +6,119 @@
     
     <!-- PWA Meta Tags -->
     <title>Betania Music - Sistema de Alabanza</title>
-    <meta name="description" content="Sistema completo de alabanza con transposición de acordes, setlists y diagramas de guitarra">
+    <meta name="description" content="Sistema completo de alabanza con transposición de acordes y setlists">
     
     <!-- Manifest -->
-    <link rel="manifest" href="/manifest.json">
+    <link rel="manifest" href="manifest.json">
     
     <!-- Meta tags para PWA -->
     <meta name="theme-color" content="#16213e">
     <meta name="background-color" content="#1a1a2e">
-    <meta name="display" content="standalone">
-    <meta name="orientation" content="portrait-primary">
     
     <!-- iOS Meta Tags -->
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="Betania Music">
     
-    <!-- iOS Icons -->
-    <link rel="apple-touch-icon" href="/icons/icon-152x152.png">
-    <link rel="apple-touch-icon" sizes="152x152" href="/icons/icon-152x152.png">
-    <link rel="apple-touch-icon" sizes="167x167" href="/icons/icon-192x192.png">
-    <link rel="apple-touch-icon" sizes="180x180" href="/icons/icon-192x192.png">
+    <!-- Iconos -->
+    <link rel="apple-touch-icon" href="icon-192.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="icon-32.png">
     
-    <!-- Standard favicon -->
-    <link rel="icon" type="image/png" sizes="32x32" href="/icons/icon-32x32.png">
-    <link rel="icon" type="image/png" sizes="16x16" href="/icons/icon-16x16.png">
-    
-    <!-- Windows Meta Tags -->
-    <meta name="msapplication-TileColor" content="#16213e">
-    <meta name="msapplication-TileImage" content="/icons/icon-144x144.png">
-    <meta name="msapplication-config" content="/browserconfig.xml">
-    
-    <!-- Open Graph Meta Tags -->
-    <meta property="og:title" content="Betania Music - Sistema de Alabanza">
-    <meta property="og:description" content="Sistema completo de alabanza con transposición de acordes y setlists">
-    <meta property="og:image" content="/icons/icon-512x512.png">
-    <meta property="og:url" content="https://alexisguerra07.github.io/betania-music/">
-    <meta property="og:type" content="website">
-    <meta property="og:locale" content="es_ES">
-    
-    <!-- Twitter Card Meta Tags -->
-    <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:title" content="Betania Music - Sistema de Alabanza">
-    <meta name="twitter:description" content="Sistema completo de alabanza con transposición de acordes y setlists">
-    <meta name="twitter:image" content="/icons/icon-512x512.png">
-    
-    <!-- Preload crítico -->
-    <link rel="preload" href="/pwa-installer.js" as="script">
-    
-    <!-- CSS existente de tu aplicación -->
-    <style>
-        /* Tu CSS actual aquí */
-        body {
-            margin: 0;
-            padding: 0;
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: #1a1a2e;
-            color: white;
-            overflow-x: hidden;
-        }
-        
-        /* Estilos específicos para PWA */
-        .pwa-banner {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            padding: 10px;
-            text-align: center;
-            font-size: 14px;
-            position: relative;
-        }
-        
-        .pwa-banner.hidden {
-            display: none;
-        }
-        
-        /* Optimización para pantalla completa */
-        @media (display-mode: standalone) {
-            .pwa-banner {
-                display: none;
-            }
-            
-            body {
-                padding-top: env(safe-area-inset-top);
-                padding-bottom: env(safe-area-inset-bottom);
-            }
-        }
-        
-        /* Splash screen personalizado */
-        .splash-screen {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100vw;
-            height: 100vh;
-            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            z-index: 9999;
-            opacity: 1;
-            transition: opacity 0.5s ease-out;
-        }
-        
-        .splash-screen.fade-out {
-            opacity: 0;
-            pointer-events: none;
-        }
-        
-        .splash-logo {
-            width: 120px;
-            height: 120px;
-            background: url('/icons/icon-192x192.png') center/contain no-repeat;
-            margin-bottom: 20px;
-            animation: pulse 2s infinite;
-        }
-        
-        .splash-text {
-            color: white;
-            font-size: 24px;
-            font-weight: 600;
-            margin-bottom: 10px;
-        }
-        
-        .splash-subtitle {
-            color: rgba(255,255,255,0.7);
-            font-size: 16px;
-        }
-        
-        @keyframes pulse {
-            0%, 100% { transform: scale(1); }
-            50% { transform: scale(1.05); }
-        }
-    </style>
+    <!-- CSS -->
+    <link rel="stylesheet" href="styles.css">
 </head>
 <body>
     <!-- Splash Screen -->
     <div class="splash-screen" id="splash-screen">
-        <div class="splash-logo"></div>
+        <div class="splash-logo">♫</div>
         <div class="splash-text">Betania Music</div>
-        <div class="splash-subtitle">Sistema de Alabanza</div>
-    </div>
-    
-    <!-- Banner para instalación PWA -->
-    <div class="pwa-banner" id="pwa-banner">
-        📱 ¡Instala Betania Music en tu dispositivo para una mejor experiencia!
-        <button onclick="document.getElementById('pwa-install-btn').click()" style="
-            background: rgba(255,255,255,0.2);
-            border: none;
-            color: white;
-            padding: 5px 10px;
-            margin-left: 10px;
-            border-radius: 4px;
-            cursor: pointer;
-        ">Instalar</button>
-        <button onclick="document.getElementById('pwa-banner').classList.add('hidden')" style="
-            background: none;
-            border: none;
-            color: white;
-            padding: 5px;
-            margin-left: 5px;
-            cursor: pointer;
-            font-size: 16px;
-        ">×</button>
-    </div>
-    
-    <!-- Contenido principal de tu aplicación -->
-    <div id="app">
-        <!-- Tu aplicación React/HTML actual va aquí -->
+        <div class="splash-subtitle">Cargando...</div>
     </div>
 
+    <!-- Banner PWA -->
+    <div class="pwa-banner" id="pwa-banner">
+        📱 ¡Instala Betania Music para una mejor experiencia!
+        <button class="banner-btn" id="install-banner-btn">Instalar</button>
+        <button class="banner-close" onclick="hideBanner()">×</button>
+    </div>
+
+    <!-- Header -->
+    <header class="header">
+        <h1>♫ Betania Music <span class="version">v4.0</span></h1>
+        <p>Sistema completo de alabanza con transposición y setlists</p>
+    </header>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <h3>📋 Repertorio</h3>
+            <ul class="song-list" id="songList">
+                <li data-song="sublime-gracia" class="active">
+                    <span class="song-icon">🎵</span>
+                    <span class="song-title">Sublime Gracia</span>
+                    <span class="song-key">C</span>
+                </li>
+                <li data-song="casa-oracion">
+                    <span class="song-icon">🏠</span>
+                    <span class="song-title">Casa de Oración</span>
+                    <span class="song-key">G</span>
+                </li>
+                <li data-song="es-el">
+                    <span class="song-icon">✝️</span>
+                    <span class="song-title">Es Él</span>
+                    <span class="song-key">D</span>
+                </li>
+                <li data-song="quiero-adorarte">
+                    <span class="song-icon">🙏</span>
+                    <span class="song-title">Quiero Adorarte</span>
+                    <span class="song-key">A</span>
+                </li>
+                <li data-song="tu-fidelidad">
+                    <span class="song-icon">❤️</span>
+                    <span class="song-title">Tu Fidelidad</span>
+                    <span class="song-key">E</span>
+                </li>
+            </ul>
+
+            <div class="stats">
+                <h4>📊 Estadísticas</h4>
+                <p>📖 5 canciones<br>🎼 12 tonalidades<br>📱 PWA habilitada</p>
+            </div>
+        </aside>
+
+        <!-- Content Area -->
+        <section class="content">
+            <div class="song-display">
+                <h2 class="song-title" id="currentSongTitle">Sublime Gracia</h2>
+                
+                <div class="transpose-controls">
+                    <button class="btn secondary" onclick="transpose(-1)">♭ Bajar</button>
+                    <div class="current-key" id="currentKey">C</div>
+                    <button class="btn secondary" onclick="transpose(1)">♯ Subir</button>
+                    <span class="key-label">Tonalidad actual</span>
+                </div>
+
+                <div class="controls">
+                    <button class="btn" onclick="toggleEdit()">✏️ Editar</button>
+                    <button class="btn" onclick="addToSetlist()">➕ Setlist</button>
+                    <button class="btn" onclick="showChords()">🎸 Acordes</button>
+                    <button class="btn secondary" onclick="resetSong()">🔄 Reset</button>
+                </div>
+
+                <div class="song-content" id="songContent">
+                    <!-- El contenido se carga dinámicamente -->
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Install Button -->
+    <button class="install-button" id="installButton">
+        📱 Instalar App
+    </button>
+
     <!-- Scripts -->
-    <script src="/pwa-installer.js"></script>
-    
-    <!-- Script para manejar splash screen -->
-    <script>
-        // Ocultar splash screen cuando la app esté lista
-        window.addEventListener('load', () => {
-            setTimeout(() => {
-                const splash = document.getElementById('splash-screen');
-                splash.classList.add('fade-out');
-                setTimeout(() => {
-                    splash.style.display = 'none';
-                }, 500);
-            }, 1500); // Mostrar splash por 1.5 segundos
-        });
-        
-        // Ocultar banner PWA si ya está instalada
-        if (window.matchMedia('(display-mode: standalone)').matches || 
-            window.navigator.standalone === true) {
-            document.getElementById('pwa-banner').style.display = 'none';
-        }
-    </script>
-    
-    <!-- Tu JavaScript actual de la aplicación -->
-    <script>
-        // Aquí va tu código JavaScript existente
-    </script>
+    <script src="app.js"></script>
 </body>
 </html>
