@@ -1,941 +1,303 @@
-// ===== CONFIGURACIÓN Y DATOS =====
-const CONFIG = {
-    keys: ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'],
-    chordPatterns: [
-        // Mayores
-        'C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B',
-        // Menores
-        'Cm', 'C#m', 'Dm', 'D#m', 'Em', 'Fm', 'F#m', 'Gm', 'G#m', 'Am', 'A#m', 'Bm',
-        // Séptimas
-        'C7', 'D7', 'E7', 'F7', 'G7', 'A7', 'B7',
-        // Menores séptimas
-        'Cm7', 'Dm7', 'Em7', 'Fm7', 'Gm7', 'Am7', 'Bm7',
-        // Mayores séptimas
-        'Cmaj7', 'Dmaj7', 'Emaj7', 'Fmaj7', 'Gmaj7', 'Amaj7', 'Bmaj7',
-        // Suspendidos
-        'Csus2', 'Csus4', 'Dsus2', 'Dsus4', 'Esus4', 'Fsus2', 'Fsus4', 
-        'Gsus2', 'Gsus4', 'Asus2', 'Asus4', 'Bsus4'
-    ]
-};
-
-// ===== ESTADO GLOBAL =====
-let state = {
-    currentRoute: 'canciones',
+/* ESTADO GLOBAL */
+const App = {
     songs: [],
     currentSong: null,
-    editingSong: null,
-    originalKey: 'C',
-    currentKey: 'C',
-    searchTerm: '',
-    filteredSongs: []
-};
-
-// ===== ELEMENTOS DOM =====
-const elements = {
-    // Navegación
-    navTabs: document.querySelectorAll('.nav-tab'),
-    views: document.querySelectorAll('.view'),
-    logoHome: document.getElementById('logo-home'),
+    transpose: 0,
     
-    // Vista de canciones
-    searchBox: document.getElementById('search-box'),
-    songsGrid: document.getElementById('songs-grid'),
-    emptyState: document.getElementById('empty-state'),
-    btnAddSong: document.getElementById('btn-add-song'),
-    
-    // Lector de canciones
-    btnBackToList: document.getElementById('btn-back-to-list'),
-    readerTitle: document.getElementById('reader-title'),
-    readerMeta: document.getElementById('reader-meta'),
-    songContent: document.getElementById('song-content'),
-    currentKeyReader: document.getElementById('current-key-reader'),
-    btnTransposeUpReader: document.getElementById('btn-transpose-up-reader'),
-    btnTransposeDownReader: document.getElementById('btn-transpose-down-reader'),
-    btnResetKeyReader: document.getElementById('btn-reset-key-reader'),
-    btnEditSong: document.getElementById('btn-edit-song'),
-    
-    // Editor
-    btnBackFromEditor: document.getElementById('btn-back-from-editor'),
-    songTitleEditor: document.getElementById('song-title-editor'),
-    keyStatus: document.getElementById('key-status'),
-    saveIndicator: document.getElementById('save-indicator'),
-    btnSaveSong: document.getElementById('btn-save-song'),
-    btnAddPairEditor: document.getElementById('btn-add-pair-editor'),
-    editorContent: document.getElementById('editor-content'),
-    sectionsOutline: document.getElementById('sections-outline'),
-    btnAddSection: document.getElementById('btn-add-section'),
-    btnTransposeUp: document.getElementById('btn-transpose-up'),
-    btnTransposeDown: document.getElementById('btn-transpose-down'),
-    btnResetTranspose: document.getElementById('btn-reset-transpose'),
-    
-    // Modal
-    modalOverlay: document.getElementById('modal-overlay'),
-    modalTitle: document.getElementById('modal-title'),
-    modalContent: document.getElementById('modal-content'),
-    modalFooter: document.getElementById('modal-footer'),
-    modalClose: document.getElementById('modal-close')
-};
+    // Configuración Inicial
+    init() {
+        this.loadData();
+        Router.init();
+        UI.init();
+    },
 
-// ===== FUNCIONES DE UTILIDAD =====
-function debounce(func, wait) {
-    let timeout;
-    return function executedFunction(...args) {
-        const later = () => {
-            clearTimeout(timeout);
-            func(...args);
-        };
-        clearTimeout(timeout);
-        timeout = setTimeout(later, wait);
-    };
-}
-
-function isMobile() {
-    return window.innerWidth < 768;
-}
-
-function generateId() {
-    return Date.now().toString(36) + Math.random().toString(36).substr(2);
-}
-
-function saveToStorage() {
-    try {
-        localStorage.setItem('betania-songs', JSON.stringify(state.songs));
-        console.log('Canciones guardadas:', state.songs.length);
-    } catch (error) {
-        console.error('Error al guardar:', error);
-    }
-}
-
-function loadFromStorage() {
-    try {
-        const saved = localStorage.getItem('betania-songs');
-        if (saved) {
-            state.songs = JSON.parse(saved);
-            state.filteredSongs = [...state.songs];
+    loadData() {
+        const stored = localStorage.getItem('betania_songs_v1');
+        if (stored) {
+            this.songs = JSON.parse(stored);
         } else {
-            loadDefaultSongs();
+            // DATOS DE EJEMPLO SEGÚN TU ESTRUCTURA
+            this.songs = [{
+                id: '1',
+                title: 'Es Él',
+                author: 'TTL', 
+                key: 'C',
+                sections: [
+                    {
+                        label: 'Intro',
+                        pairs: [
+                            { chords: 'F G    F G', lyrics: '' },
+                            { chords: 'Am G.  C', lyrics: '' }
+                        ]
+                    },
+                    {
+                        label: 'Estrofa',
+                        pairs: [
+                            { chords: 'C          G', lyrics: 'Es Él por el que estoy gastando mi vida' },
+                            { chords: 'Am         F', lyrics: 'Perdiendo todo por amor' }
+                        ]
+                    }
+                ]
+            }];
+            this.saveData();
         }
-    } catch (error) {
-        console.error('Error al cargar:', error);
-        loadDefaultSongs();
+        UI.renderList();
+    },
+
+    saveData() {
+        localStorage.setItem('betania_songs_v1', JSON.stringify(this.songs));
+        UI.showToast('Guardado');
+    },
+
+    getSong(id) { return this.songs.find(s => s.id === id); },
+    
+    updateSong(updatedSong) {
+        const idx = this.songs.findIndex(s => s.id === updatedSong.id);
+        if (idx >= 0) this.songs[idx] = updatedSong;
+        else this.songs.push(updatedSong);
+        this.saveData();
+        UI.renderList();
     }
-}
+};
 
-function loadDefaultSongs() {
-    state.songs = [
-        {
-            id: '1',
-            title: 'Es Él',
-            author: 'TTL',
-            originalKey: 'C',
-            sections: [
-                {
-                    id: 's1',
-                    label: 'Intro',
-                    pairs: [
-                        { id: 'p1', chords: '', lyrics: 'ES ÉL' },
-                        { id: 'p2', chords: '', lyrics: '' },
-                        { id: 'p3', chords: 'F G    F G    Am G.  C', lyrics: '' },
-                        { id: 'p4', chords: '', lyrics: 'ESTROFA (segunda vuelta)' },
-                        { id: 'p5', chords: '', lyrics: '' },
-                        { id: 'p6', chords: 'C', lyrics: 'Estoy preparando el camino' },
-                        { id: 'p7', chords: '', lyrics: '' },
-                        { id: 'p8', chords: 'Am       F(Bb)         C(Am)', lyrics: '' }
-                    ]
-                }
-            ]
-        }
-    ];
-    
-    state.filteredSongs = [...state.songs];
-}
-
-// ===== FUNCIONES DE TRANSPOSICIÓN =====
-function getKeyIndex(key) {
-    // Normalizar la clave (remover modificadores como m, 7, etc.)
-    const baseKey = key.replace(/[^A-G#b]/g, '');
-    return CONFIG.keys.indexOf(baseKey);
-}
-
-function transposeKey(key, semitones) {
-    const baseKey = key.replace(/[^A-G#b]/g, '');
-    const modifier = key.replace(baseKey, '');
-    
-    const currentIndex = CONFIG.keys.indexOf(baseKey);
-    if (currentIndex === -1) return key;
-    
-    let newIndex = (currentIndex + semitones) % 12;
-    if (newIndex < 0) newIndex += 12;
-    
-    return CONFIG.keys[newIndex] + modifier;
-}
-
-function transposeChordLine(chordLine, semitones) {
-    if (!chordLine || semitones === 0) return chordLine;
-    
-    let result = chordLine;
-    
-    // Ordenar patrones por longitud (más largos primero)
-    const sortedPatterns = [...CONFIG.chordPatterns].sort((a, b) => b.length - a.length);
-    
-    sortedPatterns.forEach(pattern => {
-        const regex = new RegExp(`\\b${pattern.replace(/[#b]/g, '[$&]?')}\\b`, 'g');
-        result = result.replace(regex, (match) => {
-            return transposeKey(match, semitones);
-        });
-    });
-    
-    return result;
-}
-
-function calculateTransposition(originalKey, currentKey) {
-    const originalIndex = getKeyIndex(originalKey);
-    const currentIndex = getKeyIndex(currentKey);
-    
-    if (originalIndex === -1 || currentIndex === -1) return 0;
-    
-    let semitones = currentIndex - originalIndex;
-    if (semitones > 6) semitones -= 12;
-    if (semitones < -6) semitones += 12;
-    
-    return semitones;
-}
-
-// ===== FUNCIONES DE NAVEGACIÓN =====
-function navigateToRoute(route) {
-    state.currentRoute = route;
-    
-    // Actualizar tabs activos
-    elements.navTabs.forEach(tab => {
-        tab.classList.remove('active');
-        if (tab.dataset.route === route) {
-            tab.classList.add('active');
-        }
-    });
-    
-    // Mostrar vista correspondiente
-    elements.views.forEach(view => {
-        view.classList.remove('active');
-    });
-    
-    const targetView = document.getElementById(`view-${route}`);
-    if (targetView) {
-        targetView.classList.add('active');
-    }
-    
-    // Acciones específicas según la ruta
-    if (route === 'canciones') {
-        renderSongsList();
-    }
-}
-
-function navigateToSongReader(songId) {
-    const song = state.songs.find(s => s.id === songId);
-    if (!song) return;
-    
-    state.currentSong = song;
-    state.originalKey = song.originalKey || 'C';
-    state.currentKey = state.originalKey;
-    
-    navigateToRoute('song-reader');
-    renderSongReader();
-}
-
-function navigateToEditor(songId = null) {
-    if (songId) {
-        const song = state.songs.find(s => s.id === songId);
-        state.editingSong = song ? JSON.parse(JSON.stringify(song)) : createEmptySong();
-    } else {
-        state.editingSong = createEmptySong();
-    }
-    
-    navigateToRoute('edicion');
-    renderEditor();
-}
-
-// ===== FUNCIONES DE RENDERIZADO =====
-function renderSongsList() {
-    if (!elements.songsGrid || !elements.emptyState) return;
-    
-    if (state.filteredSongs.length === 0) {
-        elements.songsGrid.style.display = 'none';
-        elements.emptyState.style.display = 'block';
-        return;
-    }
-    
-    elements.emptyState.style.display = 'none';
-    elements.songsGrid.style.display = 'flex';
-    
-    elements.songsGrid.innerHTML = state.filteredSongs.map(song => `
-        <div class="song-item" data-song-id="${song.id}">
-            <div class="song-info">
-                <div class="song-title">${escapeHtml(song.title)}</div>
-                <div class="song-meta">${escapeHtml(song.author)} • ${song.originalKey}</div>
-            </div>
-            <div class="song-actions">
-                <button class="action-btn edit-btn" data-song-id="${song.id}" title="Editar">
-                    ✏️
-                </button>
-                <button class="action-btn delete-btn" data-song-id="${song.id}" title="Eliminar">
-                    🗑️
-                </button>
-            </div>
-        </div>
-    `).join('');
-    
-    // Agregar event listeners
-    elements.songsGrid.querySelectorAll('.song-item').forEach(item => {
-        item.addEventListener('click', (e) => {
-            if (!e.target.closest('.song-actions')) {
-                const songId = item.dataset.songId;
-                navigateToSongReader(songId);
-            }
-        });
-    });
-    
-    elements.songsGrid.querySelectorAll('.edit-btn').forEach(btn => {
-        btn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            const songId = btn.dataset.songId;
-            navigateToEditor(songId);
-        });
-    });
-    
-    elements.songsGrid.querySelectorAll('.delete-btn').forEach(btn => {
-        btn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            const songId = btn.dataset.songId;
-            confirmDeleteSong(songId);
-        });
-    });
-}
-
-function renderSongReader() {
-    if (!state.currentSong || !elements.songContent) return;
-    
-    const song = state.currentSong;
-    const semitones = calculateTransposition(state.originalKey, state.currentKey);
-    
-    // Actualizar header
-    if (elements.readerTitle) {
-        elements.readerTitle.textContent = song.title;
-    }
-    if (elements.readerMeta) {
-        elements.readerMeta.textContent = `${song.author} • Tonalidad base: ${state.originalKey}`;
-    }
-    if (elements.currentKeyReader) {
-        elements.currentKeyReader.textContent = state.currentKey;
-    }
-    
-    // Renderizar contenido de la canción
-    let contentHtml = '';
-    
-    song.sections.forEach(section => {
-        contentHtml += `<div class="section">`;
-        contentHtml += `<div class="section-label">${escapeHtml(section.label)}</div>`;
-        
-        section.pairs.forEach(pair => {
-            if (pair.chords || pair.lyrics) {
-                contentHtml += `<div class="pair">`;
-                
-                if (pair.chords.trim()) {
-                    const transposedChords = transposeChordLine(pair.chords, semitones);
-                    contentHtml += `<div class="chord-line">${escapeHtml(transposedChords)}</div>`;
-                }
-                
-                if (pair.lyrics.trim()) {
-                    contentHtml += `<div class="lyric-line">${escapeHtml(pair.lyrics)}</div>`;
-                }
-                
-                contentHtml += `</div>`;
-            }
+/* ENRUTADOR SIMPLE */
+const Router = {
+    init() {
+        document.querySelectorAll('[data-view]').forEach(btn => {
+            btn.addEventListener('click', () => this.go(btn.dataset.view));
         });
         
-        contentHtml += `</div>`;
-    });
-    
-    elements.songContent.innerHTML = contentHtml;
-}
+        document.getElementById('logo-home').addEventListener('click', () => this.go('canciones'));
+    },
 
-function renderEditor() {
-    if (!state.editingSong) return;
-    
-    const song = state.editingSong;
-    
-    // Actualizar título
-    if (elements.songTitleEditor) {
-        elements.songTitleEditor.value = song.title || '';
+    go(viewName) {
+        document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+        document.getElementById(`view-${viewName}`).classList.add('active');
+        
+        document.querySelectorAll('.nav-item').forEach(n => {
+            n.classList.toggle('active', n.dataset.view === viewName);
+        });
     }
-    
-    // Actualizar key status
-    if (elements.keyStatus) {
-        elements.keyStatus.textContent = song.originalKey || 'C';
+};
+
+/* LÓGICA DE INTERFAZ */
+const UI = {
+    init() {
+        // Eventos Globales
+        document.getElementById('btn-new').addEventListener('click', () => Editor.new());
+        document.getElementById('search-input').addEventListener('input', (e) => this.filterList(e.target.value));
+        
+        // Transposición
+        document.querySelectorAll('.btn-t').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                if (btn.id === 'btn-reset-key') Reader.resetKey();
+                else Reader.transpose(parseInt(btn.dataset.semitone));
+            });
+        });
+
+        // Editor
+        document.getElementById('btn-save').addEventListener('click', () => Editor.save());
+        document.getElementById('btn-add-section').addEventListener('click', () => Editor.addSectionUI());
+        document.getElementById('btn-back').addEventListener('click', () => Router.go('canciones'));
+        document.getElementById('btn-edit-current').addEventListener('click', () => Editor.load(App.currentSong));
+    },
+
+    renderList() {
+        const list = document.getElementById('songs-list');
+        list.innerHTML = '';
+        
+        if (App.songs.length === 0) {
+            document.getElementById('empty-state').style.display = 'block';
+            return;
+        }
+        
+        document.getElementById('empty-state').style.display = 'none';
+        App.songs.forEach(song => {
+            const card = document.createElement('div');
+            card.className = 'song-card';
+            card.innerHTML = `
+                <div class="card-title">${song.title}</div>
+                <div class="card-meta">${song.author} • ${song.key}</div>
+            `;
+            card.addEventListener('click', () => Reader.load(song));
+            list.appendChild(card);
+        });
+    },
+
+    filterList(query) {
+        const term = query.toLowerCase();
+        document.querySelectorAll('.song-card').forEach(card => {
+            const text = card.innerText.toLowerCase();
+            card.style.display = text.includes(term) ? 'block' : 'none';
+        });
+    },
+
+    showToast(msg) {
+        const status = document.getElementById('save-status');
+        status.innerText = msg;
+        status.style.color = 'var(--primary)';
+        setTimeout(() => { status.style.color = '#ccc'; }, 2000);
     }
-    
-    // Renderizar outline
-    renderSectionsOutline();
-    
-    // Renderizar contenido del editor
-    renderEditorContent();
-}
+};
 
-function renderSectionsOutline() {
-    if (!elements.sectionsOutline || !state.editingSong) return;
+/* LECTOR Y TRANSPOSITOR */
+const Reader = {
+    currentKeyIdx: 0,
     
-    const sections = state.editingSong.sections || [];
-    
-    elements.sectionsOutline.innerHTML = sections.map((section, index) => `
-        <div class="outline-item" data-section-index="${index}">
-            <span>${escapeHtml(section.label)}</span>
-            <button class="btn-xs btn-danger" onclick="removeSection(${index})">×</button>
-        </div>
-    `).join('');
-}
-
-function renderEditorContent() {
-    if (!elements.editorContent || !state.editingSong) return;
-    
-    const sections = state.editingSong.sections || [];
-    
-    elements.editorContent.innerHTML = sections.map((section, sectionIndex) => `
-        <div class="section-editor" data-section-index="${sectionIndex}">
-            <div class="section-header-editor">
-                <input type="text" class="section-label-input" 
-                       value="${escapeHtml(section.label)}" 
-                       onchange="updateSectionLabel(${sectionIndex}, this.value)"
-                       placeholder="Nombre de la sección">
-                <div class="section-actions">
-                    <button class="btn-xs" onclick="addPairToSection(${sectionIndex})">+ Par</button>
-                    <button class="btn-xs btn-danger" onclick="removeSection(${sectionIndex})">×</button>
-                </div>
+    load(song) {
+        App.currentSong = song;
+        App.transpose = 0;
+        
+        // Render Header
+        const sheet = document.getElementById('song-sheet');
+        sheet.innerHTML = `
+            <div class="sheet-header">
+                <h1 class="song-h1">${song.title}</h1>
+                <p>${song.author}</p>
             </div>
-            
-            <div class="pairs-container">
-                ${section.pairs.map((pair, pairIndex) => `
-                    <div class="pair-editor" data-pair-index="${pairIndex}">
-                        <div class="pair-header">
-                            <span class="pair-label">Par ${pairIndex + 1}</span>
-                            <div class="pair-actions">
-                                <button class="btn-xs btn-danger" onclick="removePair(${sectionIndex}, ${pairIndex})">×</button>
-                            </div>
-                        </div>
-                        <textarea class="chord-input" 
-                                  placeholder="Acordes (ej: C Am F G)"
-                                  onchange="updatePair(${sectionIndex}, ${pairIndex}, 'chords', this.value)"
-                                  >${escapeHtml(pair.chords || '')}</textarea>
-                        <textarea class="lyric-input" 
-                                  placeholder="Letra"
-                                  onchange="updatePair(${sectionIndex}, ${pairIndex}, 'lyrics', this.value)"
-                                  >${escapeHtml(pair.lyrics || '')}</textarea>
+            <div id="sheet-content"></div>
+        `;
+
+        this.renderBody();
+        Router.go('reader');
+        this.updateKeyDisplay();
+    },
+
+    renderBody() {
+        const container = document.getElementById('sheet-content');
+        container.innerHTML = App.currentSong.sections.map(sec => `
+            <div class="section-block">
+                <span class="sec-label">${sec.label}</span>
+                ${sec.pairs.map(p => `
+                    <div class="pair-line">
+                        ${p.chords ? `<span class="chords">${Music.transposeStr(p.chords, App.transpose)}</span>` : ''}
+                        <span class="lyrics">${p.lyrics}</span>
                     </div>
                 `).join('')}
             </div>
-        </div>
-    `).join('');
-    
-    // Auto-resize de textareas
-    setupTextareaAutoResize();
-}
+        `).join('');
+    },
 
-function setupTextareaAutoResize() {
-    document.querySelectorAll('.chord-input, .lyric-input').forEach(textarea => {
-        textarea.addEventListener('input', autoResizeTextarea);
-        autoResizeTextarea.call(textarea);
-    });
-}
+    transpose(semitones) {
+        App.transpose += semitones;
+        this.renderBody();
+        this.updateKeyDisplay();
+    },
 
-function autoResizeTextarea() {
-    this.style.height = 'auto';
-    this.style.height = Math.max(40, this.scrollHeight) + 'px';
-}
+    resetKey() {
+        App.transpose = 0;
+        this.renderBody();
+        this.updateKeyDisplay();
+    },
 
-// ===== FUNCIONES DE DATOS =====
-function createEmptySong() {
-    return {
-        id: generateId(),
-        title: '',
-        author: '',
-        originalKey: 'C',
-        sections: [
-            {
-                id: generateId(),
-                label: 'Verso 1',
-                pairs: [
-                    { id: generateId(), chords: '', lyrics: '' }
-                ]
-            }
-        ]
-    };
-}
-
-function addSong(songData) {
-    const song = {
-        ...songData,
-        id: songData.id || generateId(),
-        originalKey: songData.originalKey || 'C'
-    };
-    
-    state.songs.push(song);
-    state.filteredSongs = [...state.songs];
-    saveToStorage();
-    renderSongsList();
-    
-    return song;
-}
-
-function updateSong(songId, songData) {
-    const index = state.songs.findIndex(s => s.id === songId);
-    if (index === -1) return null;
-    
-    state.songs[index] = { ...state.songs[index], ...songData };
-    state.filteredSongs = [...state.songs];
-    saveToStorage();
-    renderSongsList();
-    
-    return state.songs[index];
-}
-
-function deleteSong(songId) {
-    state.songs = state.songs.filter(s => s.id !== songId);
-    state.filteredSongs = [...state.songs];
-    saveToStorage();
-    renderSongsList();
-}
-
-function searchSongs(term) {
-    state.searchTerm = term.toLowerCase().trim();
-    
-    if (!state.searchTerm) {
-        state.filteredSongs = [...state.songs];
-    } else {
-        state.filteredSongs = state.songs.filter(song =>
-            song.title.toLowerCase().includes(state.searchTerm) ||
-            song.author.toLowerCase().includes(state.searchTerm)
-        );
+    updateKeyDisplay() {
+        const newKey = Music.transposeNote(App.currentSong.key, App.transpose);
+        document.getElementById('display-key').innerText = newKey;
     }
-    
-    renderSongsList();
-}
-
-// ===== FUNCIONES DEL EDITOR =====
-function updateSectionLabel(sectionIndex, newLabel) {
-    if (!state.editingSong || !state.editingSong.sections[sectionIndex]) return;
-    
-    state.editingSong.sections[sectionIndex].label = newLabel;
-    markAsUnsaved();
-    renderSectionsOutline();
-}
-
-function updatePair(sectionIndex, pairIndex, field, value) {
-    if (!state.editingSong || 
-        !state.editingSong.sections[sectionIndex] || 
-        !state.editingSong.sections[sectionIndex].pairs[pairIndex]) return;
-    
-    state.editingSong.sections[sectionIndex].pairs[pairIndex][field] = value;
-    markAsUnsaved();
-}
-
-function addSection() {
-    if (!state.editingSong) return;
-    
-    const newSection = {
-        id: generateId(),
-        label: `Sección ${state.editingSong.sections.length + 1}`,
-        pairs: [
-            { id: generateId(), chords: '', lyrics: '' }
-        ]
-    };
-    
-    state.editingSong.sections.push(newSection);
-    markAsUnsaved();
-    renderEditor();
-}
-
-function removeSection(sectionIndex) {
-    if (!state.editingSong || !confirm('¿Eliminar esta sección?')) return;
-    
-    state.editingSong.sections.splice(sectionIndex, 1);
-    markAsUnsaved();
-    renderEditor();
-}
-
-function addPairToSection(sectionIndex) {
-    if (!state.editingSong || !state.editingSong.sections[sectionIndex]) return;
-    
-    const newPair = { id: generateId(), chords: '', lyrics: '' };
-    state.editingSong.sections[sectionIndex].pairs.push(newPair);
-    markAsUnsaved();
-    renderEditorContent();
-}
-
-function removePair(sectionIndex, pairIndex) {
-    if (!state.editingSong || 
-        !state.editingSong.sections[sectionIndex] ||
-        !confirm('¿Eliminar este par?')) return;
-    
-    state.editingSong.sections[sectionIndex].pairs.splice(pairIndex, 1);
-    markAsUnsaved();
-    renderEditorContent();
-}
-
-function markAsUnsaved() {
-    if (elements.saveIndicator) {
-        elements.saveIndicator.textContent = 'Sin guardar';
-        elements.saveIndicator.classList.add('unsaved');
-    }
-}
-
-function markAsSaved() {
-    if (elements.saveIndicator) {
-        elements.saveIndicator.textContent = 'Guardado';
-        elements.saveIndicator.classList.remove('unsaved');
-    }
-}
-
-// ===== FUNCIONES DE MODAL =====
-function showModal(title, content, buttons = []) {
-    if (!elements.modalOverlay) return;
-    
-    elements.modalTitle.textContent = title;
-    elements.modalContent.innerHTML = content;
-    
-    elements.modalFooter.innerHTML = buttons.map(btn => 
-        `<button class="btn ${btn.class || ''}" onclick="${btn.onclick}">${btn.text}</button>`
-    ).join('');
-    
-    elements.modalOverlay.style.display = 'flex';
-    document.body.style.overflow = 'hidden';
-}
-
-function hideModal() {
-    if (elements.modalOverlay) {
-        elements.modalOverlay.style.display = 'none';
-        document.body.style.overflow = '';
-    }
-}
-
-function confirmDeleteSong(songId) {
-    const song = state.songs.find(s => s.id === songId);
-    if (!song) return;
-    
-    showModal(
-        'Confirmar eliminación',
-        `<p>¿Estás seguro de que quieres eliminar "<strong>${escapeHtml(song.title)}</strong>"?</p>
-         <p style="color: var(--text-muted); font-size: 0.875rem; margin-top: 0.5rem;">Esta acción no se puede deshacer.</p>`,
-        [
-            { text: 'Cancelar', onclick: 'hideModal()' },
-            { text: 'Eliminar', class: 'btn-danger', onclick: `deleteSongConfirmed('${songId}')` }
-        ]
-    );
-}
-
-function deleteSongConfirmed(songId) {
-    deleteSong(songId);
-    hideModal();
-}
-
-function showAddSongModal() {
-    showModal(
-        'Nueva canción',
-        `<div class="form-group">
-            <label class="form-label">Título de la canción</label>
-            <input type="text" class="form-input" id="new-song-title" placeholder="Ej: Amazing Grace">
-        </div>
-        <div class="form-group">
-            <label class="form-label">Autor</label>
-            <input type="text" class="form-input" id="new-song-author" placeholder="Ej: Chris Tomlin">
-        </div>
-        <div class="form-group">
-            <label class="form-label">Tonalidad original</label>
-            <select class="form-select" id="new-song-key">
-                ${CONFIG.keys.map(key => `<option value="${key}">${key}</option>`).join('')}
-            </select>
-        </div>`,
-        [
-            { text: 'Cancelar', onclick: 'hideModal()' },
-            { text: 'Crear canción', class: 'btn-primary', onclick: 'createNewSong()' }
-        ]
-    );
-    
-    // Focus en el primer campo
-    setTimeout(() => {
-        document.getElementById('new-song-title')?.focus();
-    }, 100);
-}
-
-function createNewSong() {
-    const title = document.getElementById('new-song-title')?.value.trim();
-    const author = document.getElementById('new-song-author')?.value.trim();
-    const key = document.getElementById('new-song-key')?.value || 'C';
-    
-    if (!title) {
-        alert('El título es requerido');
-        return;
-    }
-    
-    const newSong = {
-        ...createEmptySong(),
-        title,
-        author,
-        originalKey: key
-    };
-    
-    addSong(newSong);
-    hideModal();
-    navigateToEditor(newSong.id);
-}
-
-function saveSong() {
-    if (!state.editingSong) return;
-    
-    const title = elements.songTitleEditor?.value.trim();
-    if (!title) {
-        alert('El título es requerido');
-        return;
-    }
-    
-    state.editingSong.title = title;
-    
-    // Verificar si es una canción nueva o actualización
-    const existingIndex = state.songs.findIndex(s => s.id === state.editingSong.id);
-    
-    if (existingIndex === -1) {
-        addSong(state.editingSong);
-    } else {
-        updateSong(state.editingSong.id, state.editingSong);
-    }
-    
-    markAsSaved();
-}
-
-// ===== FUNCIONES DE TRANSPOSICIÓN EN EDITOR =====
-function transposeEditorSong(semitones) {
-    if (!state.editingSong) return;
-    
-    state.editingSong.sections.forEach(section => {
-        section.pairs.forEach(pair => {
-            if (pair.chords) {
-                pair.chords = transposeChordLine(pair.chords, semitones);
-            }
-        });
-    });
-    
-    // Actualizar key
-    const currentKeyIndex = getKeyIndex(state.editingSong.originalKey);
-    if (currentKeyIndex !== -1) {
-        let newKeyIndex = (currentKeyIndex + semitones) % 12;
-        if (newKeyIndex < 0) newKeyIndex += 12;
-        state.editingSong.originalKey = CONFIG.keys[newKeyIndex];
-    }
-    
-    markAsUnsaved();
-    renderEditor();
-}
-
-// ===== UTILIDADES =====
-function escapeHtml(text) {
-    if (typeof text !== 'string') return '';
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
-}
-
-// ===== EVENT LISTENERS PRINCIPALES =====
-function setupEventListeners() {
-    // Navegación por tabs
-    elements.navTabs.forEach(tab => {
-        tab.addEventListener('click', () => {
-            const route = tab.dataset.route;
-            navigateToRoute(route);
-        });
-    });
-    
-    // Logo home
-    if (elements.logoHome) {
-        elements.logoHome.addEventListener('click', () => {
-            navigateToRoute('canciones');
-        });
-    }
-    
-    // Búsqueda con debounce
-    if (elements.searchBox) {
-        const debouncedSearch = debounce((term) => {
-            searchSongs(term);
-        }, 300);
-        
-        elements.searchBox.addEventListener('input', (e) => {
-            debouncedSearch(e.target.value);
-        });
-    }
-    
-    // Botones principales
-    if (elements.btnAddSong) {
-        elements.btnAddSong.addEventListener('click', showAddSongModal);
-    }
-    
-    if (elements.btnBackToList) {
-        elements.btnBackToList.addEventListener('click', () => {
-            navigateToRoute('canciones');
-        });
-    }
-    
-    if (elements.btnBackFromEditor) {
-        elements.btnBackFromEditor.addEventListener('click', () => {
-            navigateToRoute('canciones');
-        });
-    }
-    
-    // Controles de transposición en lector
-    if (elements.btnTransposeUpReader) {
-        elements.btnTransposeUpReader.addEventListener('click', () => {
-            const currentIndex = CONFIG.keys.indexOf(state.currentKey);
-            if (currentIndex !== -1) {
-                state.currentKey = CONFIG.keys[(currentIndex + 1) % 12];
-                renderSongReader();
-            }
-        });
-    }
-    
-    if (elements.btnTransposeDownReader) {
-        elements.btnTransposeDownReader.addEventListener('click', () => {
-            const currentIndex = CONFIG.keys.indexOf(state.currentKey);
-            if (currentIndex !== -1) {
-                let newIndex = currentIndex - 1;
-                if (newIndex < 0) newIndex = 11;
-                state.currentKey = CONFIG.keys[newIndex];
-                renderSongReader();
-            }
-        });
-    }
-    
-    if (elements.btnResetKeyReader) {
-        elements.btnResetKeyReader.addEventListener('click', () => {
-            state.currentKey = state.originalKey;
-            renderSongReader();
-        });
-    }
-    
-    if (elements.btnEditSong) {
-        elements.btnEditSong.addEventListener('click', () => {
-            if (state.currentSong) {
-                navigateToEditor(state.currentSong.id);
-            }
-        });
-    }
-    
-    // Controles del editor
-    if (elements.btnSaveSong) {
-        elements.btnSaveSong.addEventListener('click', saveSong);
-    }
-    
-    if (elements.btnAddSection) {
-        elements.btnAddSection.addEventListener('click', addSection);
-    }
-    
-    if (elements.btnAddPairEditor) {
-        elements.btnAddPairEditor.addEventListener('click', () => {
-            if (state.editingSong && state.editingSong.sections.length > 0) {
-                addPairToSection(0); // Agregar al primer sección por defecto
-            }
-        });
-    }
-    
-    // Transposición en editor
-    if (elements.btnTransposeUp) {
-        elements.btnTransposeUp.addEventListener('click', () => {
-            transposeEditorSong(1);
-        });
-    }
-    
-    if (elements.btnTransposeDown) {
-        elements.btnTransposeDown.addEventListener('click', () => {
-            transposeEditorSong(-1);
-        });
-    }
-    
-    if (elements.btnResetTranspose) {
-        elements.btnResetTranspose.addEventListener('click', () => {
-            // Restablecer a tonalidad original
-            if (state.editingSong) {
-                // Recargar la canción original
-                const originalSong = state.songs.find(s => s.id === state.editingSong.id);
-                if (originalSong) {
-                    state.editingSong = JSON.parse(JSON.stringify(originalSong));
-                    renderEditor();
-                }
-            }
-        });
-    }
-    
-    // Modal
-    if (elements.modalClose) {
-        elements.modalClose.addEventListener('click', hideModal);
-    }
-    
-    if (elements.modalOverlay) {
-        elements.modalOverlay.addEventListener('click', (e) => {
-            if (e.target === elements.modalOverlay) {
-                hideModal();
-            }
-        });
-    }
-    
-    // Teclado
-    document.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape') {
-            hideModal();
-        }
-    });
-    
-    // Responsive
-    window.addEventListener('resize', handleResize);
-}
-
-function handleResize() {
-    // Manejar cambios de tamaño de ventana
-    if (isMobile()) {
-        // Comportamiento móvil
-    } else {
-        // Comportamiento desktop
-    }
-}
-
-// ===== FUNCIONES GLOBALES PARA ONCLICK =====
-window.updateSectionLabel = updateSectionLabel;
-window.updatePair = updatePair;
-window.addSection = addSection;
-window.removeSection = removeSection;
-window.addPairToSection = addPairToSection;
-window.removePair = removePair;
-window.hideModal = hideModal;
-window.deleteSongConfirmed = deleteSongConfirmed;
-window.createNewSong = createNewSong;
-
-// ===== INICIALIZACIÓN =====
-document.addEventListener('DOMContentLoaded', () => {
-    console.log('Inicializando Betania Music...');
-    
-    // Cargar datos
-    loadFromStorage();
-    
-    // Configurar event listeners
-    setupEventListeners();
-    
-    // Navegación inicial
-    navigateToRoute('canciones');
-    
-    console.log('Aplicación inicializada correctamente');
-});
-
-// ===== EXPOSICIÓN GLOBAL PARA DEBUGGING =====
-window.BetaniaMusic = {
-    state,
-    CONFIG,
-    navigateToRoute,
-    navigateToSongReader,
-    navigateToEditor,
-    searchSongs,
-    addSong,
-    updateSong,
-    deleteSong
 };
+
+/* EDITOR */
+const Editor = {
+    currentData: null,
+
+    new() {
+        this.load({ id: Date.now().toString(), title: '', author: '', key: 'C', sections: [] });
+    },
+
+    load(song) {
+        this.currentData = JSON.parse(JSON.stringify(song)); // Copia profunda
+        document.getElementById('edit-title').value = song.title;
+        this.renderCanvas();
+        Router.go('edicion');
+    },
+
+    renderCanvas() {
+        const canvas = document.getElementById('editor-canvas');
+        canvas.innerHTML = '';
+        
+        this.currentData.sections.forEach((sec, sIdx) => {
+            const secDiv = document.createElement('div');
+            secDiv.className = 'section-block';
+            secDiv.innerHTML = `
+                <input value="${sec.label}" class="sec-label" style="border:none; border-bottom:1px dashed #ccc" onchange="Editor.updateSection(${sIdx}, 'label', this.value)">
+                <button class="btn-ghost" style="color:red; float:right" onclick="Editor.deleteSection(${sIdx})">🗑</button>
+            `;
+            
+            sec.pairs.forEach((pair, pIdx) => {
+                const row = document.createElement('div');
+                row.className = 'edit-pair';
+                row.innerHTML = `
+                    <textarea class="inp-chord" placeholder="Acordes" oninput="autoResize(this)" onchange="Editor.updatePair(${sIdx}, ${pIdx}, 'chords', this.value)">${pair.chords}</textarea>
+                    <textarea class="inp-lyric" placeholder="Letra" oninput="autoResize(this)" onchange="Editor.updatePair(${sIdx}, ${pIdx}, 'lyrics', this.value)">${pair.lyrics}</textarea>
+                `;
+                secDiv.appendChild(row);
+            });
+            
+            // Botón añadir par
+            const addBtn = document.createElement('button');
+            addBtn.className = 'btn btn-small btn-secondary';
+            addBtn.innerText = '+ Línea';
+            addBtn.onclick = () => this.addPair(sIdx);
+            secDiv.appendChild(addBtn);
+            
+            canvas.appendChild(secDiv);
+        });
+        
+        // Auto-resize inicial
+        document.querySelectorAll('textarea').forEach(tx => autoResize(tx));
+    },
+
+    updatePair(sIdx, pIdx, field, val) { this.currentData.sections[sIdx].pairs[pIdx][field] = val; },
+    updateSection(sIdx, field, val) { this.currentData.sections[sIdx][field] = val; },
+    addPair(sIdx) { this.currentData.sections[sIdx].pairs.push({chords:'', lyrics:''}); this.renderCanvas(); },
+    addSectionUI() { this.currentData.sections.push({label: 'Nueva Sección', pairs: [{chords:'', lyrics:''}]}); this.renderCanvas(); },
+    deleteSection(sIdx) { if(confirm('¿Borrar sección?')) { this.currentData.sections.splice(sIdx, 1); this.renderCanvas(); } },
+
+    save() {
+        this.currentData.title = document.getElementById('edit-title').value || 'Sin Título';
+        App.updateSong(this.currentData);
+        App.currentSong = this.currentData; // Actualizar ref
+    }
+};
+
+/* UTILIDADES MUSICALES (Transposición Robusta) */
+const Music = {
+    notes: ['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'],
+    
+    transposeNote(note, semitones) {
+        if(!note) return '';
+        // Normalizar bemoles a sostenidos para simplificar
+        const map = {'Db':'C#','Eb':'D#','Gb':'F#','Ab':'G#','Bb':'A#'};
+        let root = map[note] || note;
+        
+        let idx = this.notes.indexOf(root);
+        if (idx === -1) return note; // No es nota musical
+        
+        let newIdx = (idx + semitones) % 12;
+        if (newIdx < 0) newIdx += 12;
+        
+        return this.notes[newIdx];
+    },
+
+    transposeStr(str, semitones) {
+        if (!semitones) return str;
+        // Regex que busca Acordes (Ej: Am7, C/G, F#dim)
+        return str.replace(/([A-G][b#]?)(maj|min|m|sus|dim|aug|7|9)?(\/[A-G][b#]?)?/g, (match, root, quality, bass) => {
+            const newRoot = this.transposeNote(root, semitones);
+            let newBass = '';
+            if (bass) {
+                newBass = '/' + this.transposeNote(bass.substring(1), semitones);
+            }
+            return newRoot + (quality || '') + newBass;
+        });
+    }
+};
+
+// Helper global para textareas
+window.autoResize = (el) => {
+    el.style.height = 'auto';
+    el.style.height = el.scrollHeight + 'px';
+};
+
+// Start
+document.addEventListener('DOMContentLoaded', () => App.init());
