@@ -4,16 +4,22 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Betania Music</title>
+    
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#26a69a">
+    <link rel="apple-touch-icon" href="logo.png">
+
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+    
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
     <header class="header">
         <div class="header-inner">
             <div class="brand" id="logo-home" role="button" tabindex="0">
-                <img src="logo.png" alt="Betania Logo" class="brand-logo" onerror="this.style.display='none'">
+                <img src="logo.png" alt="Logo" class="brand-logo" onerror="this.style.display='none'">
                 <span class="brand-name">Betania Music</span>
             </div>
             
@@ -29,23 +35,28 @@
             <div class="controls-bar">
                 <div class="search-wrapper">
                     <input type="text" id="search-input" placeholder="Buscar canción..." autocomplete="off">
-                    <span class="search-icon">🔍</span>
                 </div>
-                <button id="btn-new" class="btn btn-primary">
-                    <span>+</span> Nueva
-                </button>
+                
+                <div class="action-group">
+                    <button id="btn-import-folder" class="btn btn-secondary">📂 Importar</button>
+                    <input type="file" id="folder-input" webkitdirectory directory multiple style="display:none">
+                    
+                    <button id="btn-new" class="btn btn-primary">+ Nueva</button>
+                </div>
             </div>
             
             <div id="songs-list" class="songs-grid">
                 </div>
             
             <div id="empty-state" class="empty-msg" style="display:none">
-                <p>No se encontraron canciones.</p>
+                <div class="empty-icon">🎵</div>
+                <p>No hay canciones.</p>
+                <small>Usa "Importar" para cargar tu carpeta de Drive o crea una nueva.</small>
             </div>
         </section>
 
         <section id="view-reader" class="view">
-            <div class="reader-toolbar sticky-sub">
+            <div class="reader-toolbar">
                 <button id="btn-back" class="btn btn-ghost">← Volver</button>
                 
                 <div class="transpose-widget">
@@ -62,7 +73,9 @@
             </div>
 
             <article id="song-sheet" class="sheet">
-                </article>
+                <div id="sheet-header" class="sheet-header"></div>
+                <div id="sheet-content"></div>
+            </article>
         </section>
 
         <section id="view-edicion" class="view">
@@ -70,7 +83,7 @@
                 <aside class="editor-sidebar">
                     <h3>Estructura</h3>
                     <div id="outline-list"></div>
-                    <button id="btn-add-section" class="btn btn-small full-width">+ Sección</button>
+                    <button id="btn-add-section" class="btn btn-small full-width" style="margin-top:10px">+ Sección</button>
                 </aside>
                 
                 <div class="editor-workspace">
@@ -87,7 +100,7 @@
         </section>
     </main>
 
-    <div id="modal-overlay" class="hidden"></div>
+    <div id="toast" class="toast hidden">Notificación</div>
     <script src="script.js"></script>
 </body>
 </html>
