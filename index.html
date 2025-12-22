@@ -3,122 +3,91 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    
-    <!-- PWA Meta Tags -->
-    <title>Betania Music - Sistema de Alabanza</title>
-    <meta name="description" content="Sistema completo de alabanza con transposición de acordes y setlists">
-    
-    <!-- Manifest -->
-    <link rel="manifest" href="manifest.json">
-    
-    <!-- Meta tags para PWA -->
-    <meta name="theme-color" content="#16213e">
-    <meta name="background-color" content="#1a1a2e">
-    
-    <!-- iOS Meta Tags -->
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-title" content="Betania Music">
-    
-    <!-- Iconos -->
-    <link rel="apple-touch-icon" href="icon-192.png">
-    <link rel="icon" type="image/png" sizes="32x32" href="icon-32.png">
-    
-    <!-- CSS -->
+    <title>Betania Music</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-    <!-- Splash Screen -->
-    <div class="splash-screen" id="splash-screen">
-        <div class="splash-logo">♫</div>
-        <div class="splash-text">Betania Music</div>
-        <div class="splash-subtitle">Cargando...</div>
-    </div>
-
-    <!-- Banner PWA -->
-    <div class="pwa-banner" id="pwa-banner">
-        📱 ¡Instala Betania Music para una mejor experiencia!
-        <button class="banner-btn" id="install-banner-btn">Instalar</button>
-        <button class="banner-close" onclick="hideBanner()">×</button>
-    </div>
-
-    <!-- Header -->
     <header class="header">
-        <h1>♫ Betania Music <span class="version">v4.0</span></h1>
-        <p>Sistema completo de alabanza con transposición y setlists</p>
+        <div class="header-inner">
+            <div class="brand" id="logo-home" role="button" tabindex="0">
+                <img src="logo.png" alt="Betania Logo" class="brand-logo" onerror="this.style.display='none'">
+                <span class="brand-name">Betania Music</span>
+            </div>
+            
+            <nav class="nav">
+                <button class="nav-item active" data-view="canciones">Canciones</button>
+                <button class="nav-item" data-view="edicion">Editor</button>
+            </nav>
+        </div>
     </header>
 
-    <!-- Main Content -->
     <main class="main-content">
-        <!-- Sidebar -->
-        <aside class="sidebar">
-            <h3>📋 Repertorio</h3>
-            <ul class="song-list" id="songList">
-                <li data-song="sublime-gracia" class="active">
-                    <span class="song-icon">🎵</span>
-                    <span class="song-title">Sublime Gracia</span>
-                    <span class="song-key">C</span>
-                </li>
-                <li data-song="casa-oracion">
-                    <span class="song-icon">🏠</span>
-                    <span class="song-title">Casa de Oración</span>
-                    <span class="song-key">G</span>
-                </li>
-                <li data-song="es-el">
-                    <span class="song-icon">✝️</span>
-                    <span class="song-title">Es Él</span>
-                    <span class="song-key">D</span>
-                </li>
-                <li data-song="quiero-adorarte">
-                    <span class="song-icon">🙏</span>
-                    <span class="song-title">Quiero Adorarte</span>
-                    <span class="song-key">A</span>
-                </li>
-                <li data-song="tu-fidelidad">
-                    <span class="song-icon">❤️</span>
-                    <span class="song-title">Tu Fidelidad</span>
-                    <span class="song-key">E</span>
-                </li>
-            </ul>
-
-            <div class="stats">
-                <h4>📊 Estadísticas</h4>
-                <p>📖 5 canciones<br>🎼 12 tonalidades<br>📱 PWA habilitada</p>
+        <section id="view-canciones" class="view active">
+            <div class="controls-bar">
+                <div class="search-wrapper">
+                    <input type="text" id="search-input" placeholder="Buscar canción..." autocomplete="off">
+                    <span class="search-icon">🔍</span>
+                </div>
+                <button id="btn-new" class="btn btn-primary">
+                    <span>+</span> Nueva
+                </button>
             </div>
-        </aside>
+            
+            <div id="songs-list" class="songs-grid">
+                </div>
+            
+            <div id="empty-state" class="empty-msg" style="display:none">
+                <p>No se encontraron canciones.</p>
+            </div>
+        </section>
 
-        <!-- Content Area -->
-        <section class="content">
-            <div class="song-display">
-                <h2 class="song-title" id="currentSongTitle">Sublime Gracia</h2>
+        <section id="view-reader" class="view">
+            <div class="reader-toolbar sticky-sub">
+                <button id="btn-back" class="btn btn-ghost">← Volver</button>
                 
-                <div class="transpose-controls">
-                    <button class="btn secondary" onclick="transpose(-1)">♭ Bajar</button>
-                    <div class="current-key" id="currentKey">C</div>
-                    <button class="btn secondary" onclick="transpose(1)">♯ Subir</button>
-                    <span class="key-label">Tonalidad actual</span>
+                <div class="transpose-widget">
+                    <span class="label">Tono:</span>
+                    <strong id="display-key">C</strong>
+                    <div class="t-buttons">
+                        <button class="btn-t" data-semitone="-1">♭</button>
+                        <button class="btn-t" id="btn-reset-key">⟲</button>
+                        <button class="btn-t" data-semitone="1">♯</button>
+                    </div>
                 </div>
+                
+                <button id="btn-edit-current" class="btn btn-secondary">Editar</button>
+            </div>
 
-                <div class="controls">
-                    <button class="btn" onclick="toggleEdit()">✏️ Editar</button>
-                    <button class="btn" onclick="addToSetlist()">➕ Setlist</button>
-                    <button class="btn" onclick="showChords()">🎸 Acordes</button>
-                    <button class="btn secondary" onclick="resetSong()">🔄 Reset</button>
-                </div>
+            <article id="song-sheet" class="sheet">
+                </article>
+        </section>
 
-                <div class="song-content" id="songContent">
-                    <!-- El contenido se carga dinámicamente -->
+        <section id="view-edicion" class="view">
+            <div class="editor-layout">
+                <aside class="editor-sidebar">
+                    <h3>Estructura</h3>
+                    <div id="outline-list"></div>
+                    <button id="btn-add-section" class="btn btn-small full-width">+ Sección</button>
+                </aside>
+                
+                <div class="editor-workspace">
+                    <div class="editor-header">
+                        <input type="text" id="edit-title" placeholder="Título de la canción">
+                        <div class="actions">
+                            <span id="save-status">Guardado</span>
+                            <button id="btn-save" class="btn btn-primary">Guardar</button>
+                        </div>
+                    </div>
+                    <div id="editor-canvas"></div>
                 </div>
             </div>
         </section>
     </main>
 
-    <!-- Install Button -->
-    <button class="install-button" id="installButton">
-        📱 Instalar App
-    </button>
-
-    <!-- Scripts -->
-    <script src="app.js"></script>
+    <div id="modal-overlay" class="hidden"></div>
+    <script src="script.js"></script>
 </body>
 </html>
