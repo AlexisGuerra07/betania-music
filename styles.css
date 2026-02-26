@@ -1,0 +1,62 @@
+/* ==========================================
+   1. VARIABLES DE COLOR Y FUENTES
+   ========================================== */
+:root {
+    /* Paleta principal: Tonos mar/turquesa */
+    --primary-color: #26a69a;
+    --primary-hover: #00897b;
+    --secondary-color: #4db6ac;
+    
+    /* Fondos y textos */
+    --bg-main: #f8fafc;
+    --bg-card: #ffffff;
+    --text-dark: #1e293b;
+    --text-muted: #64748b;
+    --border-color: #e2e8f0;
+    
+    /* Tipografía monoespaciada para acordes (vital para alineación) */
+    --font-mono: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+    
+    /* Sombras para profundidad */
+    --shadow-sm: 0 1px 3px rgba(0,0,0,0.1);
+    --shadow-md: 0 4px 6px -1px rgba(0,0,0,0.1);
+}
+
+/* ==========================================
+   2. RESET Y BASE (Evita márgenes extraños)
+   ========================================== */
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background-color: var(--bg-main);
+    color: var(--text-dark);
+    line-height: 1.6;
+    /* Suaviza el scroll en móviles */
+    -webkit-font-smoothing: antialiased;
+}
+
+/* ==========================================
+   3. ENCABEZADO Y NAVEGACIÓN
+   ========================================== */
+.header {
+    background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-hover) 100%);
+    color: white;
+    padding: 1rem 0;
+    box-shadow: var(--shadow-md);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+}
+
+.header-content {
+    max-width: 1000px;
+    margin: 0 auto;
+    padding: 0 1rem;
+    display: flex;
+    flex-wrap: wrap;
+    align-
