@@ -74,7 +74,7 @@ const Storage = {
 // Parser de acordes
 const ChordParser = {
     chordRegex: /\b([A-G])([#b])?(maj7|maj9|m7|m9|m|dim|aug|add\d+|sus2|sus4|7|9|11|13|°|ø)?(?:\/([A-G])([#b])?)?\b/g,
-    sectionHeaderRegex: /^\s*(intro|estrofa|verso|pre[\s\-]?coro|coro|puente|bridge|interludio|solo|outro|final|tag|estribillo|modulaci[oó]n|leyenda)\s*(?:[:\-]|\b)?\s*(\d+|i{1,3}|[ivx]{1,4}|[1-9]ª|x\d+|\(.*?\))?\s*$/i,
+    sectionHeaderRegex: /^\s*(intro|estrofa|verso|pre[\s\-]?coro|coro|puente|bridge|interludio|solo|outro|final|tag|estribillo|modulaci[oó]n|leyenda|espontaneo|espontáneo)\s*(?:[:\-]|\b)?\s*(\d+|i{1,3}|[ivx]{1,4}|[1-9]ª|x\d+|\(.*?\)|-\s*[A-Z]\d?)?\s*$/i,
 
     normalizeTildes(text) {
         const map = { 'á':'a','é':'e','í':'i','ó':'o','ú':'u','Á':'A','É':'E','Í':'I','Ó':'O','Ú':'U' };
@@ -104,7 +104,7 @@ const ChordParser = {
             'pre coro':'Pre-Coro','precoro':'Pre-Coro','pre-coro':'Pre-Coro',
             'coro':'Coro','chorus':'Coro','estribillo':'Estribillo','puente':'Puente','bridge':'Puente',
             'interludio':'Interludio','solo':'Solo','outro':'Outro','final':'Final','tag':'Tag',
-            'modulacion':'Modulación','leyenda':'Leyenda'
+            'modulacion':'Modulación','leyenda':'Leyenda','espontaneo':'Espontáneo'
         };
         const normalizedType = sectionType.toLowerCase().replace(/[\s\-]/g, ' ');
         let baseName = translations[normalizedType] || sectionType;
@@ -116,6 +116,7 @@ const ChordParser = {
                 suffix = ` ${r[number.toLowerCase()] || number}`;
             } else if (/^\d+ª$/.test(number)) suffix = ` ${number.charAt(0)}`;
             else if (/^x\d+$/.test(number)) suffix = ` ${number.substring(1)}`;
+            else if (/^-\s*[A-Z]\d?$/i.test(number)) suffix = '';
             else suffix = ` ${number.replace(/[()]/g, '')}`;
             baseName += suffix;
         }
@@ -674,7 +675,7 @@ const Router = {
         const detectedKey = KeyDetector.detectKey(sections);
         if (detectedKey) AppState.currentSong.keyBase = detectedKey;
 
-        const bpmMatch = text.match(/TEMPO:\s*(\d+)/i);
+        const bpmMatch = text.match(/TEMPO\s*:?\s*(\d+)/i);
         if (bpmMatch) AppState.currentSong.bpm = parseInt(bpmMatch[1]);
 
         AppState.isCreatingNew = false;
@@ -717,23 +718,26 @@ const Router = {
             try {
                 let text = await this.extractPDFText(file);
 
+                // Detectar tonalidad (soporta "KEY:" y "Tonalidad:")
                 let explicitKey = null;
-                const keyMatch = text.match(/KEY:\s*([A-G][#b]?m?)/i);
+                const keyMatch = text.match(/(?:KEY|TONALIDAD)\s*:?\s*([A-G][#b]?m?)\b/i);
                 if (keyMatch) {
                     explicitKey = keyMatch[1].charAt(0).toUpperCase() + keyMatch[1].slice(1);
                 }
 
+                // Detectar BPM
                 let bpm = null;
-                const bpmMatch = text.match(/TEMPO:\s*(\d+)/i);
+                const bpmMatch = text.match(/TEMPO\s*:?\s*(\d+)/i);
                 if (bpmMatch) bpm = parseInt(bpmMatch[1]);
 
+                // Limpiar líneas de metadatos, encabezados de estructura y diagramas de círculos
                 const lines = text.split('\n');
                 const cleanedLines = lines.filter(line => {
                     const t = line.trim();
                     if (!t) return true;
-                    if (/TEMPO:|TIME:\s*\d/i.test(t)) return false;
-                    if (/^KEY:/i.test(t)) return false;
-                    if (/^([A-Z0-9]{1,3}\s+){2,}[A-Z0-9]{1,3}$/.test(t) && !ChordParser.isChordLine(t)) return false;
+                    if (/tonalidad\s*:|key\s*:|comp[aá]s\s*:|tempo\s*:/i.test(t)) return false;
+                    if (/^estructura$/i.test(t)) return false;
+                    if (/^([A-Za-z0-9]{1,3}\s+){2,}[A-Za-z0-9]{1,3}$/.test(t) && !ChordParser.isChordLine(t)) return false;
                     return true;
                 });
                 text = cleanedLines.join('\n');
@@ -776,8 +780,9 @@ const Router = {
                 let fullText = '';
                 for (let i = 1; i <= pdf.numPages; i++) {
                     const page = await pdf.getPage(i);
+                    const viewport = page.getViewport({ scale: 1 });
                     const textContent = await page.getTextContent();
-                    fullText += this.reconstructPageText(textContent) + '\n';
+                    fullText += this.reconstructPageText(textContent, viewport.width) + '\n';
                 }
                 resolve(fullText);
             } catch (error) {
@@ -786,43 +791,64 @@ const Router = {
         });
     },
 
-    reconstructPageText(textContent) {
-        const items = textContent.items;
+    // Reconstruye el texto de una página, detectando y separando diseños de dos columnas
+    reconstructPageText(textContent, pageWidth) {
+        const items = textContent.items.filter(it => it.str && it.str.trim());
         if (!items.length) return '';
 
-        const lineGroups = [];
-        const tolerance = 2;
-
-        items.forEach(item => {
-            const y = item.transform[5];
-            const x = item.transform[4];
-            let group = lineGroups.find(g => Math.abs(g.y - y) <= tolerance);
-            if (!group) {
-                group = { y: y, items: [] };
-                lineGroups.push(group);
-            }
-            group.items.push({ x, str: item.str, width: item.width || 0 });
-        });
-
-        lineGroups.sort((a, b) => b.y - a.y);
-
-        const lines = lineGroups.map(group => {
-            group.items.sort((a, b) => a.x - b.x);
-            let lineText = '';
-            let lastEndX = null;
-            group.items.forEach(it => {
-                if (lastEndX !== null) {
-                    const gap = it.x - lastEndX;
-                    const spaces = Math.max(1, Math.round(gap / 5));
-                    lineText += ' '.repeat(Math.min(spaces, 20));
+        const buildLines = (its) => {
+            const lineGroups = [];
+            const tolerance = 2;
+            its.forEach(item => {
+                const y = item.transform[5];
+                const x = item.transform[4];
+                let group = lineGroups.find(g => Math.abs(g.y - y) <= tolerance);
+                if (!group) {
+                    group = { y, items: [] };
+                    lineGroups.push(group);
                 }
-                lineText += it.str;
-                lastEndX = it.x + it.width;
+                group.items.push({ x, str: item.str, width: item.width || 0 });
             });
-            return lineText;
-        });
+            lineGroups.sort((a, b) => b.y - a.y);
+            return lineGroups.map(group => {
+                group.items.sort((a, b) => a.x - b.x);
+                let lineText = '';
+                let lastEndX = null;
+                group.items.forEach(it => {
+                    if (lastEndX !== null) {
+                        const gap = it.x - lastEndX;
+                        const spaces = Math.max(1, Math.round(gap / 5));
+                        lineText += ' '.repeat(Math.min(spaces, 20));
+                    }
+                    lineText += it.str;
+                    lastEndX = it.x + it.width;
+                });
+                return lineText;
+            });
+        };
 
-        return lines.join('\n');
+        // Detectar diseño de dos columnas: dividir por la mitad de la página
+        // y comprobar si ambos lados tienen suficiente contenido propio
+        let leftItems = items;
+        let rightItems = [];
+
+        if (pageWidth) {
+            const boundary = pageWidth * 0.5;
+            const potentialLeft = items.filter(it => it.transform[4] < boundary);
+            const potentialRight = items.filter(it => it.transform[4] >= boundary);
+            if (potentialLeft.length >= 8 && potentialRight.length >= 8) {
+                leftItems = potentialLeft;
+                rightItems = potentialRight;
+            }
+        }
+
+        if (rightItems.length > 0) {
+            const leftLines = buildLines(leftItems);
+            const rightLines = buildLines(rightItems);
+            return leftLines.join('\n') + '\n' + rightLines.join('\n');
+        }
+
+        return buildLines(leftItems).join('\n');
     },
 
     showBulkImportPreview() {
