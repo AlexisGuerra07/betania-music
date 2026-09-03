@@ -5,6 +5,7 @@ const AppState = {
     editingSongId: null,
     songs: [],
     currentTranspose: 0,
+    notationMode: 'chords', // 'chords' o 'degrees'
     isSaving: false,
     lastSaveTime: 0,
     settings: { fontSize: 14, autoSections: true, sortBy: 'alpha' },
@@ -213,7 +214,7 @@ const Transposer = {
     }
 };
 
-// Detector automático de tonalidad — versión corregida basada en cobertura de acordes
+// Detector automático de tonalidad — versión basada en cobertura de acordes
 const KeyDetector = {
     majorQualities: ['maj', 'min', 'min', 'maj', 'maj', 'min', 'dim'],
     majorOffsets: [0, 2, 4, 5, 7, 9, 11],
@@ -319,6 +320,57 @@ const KeyDetector = {
     }
 };
 
+// Conversión de acordes a grados (I, IV, V, vi...) relativos a la tonalidad de la canción
+const KeyDegrees = {
+    romanByOffset: ['I', 'bII', 'II', 'bIII', 'III', 'IV', '#IV', 'V', 'bVI', 'VI', 'bVII', 'VII'],
+
+    getKeyRootIndex(keyBase) {
+        if (!keyBase) return 0;
+        const root = keyBase.replace('m', '');
+        let idx = Transposer.notes.indexOf(root);
+        if (idx === -1) idx = Transposer.notesFlat.indexOf(root);
+        return idx === -1 ? 0 : idx;
+    },
+
+    noteToDegree(root, accidental, keyRootIdx) {
+        const fullNote = root + (accidental || '');
+        let idx = Transposer.notes.indexOf(fullNote);
+        if (idx === -1) idx = Transposer.notesFlat.indexOf(fullNote);
+        if (idx === -1) idx = Transposer.notes.indexOf(root);
+        if (idx === -1) return '?';
+        const offset = (idx - keyRootIdx + 12) % 12;
+        return this.romanByOffset[offset];
+    },
+
+    // Convierte una línea de acordes completa a su equivalente en grados
+    toDegrees(chordLine, keyBase) {
+        if (!chordLine || !chordLine.trim()) return chordLine;
+        const keyRootIdx = this.getKeyRootIndex(keyBase);
+
+        return chordLine.replace(ChordParser.chordRegex, (match, root, accidental, suffix, bassRoot, bassAccidental) => {
+            let numeral = this.noteToDegree(root, accidental, keyRootIdx);
+            const quality = KeyDetector.simplifyQuality(suffix);
+            let suffixDisplay = suffix || '';
+
+            if (quality === 'min') {
+                numeral = numeral.toLowerCase();
+                suffixDisplay = suffixDisplay.replace(/^m(?!aj)/, '');
+            } else if (quality === 'dim') {
+                numeral = numeral.toLowerCase() + '°';
+                suffixDisplay = suffixDisplay.replace(/^(dim|°|ø)/, '');
+            }
+
+            let bassPart = '';
+            if (bassRoot) {
+                const bassNumeral = this.noteToDegree(bassRoot, bassAccidental, keyRootIdx);
+                bassPart = '/' + bassNumeral;
+            }
+
+            return numeral + suffixDisplay + bassPart;
+        });
+    }
+};
+
 // Router
 const Router = {
     init() {
@@ -368,6 +420,7 @@ const Router = {
         this.bindButton('btn-transpose-up-reader', () => this.transposeSong(1));
         this.bindButton('btn-transpose-down-reader', () => this.transposeSong(-1));
         this.bindButton('btn-reset-key-reader', () => this.resetTransposition());
+        this.bindButton('btn-toggle-notation', () => this.toggleNotation());
         this.bindButton('btn-save-song', () => this.saveCurrentSong());
         this.bindButton('btn-add-section', () => Editor.addSection());
         this.bindButton('btn-add-pair-editor', () => Editor.addPair());
@@ -553,6 +606,11 @@ const Router = {
         if (!song) return;
         AppState.currentSong = song;
         AppState.currentTranspose = 0;
+        AppState.notationMode = 'chords';
+
+        const toggleBtn = document.getElementById('btn-toggle-notation');
+        if (toggleBtn) toggleBtn.textContent = '🎼 Ver en grados';
+
         document.getElementById('reader-title').textContent = song.title;
         document.getElementById('reader-meta').textContent = `${song.artist || 'Sin autor'} • ${song.keyBase}`;
         document.getElementById('current-key-reader').textContent = song.keyBase;
@@ -578,18 +636,33 @@ const Router = {
         }
     },
 
+    // Renderiza el contenido siempre a partir de los datos originales de la canción,
+    // aplicando transposición o conversión a grados según el modo activo
     renderSongContent() {
         const content = document.getElementById('song-content');
         if (!AppState.currentSong) return;
-        content.innerHTML = AppState.currentSong.sections.map(section => `
+        const song = AppState.currentSong;
+        const mode = AppState.notationMode || 'chords';
+
+        content.innerHTML = song.sections.map(section => `
             <div class="section">
                 <div class="section-label">${section.label}</div>
-                ${section.pairs.map(pair => `
-                    <div class="pair">
-                        ${pair.acordes ? `<div class="chord-line">${pair.acordes}</div>` : ''}
-                        ${pair.letra ? `<div class="lyric-line">${pair.letra}</div>` : ''}
-                    </div>
-                `).join('')}
+                ${section.pairs.map(pair => {
+                    let chordDisplay = '';
+                    if (pair.acordes) {
+                        if (mode === 'degrees') {
+                            chordDisplay = KeyDegrees.toDegrees(pair.acordes, song.keyBase);
+                        } else {
+                            chordDisplay = Transposer.cleanChord(Transposer.transpose(pair.acordes, AppState.currentTranspose));
+                        }
+                    }
+                    return `
+                        <div class="pair">
+                            ${chordDisplay ? `<div class="chord-line">${chordDisplay}</div>` : ''}
+                            ${pair.letra ? `<div class="lyric-line">${pair.letra}</div>` : ''}
+                        </div>
+                    `;
+                }).join('')}
             </div>
         `).join('');
     },
@@ -597,20 +670,44 @@ const Router = {
     transposeSong(semitones) {
         if (!AppState.currentSong) return;
         AppState.currentTranspose += semitones;
-        const baseKey = AppState.currentSong.keyBase;
-        let currentKey = Transposer.cleanChord(Transposer.transpose(baseKey, AppState.currentTranspose));
-        document.getElementById('current-key-reader').textContent = currentKey;
 
-        document.querySelectorAll('.chord-line').forEach(line => {
-            let t = Transposer.transpose(line.textContent, semitones);
-            line.textContent = Transposer.cleanChord(t);
-        });
+        if (AppState.notationMode !== 'degrees') {
+            const currentKey = Transposer.cleanChord(Transposer.transpose(AppState.currentSong.keyBase, AppState.currentTranspose));
+            document.getElementById('current-key-reader').textContent = currentKey;
+        }
+
+        this.renderSongContent();
     },
 
     resetTransposition() {
         if (AppState.currentTranspose === 0) return;
-        this.transposeSong(-AppState.currentTranspose);
         AppState.currentTranspose = 0;
+
+        if (AppState.notationMode !== 'degrees') {
+            document.getElementById('current-key-reader').textContent = AppState.currentSong.keyBase;
+        }
+
+        this.renderSongContent();
+    },
+
+    // Alterna entre ver acordes reales o grados (I, IV, V...)
+    toggleNotation() {
+        if (!AppState.currentSong) return;
+        AppState.notationMode = AppState.notationMode === 'degrees' ? 'chords' : 'degrees';
+
+        const btn = document.getElementById('btn-toggle-notation');
+        if (btn) {
+            btn.textContent = AppState.notationMode === 'degrees' ? '🎸 Ver acordes' : '🎼 Ver en grados';
+        }
+
+        const keyLabel = document.getElementById('current-key-reader');
+        if (AppState.notationMode === 'degrees') {
+            keyLabel.textContent = 'Grados';
+        } else {
+            keyLabel.textContent = Transposer.cleanChord(Transposer.transpose(AppState.currentSong.keyBase, AppState.currentTranspose));
+        }
+
+        this.renderSongContent();
     },
 
     showInitialDialog() {
