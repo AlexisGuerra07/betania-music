@@ -35,8 +35,14 @@
                     </div>
                 </div>
 
-                <div class="search-container">
-                    <input type="text" class="search-box" id="search-box" placeholder="Buscar por título o autor...">
+                <div class="search-container" style="display:flex; gap:0.75rem; flex-wrap: wrap;">
+                    <input type="text" class="search-box" id="search-box" placeholder="Buscar por título o autor..." style="flex:1; min-width: 200px;">
+                    <select id="sort-select" style="padding: 0.75rem 1rem; border: 2px solid var(--border-color); border-radius: 8px; font-size: 0.9rem; background: white; color: var(--text-primary); cursor: pointer;">
+                        <option value="alpha">Orden alfabético (A-Z)</option>
+                        <option value="recent">Últimas añadidas</option>
+                        <option value="key">Tonalidad</option>
+                        <option value="bpm">BPM (mayor a menor)</option>
+                    </select>
                 </div>
 
                 <div class="empty-state" id="empty-state">
@@ -78,8 +84,10 @@
                         <button class="btn btn-sm" id="btn-add-section" style="width: 100%; margin-top: 0.5rem;">+ Sección</button>
                     </div>
                     <div class="sidebar-section">
-                        <h3 class="sidebar-title">Tonalidad</h3>
+                        <h3 class="sidebar-title">Tonalidad y BPM</h3>
                         <button class="btn btn-sm" id="btn-detect-key" style="width: 100%; margin-bottom: 0.5rem;">🔍 Detectar tonalidad</button>
+                        <label class="form-label" style="margin-bottom: 0.25rem;">BPM</label>
+                        <input type="number" id="bpm-editor-input" class="form-input" placeholder="Ej: 128" style="padding: 0.5rem;">
                     </div>
                     <div class="sidebar-section">
                         <h3 class="sidebar-title">Acciones</h3>
