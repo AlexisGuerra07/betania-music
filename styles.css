@@ -37,7 +37,6 @@ body {
     overflow-x: hidden;
 }
 
-/* Header minimalista blanco */
 .header {
     background: #ffffff;
     color: var(--text-primary);
@@ -203,7 +202,7 @@ body {
 }
 .reader-title { font-size: 2rem; font-weight: 700; margin-bottom: 0.5rem; color: var(--text-primary); }
 .reader-meta { color: var(--text-secondary); font-size: 1rem; margin-bottom: 2rem; }
-.reader-controls { display: flex; align-items: center; gap: 2rem; flex-wrap: wrap; }
+.reader-controls { display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; }
 
 .transpose-controls {
     display: flex;
@@ -266,8 +265,21 @@ body {
 }
 
 .pair { margin-bottom: 1.5rem; }
-.chord-line { color: var(--primary-color); font-weight: 700; white-space: pre; margin-bottom: 0.25rem; font-size: 0.95em; }
-.lyric-line { color: var(--text-primary); white-space: pre; font-size: 1em; }
+.chord-line { color: var(--primary-color); font-weight: 700; white-space: pre; margin-bottom: 0.25rem; font-size: 0.95em; transition: all 0.2s; }
+.lyric-line { color: var(--text-primary); white-space: pre; font-size: 1em; transition: all 0.2s; }
+
+/* Modo Voz: oculta acordes y agranda la letra, para cantantes */
+.song-content.voice-mode .chord-line {
+    display: none;
+}
+.song-content.voice-mode .lyric-line {
+    font-size: 1.3em;
+    font-weight: 500;
+    line-height: 2;
+}
+.song-content.voice-mode .pair {
+    margin-bottom: 1rem;
+}
 
 .editor-container { display: flex; gap: 2rem; height: calc(100vh - 200px); min-height: 600px; }
 
@@ -395,6 +407,8 @@ body {
     gap: 0.25rem;
 }
 .btn:hover, .btn-sm:hover, .btn-xs:hover { background: var(--bg-secondary); border-color: var(--border-hover); }
+
+.btn.active-mode { background: var(--primary-color); color: white; border-color: var(--primary-color); }
 
 .btn-primary { background: var(--primary-color); color: white; border-color: var(--primary-color); }
 .btn-primary:hover { background: var(--primary-hover); border-color: var(--primary-hover); }
