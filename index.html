@@ -2,17 +2,9 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    
-    <title>Betania Music - Equipo de Alabanza</title>
-    
-    <link rel="manifest" href="manifest.json">
-    <meta name="theme-color" content="#26a69a">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-title" content="Betania Music">
-    <link rel="apple-touch-icon" href="icon-192.png">
-
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Betania Music - Gestor de Canciones</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -36,11 +28,9 @@
                 </div>
                 <div class="logo-text">Betania Music</div>
             </div>
-            
             <nav>
                 <div class="nav-tabs">
                     <button class="nav-tab active" data-route="canciones">Canciones</button>
-                    <button class="nav-tab" data-route="cultos">Cultos</button> 
                     <button class="nav-tab" data-route="edicion">Edición</button>
                 </div>
             </nav>
@@ -48,18 +38,96 @@
     </header>
 
     <div class="app-container">
-        
+        <!-- Songs List View -->
         <div class="view active" id="view-canciones">
             <div class="songs-container">
                 <div class="section-header">
-                    <h2 class="section-title">Repertorio</h2>
-                    <button class="btn-add-song" id="btn-add-song">+ Nueva canción</button>
+                    <h2 class="section-title">Canciones</h2>
+                    <div style="display:flex; gap:0.75rem;">
+                        <button class="btn" id="btn-import-pdfs">📄 Importar PDFs</button>
+                        <button class="btn-add-song" id="btn-add-song">+ Añadir canción</button>
+                    </div>
                 </div>
+
                 <div class="search-container">
-                    <input type="text" class="search-box" id="search-box" placeholder="Buscar por título, autor o tonalidad...">
+                    <input type="text" class="search-box" id="search-box" placeholder="Buscar por título o autor...">
                 </div>
+
                 <div class="empty-state" id="empty-state">
                     <h3>Aún no hay canciones</h3>
-                    <p>Pulsa "+ Nueva canción" para agregar la primera.</p>
+                    <p>Pulsa "Añadir canción" o "Importar PDFs" para comenzar.</p>
                 </div>
-                <div class="songs-grid" id="songs-grid" style="display: none;">
+
+                <div class="songs-grid" id="songs-grid" style="display: none;"></div>
+            </div>
+        </div>
+
+        <!-- Song Reader View -->
+        <div class="view" id="view-song-reader">
+            <div class="song-reader">
+                <div class="reader-header">
+                    <button class="btn" id="btn-back-to-list">← Volver a canciones</button>
+                    <div class="reader-title" id="reader-title">Título de la canción</div>
+                    <div class="reader-meta" id="reader-meta">Autor • Tonalidad base</div>
+                    
+                    <div class="reader-controls">
+                        <div class="transpose-controls">
+                            <span style="font-size: 0.8rem; color: var(--text-muted);">Tonalidad:</span>
+                            <button class="transpose-btn" id="btn-transpose-down-reader">♭</button>
+                            <div class="current-key" id="current-key-reader">C</div>
+                            <button class="transpose-btn" id="btn-transpose-up-reader">♯</button>
+                            <button class="btn btn-sm" id="btn-reset-key-reader">Base</button>
+                        </div>
+                        <button class="btn btn-primary" id="btn-edit-song">Editar</button>
+                    </div>
+                </div>
+
+                <div class="song-content" id="song-content"></div>
+            </div>
+        </div>
+
+        <!-- Editor View -->
+        <div class="view" id="view-edicion">
+            <div class="editor-container">
+                <div class="editor-sidebar">
+                    <div class="sidebar-section">
+                        <h3 class="sidebar-title">Estructura</h3>
+                        <div id="sections-outline"></div>
+                        <button class="btn btn-sm" id="btn-add-section" style="width: 100%; margin-top: 0.5rem;">+ Sección</button>
+                    </div>
+                    <div class="sidebar-section">
+                        <h3 class="sidebar-title">Acciones</h3>
+                        <button class="btn btn-sm" id="btn-transpose-up" style="width: 100%; margin-bottom: 0.25rem;">♯ Subir tono</button>
+                        <button class="btn btn-sm" id="btn-transpose-down" style="width: 100%; margin-bottom: 0.25rem;">♭ Bajar tono</button>
+                        <button class="btn btn-sm" id="btn-reset-transpose" style="width: 100%;">Reset</button>
+                    </div>
+                </div>
+
+                <div class="editor-main">
+                    <div class="editor-toolbar">
+                        <div class="toolbar-left">
+                            <button class="btn btn-sm" id="btn-back-from-editor">← Volver</button>
+                            <input type="text" id="song-title-editor" placeholder="Título de la canción" 
+                                   style="font-size: 1.1rem; font-weight: 600; border: none; background: transparent; outline: none; min-width: 200px;">
+                        </div>
+                        <div class="toolbar-right">
+                            <div class="chips-container">
+                                <div class="chip" id="key-chip">
+                                    <span>Tonalidad:</span>
+                                    <span id="key-status">C</span>
+                                </div>
+                            </div>
+                            <span class="save-indicator" id="save-indicator">Guardado</span>
+                            <button class="btn btn-sm" id="btn-add-pair-editor">+ Par</button>
+                            <button class="btn btn-primary" id="btn-save-song">Guardar</button>
+                        </div>
+                    </div>
+                    <div class="editor-content" id="editor-content"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
