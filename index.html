@@ -98,7 +98,7 @@
                 <div class="reader-header">
                     <button class="btn" id="btn-back-to-list">← Volver</button>
                     <div class="reader-title" id="reader-title">Título de la canción</div>
-                    <div class="reader-meta" id="reader-meta">Autor • Tonalidad base</div>
+                    <div class="reader-meta" id="reader-meta">Autor • BPM</div>
 
                     <div id="setlist-nav-controls" style="display:none; margin-bottom: 1rem; padding: 0.75rem 1rem; background: var(--bg-secondary); border-radius: 8px; border: 1px solid var(--border-color); align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap;">
                         <button class="btn btn-sm" id="btn-prev-setlist-song">◀ Anterior</button>
@@ -149,10 +149,12 @@
 
                 <div class="editor-main">
                     <div class="editor-toolbar">
-                        <div class="toolbar-left">
+                        <div class="toolbar-left" style="flex-wrap: wrap;">
                             <button class="btn btn-sm" id="btn-back-from-editor">← Volver</button>
                             <input type="text" id="song-title-editor" placeholder="Título de la canción" 
-                                   style="font-size: 1.1rem; font-weight: 600; border: none; background: transparent; outline: none; min-width: 200px;">
+                                   style="font-size: 1.1rem; font-weight: 600; border: none; background: transparent; outline: none; min-width: 180px;">
+                            <input type="text" id="song-artist-editor" placeholder="Autor / Intérprete" 
+                                   style="font-size: 0.9rem; color: var(--text-secondary); border: none; background: transparent; outline: none; min-width: 150px;">
                         </div>
                         <div class="toolbar-right">
                             <div class="chips-container">
