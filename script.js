@@ -9,7 +9,7 @@ const AppState = {
     lastSaveTime: 0,
     settings: { fontSize: 14, autoSections: true },
     isCreatingNew: false,
-    pendingImports: [] // canciones extraídas de PDFs, pendientes de revisión
+    pendingImports: []
 };
 
 // Storage
@@ -74,7 +74,7 @@ const Storage = {
 // Parser de acordes
 const ChordParser = {
     chordRegex: /\b([A-G])([#b])?(maj7|maj9|m7|m9|m|dim|aug|add\d+|sus2|sus4|7|9|11|13|°|ø)?(?:\/([A-G])([#b])?)?\b/g,
-    sectionHeaderRegex: /^\s*(intro|estrofa|verso|pre[\s\-]?coro|coro|puente|bridge|interludio|solo|outro|final|tag)\s*(?:[:\-]|\b)?\s*(\d+|i{1,3}|[ivx]{1,4}|[1-9]ª|x\d+|\(.*?\))?\s*$/i,
+    sectionHeaderRegex: /^\s*(intro|estrofa|verso|pre[\s\-]?coro|coro|puente|bridge|interludio|solo|outro|final|tag|estribillo|modulaci[oó]n|leyenda)\s*(?:[:\-]|\b)?\s*(\d+|i{1,3}|[ivx]{1,4}|[1-9]ª|x\d+|\(.*?\))?\s*$/i,
 
     normalizeTildes(text) {
         const map = { 'á':'a','é':'e','í':'i','ó':'o','ú':'u','Á':'A','É':'E','Í':'I','Ó':'O','Ú':'U' };
@@ -102,8 +102,9 @@ const ChordParser = {
         const translations = {
             'intro':'Intro','estrofa':'Estrofa','verso':'Estrofa','verse':'Estrofa',
             'pre coro':'Pre-Coro','precoro':'Pre-Coro','pre-coro':'Pre-Coro',
-            'coro':'Coro','chorus':'Coro','puente':'Puente','bridge':'Puente',
-            'interludio':'Interludio','solo':'Solo','outro':'Outro','final':'Final','tag':'Tag'
+            'coro':'Coro','chorus':'Coro','estribillo':'Estribillo','puente':'Puente','bridge':'Puente',
+            'interludio':'Interludio','solo':'Solo','outro':'Outro','final':'Final','tag':'Tag',
+            'modulacion':'Modulación','leyenda':'Leyenda'
         };
         const normalizedType = sectionType.toLowerCase().replace(/[\s\-]/g, ' ');
         let baseName = translations[normalizedType] || sectionType;
@@ -497,7 +498,7 @@ const Router = {
             title: '📄 Importar PDFs en lote',
             content: `
                 <p style="margin-bottom: 1rem; color: var(--text-secondary); font-size: 0.9rem;">
-                    Selecciona varios PDFs a la vez. Se creará una canción por cada archivo (usando el nombre del archivo como título). Podrás editar cada una después.
+                    Selecciona varios PDFs a la vez (en tono original, no en grados). Se creará una canción por cada archivo. Podrás editar cada una después.
                 </p>
                 <div class="form-group">
                     <input type="file" class="form-input" id="pdf-bulk-input" accept=".pdf" multiple>
@@ -536,8 +537,7 @@ const Router = {
                     autoSections: true,
                     sections: sections.length > 0 ? sections : [{ label: 'Sin sección', pairs: [{ acordes: '', letra: '(No se detectaron acordes, revisa manualmente)' }] }],
                     createdAt: new Date().toISOString(),
-                    updatedAt: new Date().toISOString(),
-                    selected: true
+                    updatedAt: new Date().toISOString()
                 });
             } catch (error) {
                 console.error(`Error procesando ${file.name}:`, error);
@@ -551,7 +551,8 @@ const Router = {
         return new Promise(async (resolve, reject) => {
             try {
                 if (typeof pdfjsLib === 'undefined') {
-                    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+                    reject(new Error('pdf.js no está cargado'));
+                    return;
                 }
                 const arrayBuffer = await file.arrayBuffer();
                 const pdf = await pdfjsLib.getDocument(arrayBuffer).promise;
@@ -559,13 +560,52 @@ const Router = {
                 for (let i = 1; i <= pdf.numPages; i++) {
                     const page = await pdf.getPage(i);
                     const textContent = await page.getTextContent();
-                    fullText += textContent.items.map(item => item.str).join(' ') + '\n';
+                    fullText += this.reconstructPageText(textContent) + '\n';
                 }
                 resolve(fullText);
             } catch (error) {
                 reject(error);
             }
         });
+    },
+
+    reconstructPageText(textContent) {
+        const items = textContent.items;
+        if (!items.length) return '';
+
+        const lineGroups = [];
+        const tolerance = 2;
+
+        items.forEach(item => {
+            const y = item.transform[5];
+            const x = item.transform[4];
+            let group = lineGroups.find(g => Math.abs(g.y - y) <= tolerance);
+            if (!group) {
+                group = { y: y, items: [] };
+                lineGroups.push(group);
+            }
+            group.items.push({ x, str: item.str, width: item.width || 0 });
+        });
+
+        lineGroups.sort((a, b) => b.y - a.y);
+
+        const lines = lineGroups.map(group => {
+            group.items.sort((a, b) => a.x - b.x);
+            let lineText = '';
+            let lastEndX = null;
+            group.items.forEach(it => {
+                if (lastEndX !== null) {
+                    const gap = it.x - lastEndX;
+                    const spaces = Math.max(1, Math.round(gap / 5));
+                    lineText += ' '.repeat(Math.min(spaces, 20));
+                }
+                lineText += it.str;
+                lastEndX = it.x + it.width;
+            });
+            return lineText;
+        });
+
+        return lines.join('\n');
     },
 
     showBulkImportPreview() {
@@ -610,7 +650,6 @@ const Router = {
             if (cb.checked) {
                 const idx = parseInt(cb.dataset.idx);
                 const song = AppState.pendingImports[idx];
-                delete song.selected;
                 AppState.songs.push(song);
                 savedCount++;
             }
@@ -620,7 +659,7 @@ const Router = {
         AppState.pendingImports = [];
         this.closeModal();
         this.renderSongsList();
-        alert(`✅ Se guardaron ${savedCount} canción(es). Puedes editarlas para ajustar tonalidad y estructura.`);
+        alert(`✅ Se guardaron ${savedCount} canción(es). Revísalas para ajustar tonalidad y estructura.`);
     },
     // ============ FIN IMPORTACIÓN MASIVA ============
 
