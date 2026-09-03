@@ -100,14 +100,14 @@
                     <div class="reader-title" id="reader-title">Título de la canción</div>
                     <div class="reader-meta" id="reader-meta">Autor • Tonalidad base</div>
 
-                    <div id="setlist-nav-controls" style="display:none; margin-bottom: 1rem; padding: 0.75rem 1rem; background: var(--bg-secondary); border-radius: 8px; border: 1px solid var(--border-color); display: none; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap;">
+                    <div id="setlist-nav-controls" style="display:none; margin-bottom: 1rem; padding: 0.75rem 1rem; background: var(--bg-secondary); border-radius: 8px; border: 1px solid var(--border-color); align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap;">
                         <button class="btn btn-sm" id="btn-prev-setlist-song">◀ Anterior</button>
                         <span id="setlist-position-label" style="font-size: 0.85rem; color: var(--text-secondary); font-weight: 600;">1 / 5</span>
                         <button class="btn btn-sm" id="btn-next-setlist-song">Siguiente ▶</button>
                     </div>
                     
                     <div class="reader-controls">
-                        <div class="transpose-controls">
+                        <div class="transpose-controls" id="transpose-controls-wrap">
                             <span style="font-size: 0.8rem; color: var(--text-muted);">Tonalidad:</span>
                             <button class="transpose-btn" id="btn-transpose-down-reader">♭</button>
                             <div class="current-key" id="current-key-reader">C</div>
@@ -115,6 +115,7 @@
                             <button class="btn btn-sm" id="btn-reset-key-reader">Base</button>
                         </div>
                         <button class="btn btn-sm" id="btn-toggle-notation">🎼 Ver en grados</button>
+                        <button class="btn btn-sm" id="btn-voice-mode">🎤 Modo Voz</button>
                         <button class="btn btn-primary" id="btn-edit-song">Editar</button>
                     </div>
                 </div>
