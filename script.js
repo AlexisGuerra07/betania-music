@@ -4,8 +4,11 @@ const AppState = {
     currentSong: null,
     editingSongId: null,
     songs: [],
+    setlists: [],
+    currentSetlist: null,
+    cameFromSetlistId: null,
     currentTranspose: 0,
-    notationMode: 'chords', // 'chords' o 'degrees'
+    notationMode: 'chords',
     isSaving: false,
     lastSaveTime: 0,
     settings: { fontSize: 14, autoSections: true, sortBy: 'alpha' },
@@ -17,6 +20,7 @@ const AppState = {
 const Storage = {
     SONGS_KEY: 'betania_songs_v4',
     SETTINGS_KEY: 'betania_settings_v4',
+    SETLISTS_KEY: 'betania_setlists_v1',
 
     saveSongs() {
         try {
@@ -69,6 +73,25 @@ const Storage = {
         const map = new Map();
         songs.forEach(song => { if (song.id) map.set(song.id, song); });
         return Array.from(map.values());
+    },
+
+    saveSetlists() {
+        try {
+            localStorage.setItem(this.SETLISTS_KEY, JSON.stringify(AppState.setlists));
+            return true;
+        } catch (error) {
+            console.error('Error saving setlists:', error);
+            return false;
+        }
+    },
+
+    loadSetlists() {
+        try {
+            const data = localStorage.getItem(this.SETLISTS_KEY);
+            if (data) AppState.setlists = JSON.parse(data);
+        } catch (error) {
+            console.error('Error loading setlists:', error);
+        }
     }
 };
 
@@ -214,7 +237,7 @@ const Transposer = {
     }
 };
 
-// Detector automático de tonalidad — versión basada en cobertura de acordes
+// Detector automático de tonalidad
 const KeyDetector = {
     majorQualities: ['maj', 'min', 'min', 'maj', 'maj', 'min', 'dim'],
     majorOffsets: [0, 2, 4, 5, 7, 9, 11],
@@ -320,7 +343,7 @@ const KeyDetector = {
     }
 };
 
-// Conversión de acordes a grados (I, IV, V, vi...) relativos a la tonalidad de la canción
+// Conversión a grados
 const KeyDegrees = {
     romanByOffset: ['I', 'bII', 'II', 'bIII', 'III', 'IV', '#IV', 'V', 'bVI', 'VI', 'bVII', 'VII'],
 
@@ -342,7 +365,6 @@ const KeyDegrees = {
         return this.romanByOffset[offset];
     },
 
-    // Convierte una línea de acordes completa a su equivalente en grados
     toDegrees(chordLine, keyBase) {
         if (!chordLine || !chordLine.trim()) return chordLine;
         const keyRootIdx = this.getKeyRootIndex(keyBase);
@@ -386,6 +408,12 @@ const Router = {
         document.querySelectorAll('.nav-tab').forEach(tab => {
             tab.classList.toggle('active', tab.dataset.route === view);
         });
+        // Repertorio-detail comparte pestaña activa con "repertorio"
+        if (view === 'repertorio-detail') {
+            const repTab = document.querySelector('.nav-tab[data-route="repertorio"]');
+            if (repTab) repTab.classList.add('active');
+        }
+
         document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
         const target = document.getElementById(`view-${view}`);
         if (target) target.classList.add('active');
@@ -395,6 +423,8 @@ const Router = {
             if (sortSelect) sortSelect.value = AppState.settings.sortBy || 'alpha';
             this.renderSongsList();
         }
+        if (view === 'repertorio') this.renderSetlistsList();
+        if (view === 'repertorio-detail') this.renderSetlistDetail();
         if (view === 'edicion' && AppState.isCreatingNew) this.showInitialDialog();
     },
 
@@ -409,7 +439,18 @@ const Router = {
         });
         this.bindButton('btn-import-pdfs', () => this.showBulkPDFImport());
         this.bindButton('btn-bulk-detect-keys', () => this.bulkDetectKeys());
-        this.bindButton('btn-back-to-list', () => this.navigate('canciones'));
+        this.bindButton('btn-back-to-list', () => {
+            if (AppState.cameFromSetlistId) {
+                const sl = AppState.setlists.find(s => s.id === AppState.cameFromSetlistId);
+                AppState.cameFromSetlistId = null;
+                if (sl) {
+                    AppState.currentSetlist = sl;
+                    this.navigate('repertorio-detail');
+                    return;
+                }
+            }
+            this.navigate('canciones');
+        });
         this.bindButton('btn-back-from-editor', () => {
             this.saveCurrentSong();
             this.navigate('canciones');
@@ -445,6 +486,21 @@ const Router = {
             Storage.saveSettings();
             this.renderSongsList();
         });
+
+        // Repertorio
+        this.bindButton('btn-new-setlist', () => this.showNewSetlistModal());
+        this.bindButton('btn-back-to-repertorios', () => {
+            AppState.currentSetlist = null;
+            this.navigate('repertorio');
+        });
+        this.bindButton('btn-add-songs-to-setlist', () => this.showAddSongsToSetlistModal());
+        this.bindInput('setlist-name-input', (e) => {
+            if (!AppState.currentSetlist) return;
+            AppState.currentSetlist.name = e.target.value;
+            Storage.saveSetlists();
+        });
+        this.bindButton('btn-prev-setlist-song', () => this.gotoSetlistSong(-1));
+        this.bindButton('btn-next-setlist-song', () => this.gotoSetlistSong(1));
     },
 
     bindButton(id, handler) {
@@ -592,7 +648,7 @@ const Router = {
     },
 
     filterSongs(query) {
-        const items = document.querySelectorAll('.song-item');
+        const items = document.querySelectorAll('#songs-grid .song-item');
         const q = query.toLowerCase();
         items.forEach(item => {
             const title = item.querySelector('.song-title').textContent.toLowerCase();
@@ -604,6 +660,30 @@ const Router = {
     viewSong(songId) {
         const song = AppState.songs.find(s => s.id === songId);
         if (!song) return;
+        AppState.cameFromSetlistId = null;
+        AppState.currentSong = song;
+        AppState.currentTranspose = 0;
+        AppState.notationMode = 'chords';
+
+        const toggleBtn = document.getElementById('btn-toggle-notation');
+        if (toggleBtn) toggleBtn.textContent = '🎼 Ver en grados';
+        const setlistNav = document.getElementById('setlist-nav-controls');
+        if (setlistNav) setlistNav.style.display = 'none';
+
+        document.getElementById('reader-title').textContent = song.title;
+        document.getElementById('reader-meta').textContent = `${song.artist || 'Sin autor'} • ${song.keyBase}`;
+        document.getElementById('current-key-reader').textContent = song.keyBase;
+        this.renderSongContent();
+        this.navigate('song-reader');
+    },
+
+    // Abre una canción en el contexto de un repertorio, mostrando navegación anterior/siguiente
+    viewSetlistSong(songId) {
+        if (!AppState.currentSetlist) return;
+        const song = AppState.songs.find(s => s.id === songId);
+        if (!song) return;
+
+        AppState.cameFromSetlistId = AppState.currentSetlist.id;
         AppState.currentSong = song;
         AppState.currentTranspose = 0;
         AppState.notationMode = 'chords';
@@ -615,7 +695,35 @@ const Router = {
         document.getElementById('reader-meta').textContent = `${song.artist || 'Sin autor'} • ${song.keyBase}`;
         document.getElementById('current-key-reader').textContent = song.keyBase;
         this.renderSongContent();
+        this.updateSetlistNavControls();
         this.navigate('song-reader');
+    },
+
+    updateSetlistNavControls() {
+        const setlistNav = document.getElementById('setlist-nav-controls');
+        const posLabel = document.getElementById('setlist-position-label');
+        if (!setlistNav || !AppState.currentSetlist || !AppState.currentSong) return;
+
+        const ids = AppState.currentSetlist.songIds || [];
+        const idx = ids.indexOf(AppState.currentSong.id);
+        if (idx === -1) { setlistNav.style.display = 'none'; return; }
+
+        setlistNav.style.display = 'flex';
+        posLabel.textContent = `${idx + 1} / ${ids.length}`;
+
+        const prevBtn = document.getElementById('btn-prev-setlist-song');
+        const nextBtn = document.getElementById('btn-next-setlist-song');
+        if (prevBtn) prevBtn.disabled = idx <= 0;
+        if (nextBtn) nextBtn.disabled = idx >= ids.length - 1;
+    },
+
+    gotoSetlistSong(direction) {
+        if (!AppState.currentSetlist || !AppState.currentSong) return;
+        const ids = AppState.currentSetlist.songIds || [];
+        const idx = ids.indexOf(AppState.currentSong.id);
+        const newIdx = idx + direction;
+        if (newIdx < 0 || newIdx >= ids.length) return;
+        this.viewSetlistSong(ids[newIdx]);
     },
 
     editSong(songId) {
@@ -632,12 +740,15 @@ const Router = {
         if (confirm('¿Estás seguro de que quieres eliminar esta canción?')) {
             AppState.songs = AppState.songs.filter(s => s.id !== songId);
             Storage.saveSongs();
+            // Quitar también de todos los repertorios
+            AppState.setlists.forEach(sl => {
+                sl.songIds = (sl.songIds || []).filter(id => id !== songId);
+            });
+            Storage.saveSetlists();
             this.renderSongsList();
         }
     },
 
-    // Renderiza el contenido siempre a partir de los datos originales de la canción,
-    // aplicando transposición o conversión a grados según el modo activo
     renderSongContent() {
         const content = document.getElementById('song-content');
         if (!AppState.currentSong) return;
@@ -690,7 +801,6 @@ const Router = {
         this.renderSongContent();
     },
 
-    // Alterna entre ver acordes reales o grados (I, IV, V...)
     toggleNotation() {
         if (!AppState.currentSong) return;
         AppState.notationMode = AppState.notationMode === 'degrees' ? 'chords' : 'degrees';
@@ -782,6 +892,212 @@ const Router = {
         this.closeModal();
         Editor.loadSong(AppState.currentSong);
     },
+
+    // ============ REPERTORIO ============
+    showNewSetlistModal() {
+        const days = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'];
+        const today = new Date();
+        const defaultName = `${days[today.getDay()].charAt(0).toUpperCase() + days[today.getDay()].slice(1)} ${today.getDate()}/${today.getMonth() + 1}`;
+
+        this.createModal({
+            title: 'Nuevo repertorio',
+            content: `
+                <div class="form-group">
+                    <label class="form-label">Nombre *</label>
+                    <input type="text" class="form-input" id="modal-setlist-name" value="${defaultName}">
+                </div>
+            `,
+            actions: [
+                { text: 'Cancelar', action: () => this.closeModal() },
+                { text: 'Crear', primary: true, action: () => this.createSetlist() }
+            ]
+        });
+    },
+
+    createSetlist() {
+        const name = document.getElementById('modal-setlist-name').value.trim();
+        if (!name) { alert('El nombre es obligatorio'); return; }
+        const setlist = {
+            id: this.generateId(),
+            name,
+            songIds: [],
+            createdAt: new Date().toISOString()
+        };
+        AppState.setlists.push(setlist);
+        Storage.saveSetlists();
+        AppState.currentSetlist = setlist;
+        this.closeModal();
+        this.navigate('repertorio-detail');
+    },
+
+    renderSetlistsList() {
+        const grid = document.getElementById('repertorio-grid');
+        const emptyState = document.getElementById('repertorio-empty-state');
+
+        if (AppState.setlists.length === 0) {
+            grid.style.display = 'none';
+            emptyState.style.display = 'block';
+            return;
+        }
+
+        emptyState.style.display = 'none';
+        grid.style.display = 'block';
+        const sorted = [...AppState.setlists].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+
+        grid.innerHTML = sorted.map(sl => `
+            <div class="song-item" onclick="Router.openSetlist('${sl.id}')">
+                <div class="song-info">
+                    <div class="song-title">${sl.name}</div>
+                    <div class="song-meta">${(sl.songIds || []).length} canción(es)</div>
+                </div>
+                <div class="song-actions" onclick="event.stopPropagation()">
+                    <button class="action-btn delete-btn" onclick="Router.deleteSetlist('${sl.id}')" title="Eliminar">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="3,6 5,6 21,6"></polyline>
+                            <path d="m19,6v14a2,2 0 0,1 -2,2H7a2,2 0 0,1 -2,-2V6m3,0V4a2,2 0 0,1 2,-2h4a2,2 0 0,1 2,2v2"></path>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+        `).join('');
+    },
+
+    openSetlist(setlistId) {
+        const sl = AppState.setlists.find(s => s.id === setlistId);
+        if (!sl) return;
+        AppState.currentSetlist = sl;
+        this.navigate('repertorio-detail');
+    },
+
+    deleteSetlist(setlistId) {
+        if (confirm('¿Eliminar este repertorio?')) {
+            AppState.setlists = AppState.setlists.filter(s => s.id !== setlistId);
+            Storage.saveSetlists();
+            this.renderSetlistsList();
+        }
+    },
+
+    renderSetlistDetail() {
+        if (!AppState.currentSetlist) { this.navigate('repertorio'); return; }
+        const sl = AppState.currentSetlist;
+
+        const nameInput = document.getElementById('setlist-name-input');
+        if (nameInput) nameInput.value = sl.name;
+
+        const list = document.getElementById('setlist-songs-list');
+        const empty = document.getElementById('setlist-empty-state');
+
+        const songs = (sl.songIds || []).map(id => AppState.songs.find(s => s.id === id)).filter(Boolean);
+
+        if (songs.length === 0) {
+            list.style.display = 'none';
+            empty.style.display = 'block';
+            return;
+        }
+
+        empty.style.display = 'none';
+        list.style.display = 'block';
+
+        list.innerHTML = songs.map((song, idx) => `
+            <div class="song-item" onclick="Router.viewSetlistSong('${song.id}')">
+                <div class="song-info">
+                    <div class="song-title">${idx + 1}. ${song.title}</div>
+                    <div class="song-meta">${song.keyBase}${song.bpm ? ` • ${song.bpm} BPM` : ''}</div>
+                </div>
+                <div class="song-actions" onclick="event.stopPropagation()">
+                    <button class="action-btn" onclick="Router.moveSetlistSong(${idx}, -1)" title="Subir" ${idx === 0 ? 'style="opacity:0.3;pointer-events:none;"' : ''}>
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 19V5M5 12l7-7 7 7"/></svg>
+                    </button>
+                    <button class="action-btn" onclick="Router.moveSetlistSong(${idx}, 1)" title="Bajar" ${idx === songs.length - 1 ? 'style="opacity:0.3;pointer-events:none;"' : ''}>
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12l7 7 7-7"/></svg>
+                    </button>
+                    <button class="action-btn delete-btn" onclick="Router.removeSetlistSong('${song.id}')" title="Quitar">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="3,6 5,6 21,6"></polyline>
+                            <path d="m19,6v14a2,2 0 0,1 -2,2H7a2,2 0 0,1 -2,-2V6m3,0V4a2,2 0 0,1 2,-2h4a2,2 0 0,1 2,2v2"></path>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+        `).join('');
+    },
+
+    moveSetlistSong(index, direction) {
+        const sl = AppState.currentSetlist;
+        if (!sl) return;
+        const newIndex = index + direction;
+        if (newIndex < 0 || newIndex >= sl.songIds.length) return;
+        const id = sl.songIds.splice(index, 1)[0];
+        sl.songIds.splice(newIndex, 0, id);
+        Storage.saveSetlists();
+        this.renderSetlistDetail();
+    },
+
+    removeSetlistSong(songId) {
+        const sl = AppState.currentSetlist;
+        if (!sl) return;
+        sl.songIds = sl.songIds.filter(id => id !== songId);
+        Storage.saveSetlists();
+        this.renderSetlistDetail();
+    },
+
+    showAddSongsToSetlistModal() {
+        if (!AppState.currentSetlist) return;
+        const currentIds = AppState.currentSetlist.songIds || [];
+        const available = AppState.songs.filter(s => !currentIds.includes(s.id));
+
+        if (available.length === 0) {
+            alert('Todas tus canciones ya están en este repertorio.');
+            return;
+        }
+
+        const sorted = [...available].sort((a, b) => a.title.localeCompare(b.title, 'es'));
+
+        this.createModal({
+            title: 'Añadir canciones al repertorio',
+            content: `
+                <div class="form-group">
+                    <input type="text" class="form-input" id="setlist-add-search" placeholder="Buscar...">
+                </div>
+                <div id="setlist-add-list">
+                    ${sorted.map(song => `
+                        <div class="import-preview-item" data-title="${song.title.toLowerCase()}">
+                            <input type="checkbox" data-song-id="${song.id}" class="setlist-add-checkbox">
+                            <div class="import-preview-info">
+                                <div class="import-preview-title">${song.title}</div>
+                                <div class="import-preview-meta">${song.keyBase}</div>
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+            `,
+            actions: [
+                { text: 'Cancelar', action: () => this.closeModal() },
+                { text: 'Añadir seleccionadas', primary: true, action: () => this.confirmAddSongsToSetlist() }
+            ]
+        });
+
+        document.getElementById('setlist-add-search').addEventListener('input', (e) => {
+            const q = e.target.value.toLowerCase();
+            document.querySelectorAll('#setlist-add-list .import-preview-item').forEach(el => {
+                el.style.display = el.dataset.title.includes(q) ? 'flex' : 'none';
+            });
+        });
+    },
+
+    confirmAddSongsToSetlist() {
+        const checked = document.querySelectorAll('.setlist-add-checkbox:checked');
+        const sl = AppState.currentSetlist;
+        if (!sl) return;
+        checked.forEach(cb => {
+            const id = cb.dataset.songId;
+            if (!sl.songIds.includes(id)) sl.songIds.push(id);
+        });
+        Storage.saveSetlists();
+        this.closeModal();
+        this.renderSetlistDetail();
+    },
+    // ============ FIN REPERTORIO ============
 
     // ============ IMPORTACIÓN MASIVA DE PDFs ============
     showBulkPDFImport() {
@@ -1241,6 +1557,7 @@ const Editor = {
 document.addEventListener('DOMContentLoaded', () => {
     Storage.loadSongs();
     Storage.loadSettings();
+    Storage.loadSetlists();
 
     if (typeof pdfjsLib !== 'undefined') {
         pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
