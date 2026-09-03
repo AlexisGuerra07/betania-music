@@ -263,6 +263,11 @@ const Router = {
         this.bindButton('btn-transpose-down', () => Editor.transpose(-1));
         this.bindButton('btn-reset-transpose', () => Editor.resetTranspose());
         this.bindInput('search-box', (e) => this.filterSongs(e.target.value));
+        this.bindSelect('key-editor-select', (e) => {
+            if (!AppState.currentSong) return;
+            AppState.currentSong.keyBase = e.target.value;
+            Storage.updateSaveStatus('unsaved');
+        });
     },
 
     bindButton(id, handler) {
@@ -277,6 +282,14 @@ const Router = {
         const el = document.getElementById(id);
         if (el && !el.hasAttribute('data-bound')) {
             el.addEventListener('input', handler);
+            el.setAttribute('data-bound', 'true');
+        }
+    },
+
+    bindSelect(id, handler) {
+        const el = document.getElementById(id);
+        if (el && !el.hasAttribute('data-bound')) {
+            el.addEventListener('change', handler);
             el.setAttribute('data-bound', 'true');
         }
     },
@@ -527,14 +540,12 @@ const Router = {
             try {
                 let text = await this.extractPDFText(file);
 
-                // Detectar tonalidad real desde "KEY: A"
                 let detectedKey = 'C';
                 const keyMatch = text.match(/KEY:\s*([A-G][#b]?m?)/i);
                 if (keyMatch) {
                     detectedKey = keyMatch[1].charAt(0).toUpperCase() + keyMatch[1].slice(1);
                 }
 
-                // Limpiar líneas de metadatos (KEY:, TEMPO:, TIME:, abreviaturas sueltas)
                 const lines = text.split('\n');
                 const cleanedLines = lines.filter(line => {
                     const t = line.trim();
@@ -734,8 +745,8 @@ const Editor = {
     },
 
     updateChips() {
-        const keyStatus = document.getElementById('key-status');
-        if (keyStatus) keyStatus.textContent = AppState.currentSong.keyBase;
+        const keySelect = document.getElementById('key-editor-select');
+        if (keySelect) keySelect.value = AppState.currentSong.keyBase;
     },
 
     render() {
