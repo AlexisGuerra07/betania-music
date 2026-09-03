@@ -238,12 +238,11 @@ const Transposer = {
     }
 };
 
-// Detector automático de tonalidad
+// Detector automático de tonalidad — criterio unificado: SIEMPRE devuelve la tonalidad mayor,
+// incluso si la cobertura de acordes coincide (o coincidiría mejor) con la relativa menor.
 const KeyDetector = {
     majorQualities: ['maj', 'min', 'min', 'maj', 'maj', 'min', 'dim'],
     majorOffsets: [0, 2, 4, 5, 7, 9, 11],
-    minorQualities: ['min', 'dim', 'maj', 'min', 'min', 'maj', 'maj'],
-    minorOffsets: [0, 2, 3, 5, 7, 8, 10],
 
     simplifyQuality(suffix) {
         if (!suffix) return 'maj';
@@ -294,53 +293,40 @@ const KeyDetector = {
         const totalDistinct = chordEntries.length;
         let best = null;
 
+        // Solo evaluamos tonalidades MAYORES — criterio unificado para toda la app
         for (let root = 0; root < 12; root++) {
-            ['major', 'minor'].forEach(mode => {
-                const offsets = mode === 'major' ? this.majorOffsets : this.minorOffsets;
-                const qualities = mode === 'major' ? this.majorQualities : this.minorQualities;
-                const tonicQuality = mode === 'major' ? 'maj' : 'min';
+            let matchedDistinct = 0;
+            let matchedWeight = 0;
+            let rootChordCount = 0;
 
-                let matchedDistinct = 0;
-                let matchedWeight = 0;
-                let rootChordCount = 0;
-
-                chordEntries.forEach(c => {
-                    const offset = (c.idx - root + 12) % 12;
-                    const pos = offsets.indexOf(offset);
-                    let isMatch = false;
-                    if (pos !== -1) {
-                        if (qualities[pos] === c.quality) {
-                            isMatch = true;
-                        } else if (pos === 4 && mode === 'minor' && (c.quality === 'maj' || c.quality === 'min')) {
-                            isMatch = true;
-                        }
-                    }
-                    if (isMatch) {
-                        matchedDistinct++;
-                        matchedWeight += c.count;
-                    }
-                    if (c.idx === root && c.quality === tonicQuality) {
-                        rootChordCount += c.count;
-                    }
-                });
-
-                const coverage = matchedDistinct / totalDistinct;
-
-                let bonus = 0;
-                if (firstChord && firstChord.idx === root && firstChord.quality === tonicQuality) bonus += 15;
-                if (lastChord && lastChord.idx === root && lastChord.quality === tonicQuality) bonus += 30;
-                if (mode === 'major') bonus += 1;
-
-                const score = coverage * 10000 + rootChordCount * 20 + bonus + matchedWeight;
-
-                if (!best || score > best.score) {
-                    best = { score, root, mode };
+            chordEntries.forEach(c => {
+                const offset = (c.idx - root + 12) % 12;
+                const pos = this.majorOffsets.indexOf(offset);
+                const isMatch = pos !== -1 && this.majorQualities[pos] === c.quality;
+                if (isMatch) {
+                    matchedDistinct++;
+                    matchedWeight += c.count;
+                }
+                if (c.idx === root && c.quality === 'maj') {
+                    rootChordCount += c.count;
                 }
             });
+
+            const coverage = matchedDistinct / totalDistinct;
+
+            let bonus = 0;
+            if (firstChord && firstChord.idx === root && firstChord.quality === 'maj') bonus += 15;
+            if (lastChord && lastChord.idx === root && lastChord.quality === 'maj') bonus += 30;
+
+            const score = coverage * 10000 + rootChordCount * 20 + bonus + matchedWeight;
+
+            if (!best || score > best.score) {
+                best = { score, root };
+            }
         }
 
         if (!best) return null;
-        return best.mode === 'major' ? Transposer.notes[best.root] : Transposer.notes[best.root] + 'm';
+        return Transposer.notes[best.root];
     }
 };
 
@@ -833,7 +819,6 @@ const Router = {
         this.renderSongContent();
     },
 
-    // Alterna el Modo Voz: oculta acordes y agranda la letra, para cantantes
     toggleVoiceMode() {
         if (!AppState.currentSong) return;
         AppState.voiceMode = !AppState.voiceMode;
@@ -1184,8 +1169,13 @@ const Router = {
 
                 const sections = ChordParser.detectAndParse(text, true);
 
+                // Preferimos la detección automática (siempre mayor) por sobre el "KEY:" explícito
+                // si este último resultó ser una tonalidad menor, para mantener el criterio unificado.
                 const autoDetectedKey = KeyDetector.detectKey(sections);
-                const finalKey = explicitKey || autoDetectedKey || 'C';
+                let finalKey = autoDetectedKey || explicitKey || 'C';
+                if (explicitKey && !explicitKey.includes('m') ) {
+                    finalKey = explicitKey;
+                }
 
                 const title = file.name.replace(/\.pdf$/i, '').trim();
 
