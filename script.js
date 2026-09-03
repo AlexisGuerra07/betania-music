@@ -212,6 +212,112 @@ const Transposer = {
     }
 };
 
+// Detector automático de tonalidad a partir de los acordes usados
+const KeyDetector = {
+    majorQualities: ['maj', 'min', 'min', 'maj', 'maj', 'min', 'dim'],
+    majorOffsets: [0, 2, 4, 5, 7, 9, 11],
+    minorQualities: ['min', 'dim', 'maj', 'min', 'min', 'maj', 'maj'],
+    minorOffsets: [0, 2, 3, 5, 7, 8, 10],
+
+    simplifyQuality(suffix) {
+        if (!suffix) return 'maj';
+        if (/^(dim|°|ø)/.test(suffix)) return 'dim';
+        if (/^m(?!aj)/.test(suffix)) return 'min';
+        return 'maj';
+    },
+
+    extractChords(sections) {
+        const freq = {};
+        let firstChord = null;
+        let lastChord = null;
+
+        sections.forEach(section => {
+            (section.pairs || []).forEach(pair => {
+                if (!pair.acordes) return;
+                const matches = [...pair.acordes.matchAll(ChordParser.chordRegex)];
+                matches.forEach(m => {
+                    const root = m[1];
+                    const accidental = m[2] || '';
+                    const suffix = m[3] || '';
+                    const fullNote = root + accidental;
+                    let idx = Transposer.notes.indexOf(fullNote);
+                    if (idx === -1) idx = Transposer.notesFlat.indexOf(fullNote);
+                    if (idx === -1) idx = Transposer.notes.indexOf(root);
+                    if (idx === -1) return;
+                    const quality = this.simplifyQuality(suffix);
+                    const key = idx + '-' + quality;
+                    freq[key] = (freq[key] || 0) + 1;
+                    if (!firstChord) firstChord = { idx, quality };
+                    lastChord = { idx, quality };
+                });
+            });
+        });
+
+        return { freq, firstChord, lastChord };
+    },
+
+    detectKey(sections) {
+        const { freq, firstChord, lastChord } = this.extractChords(sections);
+        const chordEntries = Object.entries(freq).map(([k, count]) => {
+            const [idx, quality] = k.split('-');
+            return { idx: parseInt(idx), quality, count };
+        });
+
+        if (chordEntries.length === 0) return null;
+
+        let bestKey = null;
+        let bestScore = -1;
+
+        for (let root = 0; root < 12; root++) {
+            // Evaluar como tonalidad Mayor
+            let scoreMajor = 0;
+            chordEntries.forEach(c => {
+                const offset = (c.idx - root + 12) % 12;
+                const pos = this.majorOffsets.indexOf(offset);
+                if (pos !== -1 && this.majorQualities[pos] === c.quality) {
+                    scoreMajor += c.count;
+                }
+            });
+            let bonusMajor = 0;
+            if (firstChord && firstChord.idx === root && firstChord.quality === 'maj') bonusMajor += 2;
+            if (lastChord && lastChord.idx === root && lastChord.quality === 'maj') bonusMajor += 3;
+            const totalMajor = scoreMajor + bonusMajor;
+
+            if (totalMajor > bestScore) {
+                bestScore = totalMajor;
+                bestKey = Transposer.notes[root];
+            }
+
+            // Evaluar como tonalidad menor
+            let scoreMinor = 0;
+            chordEntries.forEach(c => {
+                const offset = (c.idx - root + 12) % 12;
+                const pos = this.minorOffsets.indexOf(offset);
+                if (pos !== -1) {
+                    const expected = this.minorQualities[pos];
+                    if (expected === c.quality) {
+                        scoreMinor += c.count;
+                    } else if (pos === 4 && (c.quality === 'maj' || c.quality === 'min')) {
+                        // Grado V: aceptar mayor (dominante) o menor (natural)
+                        scoreMinor += c.count;
+                    }
+                }
+            });
+            let bonusMinor = 0;
+            if (firstChord && firstChord.idx === root && firstChord.quality === 'min') bonusMinor += 2;
+            if (lastChord && lastChord.idx === root && lastChord.quality === 'min') bonusMinor += 3;
+            const totalMinor = scoreMinor + bonusMinor;
+
+            if (totalMinor > bestScore) {
+                bestScore = totalMinor;
+                bestKey = Transposer.notes[root] + 'm';
+            }
+        }
+
+        return bestKey;
+    }
+};
+
 // Router
 const Router = {
     init() {
@@ -262,6 +368,7 @@ const Router = {
         this.bindButton('btn-transpose-up', () => Editor.transpose(1));
         this.bindButton('btn-transpose-down', () => Editor.transpose(-1));
         this.bindButton('btn-reset-transpose', () => Editor.resetTranspose());
+        this.bindButton('btn-detect-key', () => Editor.detectKey());
         this.bindInput('search-box', (e) => this.filterSongs(e.target.value));
         this.bindSelect('key-editor-select', (e) => {
             if (!AppState.currentSong) return;
@@ -453,7 +560,7 @@ const Router = {
                     <input type="text" class="form-input" id="modal-artist">
                 </div>
                 <div class="form-group">
-                    <label class="form-label">Tonalidad Base</label>
+                    <label class="form-label">Tonalidad Base (se puede detectar automáticamente después)</label>
                     <select class="form-select" id="modal-key">
                         <option value="C">C</option><option value="C#">C#</option><option value="D">D</option>
                         <option value="D#">D#</option><option value="E">E</option><option value="F">F</option>
@@ -500,6 +607,11 @@ const Router = {
         const sections = ChordParser.detectAndParse(text, AppState.currentSong.autoSections);
         if (sections.length === 0) { alert('No se pudieron detectar acordes o letra en el texto.'); return; }
         AppState.currentSong.sections = sections;
+
+        // Detección automática de tonalidad a partir de los acordes
+        const detectedKey = KeyDetector.detectKey(sections);
+        if (detectedKey) AppState.currentSong.keyBase = detectedKey;
+
         AppState.isCreatingNew = false;
         this.closeModal();
         Editor.loadSong(AppState.currentSong);
@@ -511,7 +623,7 @@ const Router = {
             title: '📄 Importar PDFs en lote',
             content: `
                 <p style="margin-bottom: 1rem; color: var(--text-secondary); font-size: 0.9rem;">
-                    Selecciona varios PDFs a la vez (en tono original, no en grados). Se creará una canción por cada archivo. Podrás editar cada una después.
+                    Selecciona varios PDFs a la vez (en tono original, no en grados). La tonalidad se detecta automáticamente a partir de los acordes. Podrás editar cada una después.
                 </p>
                 <div class="form-group">
                     <input type="file" class="form-input" id="pdf-bulk-input" accept=".pdf" multiple>
@@ -540,12 +652,14 @@ const Router = {
             try {
                 let text = await this.extractPDFText(file);
 
-                let detectedKey = 'C';
+                // Intentar leer "KEY:" explícito del PDF (más confiable si existe)
+                let explicitKey = null;
                 const keyMatch = text.match(/KEY:\s*([A-G][#b]?m?)/i);
                 if (keyMatch) {
-                    detectedKey = keyMatch[1].charAt(0).toUpperCase() + keyMatch[1].slice(1);
+                    explicitKey = keyMatch[1].charAt(0).toUpperCase() + keyMatch[1].slice(1);
                 }
 
+                // Limpiar líneas de metadatos
                 const lines = text.split('\n');
                 const cleanedLines = lines.filter(line => {
                     const t = line.trim();
@@ -558,13 +672,18 @@ const Router = {
                 text = cleanedLines.join('\n');
 
                 const sections = ChordParser.detectAndParse(text, true);
+
+                // Detección automática por acordes (fallback o verificación)
+                const autoDetectedKey = KeyDetector.detectKey(sections);
+                const finalKey = explicitKey || autoDetectedKey || 'C';
+
                 const title = file.name.replace(/\.pdf$/i, '').trim();
 
                 AppState.pendingImports.push({
                     id: this.generateId(),
                     title: title || 'Sin título',
                     artist: '',
-                    keyBase: detectedKey,
+                    keyBase: finalKey,
                     autoSections: true,
                     sections: sections.length > 0 ? sections : [{ label: 'Sin sección', pairs: [{ acordes: '', letra: '(No se detectaron acordes, revisa manualmente)' }] }],
                     createdAt: new Date().toISOString(),
@@ -660,7 +779,7 @@ const Router = {
                             <input type="checkbox" checked data-idx="${idx}" class="import-checkbox">
                             <div class="import-preview-info">
                                 <div class="import-preview-title">${song.title}</div>
-                                <div class="import-preview-meta">Tonalidad: ${song.keyBase} • ${song.sections.length} sección(es) detectada(s)</div>
+                                <div class="import-preview-meta">Tonalidad detectada: ${song.keyBase} • ${song.sections.length} sección(es)</div>
                             </div>
                         </div>
                     `).join('')}
@@ -690,7 +809,7 @@ const Router = {
         AppState.pendingImports = [];
         this.closeModal();
         this.renderSongsList();
-        alert(`✅ Se guardaron ${savedCount} canción(es). Revísalas para ajustar tonalidad y estructura.`);
+        alert(`✅ Se guardaron ${savedCount} canción(es).`);
     },
     // ============ FIN IMPORTACIÓN MASIVA ============
 
@@ -747,6 +866,19 @@ const Editor = {
     updateChips() {
         const keySelect = document.getElementById('key-editor-select');
         if (keySelect) keySelect.value = AppState.currentSong.keyBase;
+    },
+
+    detectKey() {
+        if (!AppState.currentSong || !AppState.currentSong.sections) return;
+        const detected = KeyDetector.detectKey(AppState.currentSong.sections);
+        if (!detected) {
+            alert('No se pudieron detectar suficientes acordes para calcular la tonalidad.');
+            return;
+        }
+        AppState.currentSong.keyBase = detected;
+        this.updateChips();
+        Storage.updateSaveStatus('unsaved');
+        alert(`Tonalidad detectada: ${detected}`);
     },
 
     render() {
