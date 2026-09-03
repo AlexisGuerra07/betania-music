@@ -238,8 +238,7 @@ const Transposer = {
     }
 };
 
-// Detector automático de tonalidad — criterio unificado: SIEMPRE devuelve la tonalidad mayor,
-// incluso si la cobertura de acordes coincide (o coincidiría mejor) con la relativa menor.
+// Detector automático de tonalidad — siempre devuelve mayor
 const KeyDetector = {
     majorQualities: ['maj', 'min', 'min', 'maj', 'maj', 'min', 'dim'],
     majorOffsets: [0, 2, 4, 5, 7, 9, 11],
@@ -293,7 +292,6 @@ const KeyDetector = {
         const totalDistinct = chordEntries.length;
         let best = null;
 
-        // Solo evaluamos tonalidades MAYORES — criterio unificado para toda la app
         for (let root = 0; root < 12; root++) {
             let matchedDistinct = 0;
             let matchedWeight = 0;
@@ -463,6 +461,11 @@ const Router = {
             AppState.currentSong.bpm = isNaN(val) ? null : val;
             Storage.updateSaveStatus('unsaved');
         });
+        this.bindInput('song-artist-editor', (e) => {
+            if (!AppState.currentSong) return;
+            AppState.currentSong.artist = e.target.value;
+            Storage.updateSaveStatus('unsaved');
+        });
         this.bindSelect('key-editor-select', (e) => {
             if (!AppState.currentSong) return;
             AppState.currentSong.keyBase = e.target.value;
@@ -614,6 +617,9 @@ const Router = {
             const titleInput = document.getElementById('song-title-editor');
             if (titleInput && titleInput.value.trim()) AppState.currentSong.title = titleInput.value.trim();
 
+            const artistInput = document.getElementById('song-artist-editor');
+            if (artistInput) AppState.currentSong.artist = artistInput.value.trim();
+
             if (AppState.editingSongId) {
                 const index = AppState.songs.findIndex(s => s.id === AppState.editingSongId);
                 if (index !== -1) {
@@ -644,6 +650,12 @@ const Router = {
         });
     },
 
+    formatReaderMeta(song) {
+        const artist = song.artist ? song.artist : 'Sin autor';
+        const bpm = song.bpm ? `${song.bpm} BPM` : 'Sin BPM';
+        return `${artist} • ${bpm}`;
+    },
+
     viewSong(songId) {
         const song = AppState.songs.find(s => s.id === songId);
         if (!song) return;
@@ -656,7 +668,7 @@ const Router = {
         this.resetReaderControlsUI();
 
         document.getElementById('reader-title').textContent = song.title;
-        document.getElementById('reader-meta').textContent = `${song.artist || 'Sin autor'} • ${song.keyBase}`;
+        document.getElementById('reader-meta').textContent = this.formatReaderMeta(song);
         document.getElementById('current-key-reader').textContent = song.keyBase;
         this.renderSongContent();
         this.navigate('song-reader');
@@ -676,7 +688,7 @@ const Router = {
         this.resetReaderControlsUI();
 
         document.getElementById('reader-title').textContent = song.title;
-        document.getElementById('reader-meta').textContent = `${song.artist || 'Sin autor'} • ${song.keyBase}`;
+        document.getElementById('reader-meta').textContent = this.formatReaderMeta(song);
         document.getElementById('current-key-reader').textContent = song.keyBase;
         this.renderSongContent();
         this.updateSetlistNavControls();
@@ -1169,11 +1181,9 @@ const Router = {
 
                 const sections = ChordParser.detectAndParse(text, true);
 
-                // Preferimos la detección automática (siempre mayor) por sobre el "KEY:" explícito
-                // si este último resultó ser una tonalidad menor, para mantener el criterio unificado.
                 const autoDetectedKey = KeyDetector.detectKey(sections);
                 let finalKey = autoDetectedKey || explicitKey || 'C';
-                if (explicitKey && !explicitKey.includes('m') ) {
+                if (explicitKey && !explicitKey.includes('m')) {
                     finalKey = explicitKey;
                 }
 
@@ -1377,6 +1387,8 @@ const Editor = {
     loadSong(song) {
         AppState.currentSong = song;
         document.getElementById('song-title-editor').value = song.title;
+        const artistInput = document.getElementById('song-artist-editor');
+        if (artistInput) artistInput.value = song.artist || '';
         this.render();
         this.renderOutline();
         this.updateChips();
