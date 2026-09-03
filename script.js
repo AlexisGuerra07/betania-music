@@ -525,7 +525,27 @@ const Router = {
             if (statusEl) statusEl.innerHTML = `🔄 Procesando ${i + 1} de ${files.length}: ${file.name}...`;
 
             try {
-                const text = await this.extractPDFText(file);
+                let text = await this.extractPDFText(file);
+
+                // Detectar tonalidad real desde "KEY: A"
+                let detectedKey = 'C';
+                const keyMatch = text.match(/KEY:\s*([A-G][#b]?m?)/i);
+                if (keyMatch) {
+                    detectedKey = keyMatch[1].charAt(0).toUpperCase() + keyMatch[1].slice(1);
+                }
+
+                // Limpiar líneas de metadatos (KEY:, TEMPO:, TIME:, abreviaturas sueltas)
+                const lines = text.split('\n');
+                const cleanedLines = lines.filter(line => {
+                    const t = line.trim();
+                    if (!t) return true;
+                    if (/TEMPO:|TIME:\s*\d/i.test(t)) return false;
+                    if (/^KEY:/i.test(t)) return false;
+                    if (/^([A-Z0-9]{1,3}\s+){2,}[A-Z0-9]{1,3}$/.test(t) && !ChordParser.isChordLine(t)) return false;
+                    return true;
+                });
+                text = cleanedLines.join('\n');
+
                 const sections = ChordParser.detectAndParse(text, true);
                 const title = file.name.replace(/\.pdf$/i, '').trim();
 
@@ -533,7 +553,7 @@ const Router = {
                     id: this.generateId(),
                     title: title || 'Sin título',
                     artist: '',
-                    keyBase: 'C',
+                    keyBase: detectedKey,
                     autoSections: true,
                     sections: sections.length > 0 ? sections : [{ label: 'Sin sección', pairs: [{ acordes: '', letra: '(No se detectaron acordes, revisa manualmente)' }] }],
                     createdAt: new Date().toISOString(),
@@ -629,7 +649,7 @@ const Router = {
                             <input type="checkbox" checked data-idx="${idx}" class="import-checkbox">
                             <div class="import-preview-info">
                                 <div class="import-preview-title">${song.title}</div>
-                                <div class="import-preview-meta">${song.sections.length} sección(es) detectada(s)</div>
+                                <div class="import-preview-meta">Tonalidad: ${song.keyBase} • ${song.sections.length} sección(es) detectada(s)</div>
                             </div>
                         </div>
                     `).join('')}
