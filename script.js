@@ -213,7 +213,7 @@ const Transposer = {
     }
 };
 
-// Detector automático de tonalidad a partir de los acordes usados
+// Detector automático de tonalidad — versión corregida basada en cobertura de acordes
 const KeyDetector = {
     majorQualities: ['maj', 'min', 'min', 'maj', 'maj', 'min', 'dim'],
     majorOffsets: [0, 2, 4, 5, 7, 9, 11],
@@ -266,53 +266,56 @@ const KeyDetector = {
 
         if (chordEntries.length === 0) return null;
 
-        let bestKey = null;
-        let bestScore = -1;
+        const totalDistinct = chordEntries.length;
+        let best = null;
 
         for (let root = 0; root < 12; root++) {
-            let scoreMajor = 0;
-            chordEntries.forEach(c => {
-                const offset = (c.idx - root + 12) % 12;
-                const pos = this.majorOffsets.indexOf(offset);
-                if (pos !== -1 && this.majorQualities[pos] === c.quality) {
-                    scoreMajor += c.count;
-                }
-            });
-            let bonusMajor = 0;
-            if (firstChord && firstChord.idx === root && firstChord.quality === 'maj') bonusMajor += 2;
-            if (lastChord && lastChord.idx === root && lastChord.quality === 'maj') bonusMajor += 3;
-            const totalMajor = scoreMajor + bonusMajor;
+            ['major', 'minor'].forEach(mode => {
+                const offsets = mode === 'major' ? this.majorOffsets : this.minorOffsets;
+                const qualities = mode === 'major' ? this.majorQualities : this.minorQualities;
+                const tonicQuality = mode === 'major' ? 'maj' : 'min';
 
-            if (totalMajor > bestScore) {
-                bestScore = totalMajor;
-                bestKey = Transposer.notes[root];
-            }
+                let matchedDistinct = 0;
+                let matchedWeight = 0;
+                let rootChordCount = 0;
 
-            let scoreMinor = 0;
-            chordEntries.forEach(c => {
-                const offset = (c.idx - root + 12) % 12;
-                const pos = this.minorOffsets.indexOf(offset);
-                if (pos !== -1) {
-                    const expected = this.minorQualities[pos];
-                    if (expected === c.quality) {
-                        scoreMinor += c.count;
-                    } else if (pos === 4 && (c.quality === 'maj' || c.quality === 'min')) {
-                        scoreMinor += c.count;
+                chordEntries.forEach(c => {
+                    const offset = (c.idx - root + 12) % 12;
+                    const pos = offsets.indexOf(offset);
+                    let isMatch = false;
+                    if (pos !== -1) {
+                        if (qualities[pos] === c.quality) {
+                            isMatch = true;
+                        } else if (pos === 4 && mode === 'minor' && (c.quality === 'maj' || c.quality === 'min')) {
+                            isMatch = true;
+                        }
                     }
+                    if (isMatch) {
+                        matchedDistinct++;
+                        matchedWeight += c.count;
+                    }
+                    if (c.idx === root && c.quality === tonicQuality) {
+                        rootChordCount += c.count;
+                    }
+                });
+
+                const coverage = matchedDistinct / totalDistinct;
+
+                let bonus = 0;
+                if (firstChord && firstChord.idx === root && firstChord.quality === tonicQuality) bonus += 15;
+                if (lastChord && lastChord.idx === root && lastChord.quality === tonicQuality) bonus += 30;
+                if (mode === 'major') bonus += 1;
+
+                const score = coverage * 10000 + rootChordCount * 20 + bonus + matchedWeight;
+
+                if (!best || score > best.score) {
+                    best = { score, root, mode };
                 }
             });
-            let bonusMinor = 0;
-            if (firstChord && firstChord.idx === root && firstChord.quality === 'min') bonusMinor += 2;
-            if (lastChord && lastChord.idx === root && lastChord.quality === 'min') bonusMinor += 3;
-            const totalMinor = scoreMinor + bonusMinor;
-
-            if (totalMinor > bestScore) {
-                bestScore = totalMinor;
-                bestKey = Transposer.notes[root] + 'm';
-            }
         }
 
-        return bestKey;
+        if (!best) return null;
+        return best.mode === 'major' ? Transposer.notes[best.root] : Transposer.notes[best.root] + 'm';
     }
 };
 
@@ -718,19 +721,16 @@ const Router = {
             try {
                 let text = await this.extractPDFText(file);
 
-                // Detectar tonalidad (soporta "KEY:" y "Tonalidad:")
                 let explicitKey = null;
                 const keyMatch = text.match(/(?:KEY|TONALIDAD)\s*:?\s*([A-G][#b]?m?)\b/i);
                 if (keyMatch) {
                     explicitKey = keyMatch[1].charAt(0).toUpperCase() + keyMatch[1].slice(1);
                 }
 
-                // Detectar BPM
                 let bpm = null;
                 const bpmMatch = text.match(/TEMPO\s*:?\s*(\d+)/i);
                 if (bpmMatch) bpm = parseInt(bpmMatch[1]);
 
-                // Limpiar líneas de metadatos, encabezados de estructura y diagramas de círculos
                 const lines = text.split('\n');
                 const cleanedLines = lines.filter(line => {
                     const t = line.trim();
@@ -791,7 +791,6 @@ const Router = {
         });
     },
 
-    // Reconstruye el texto de una página, detectando y separando diseños de dos columnas
     reconstructPageText(textContent, pageWidth) {
         const items = textContent.items.filter(it => it.str && it.str.trim());
         if (!items.length) return '';
@@ -827,8 +826,6 @@ const Router = {
             });
         };
 
-        // Detectar diseño de dos columnas: dividir por la mitad de la página
-        // y comprobar si ambos lados tienen suficiente contenido propio
         let leftItems = items;
         let rightItems = [];
 
