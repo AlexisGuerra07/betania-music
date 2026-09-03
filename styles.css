@@ -60,8 +60,8 @@ body {
 
 .logo-section { display: flex; align-items: center; gap: 0.75rem; transition: opacity 0.2s; }
 .logo-section:hover { opacity: 0.7; }
-.logo-img { width: 36px; height: 36px; object-fit: contain; }
-.logo-text { font-size: 1.25rem; font-weight: 700; color: var(--text-primary); letter-spacing: -0.02em; }
+.logo-img { width: 36px; height: 36px; object-fit: contain; display: block; }
+.logo-text { font-size: 1.25rem; font-weight: 700; color: var(--text-primary); letter-spacing: -0.02em; white-space: nowrap; }
 
 .nav-tabs { display: flex; gap: 0.5rem; }
 
