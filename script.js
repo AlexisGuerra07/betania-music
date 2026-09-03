@@ -7,7 +7,7 @@ const AppState = {
     currentTranspose: 0,
     isSaving: false,
     lastSaveTime: 0,
-    settings: { fontSize: 14, autoSections: true },
+    settings: { fontSize: 14, autoSections: true, sortBy: 'alpha' },
     isCreatingNew: false,
     pendingImports: []
 };
@@ -334,7 +334,11 @@ const Router = {
         const target = document.getElementById(`view-${view}`);
         if (target) target.classList.add('active');
 
-        if (view === 'canciones') this.renderSongsList();
+        if (view === 'canciones') {
+            const sortSelect = document.getElementById('sort-select');
+            if (sortSelect) sortSelect.value = AppState.settings.sortBy || 'alpha';
+            this.renderSongsList();
+        }
         if (view === 'edicion' && AppState.isCreatingNew) this.showInitialDialog();
     },
 
@@ -368,10 +372,21 @@ const Router = {
         this.bindButton('btn-reset-transpose', () => Editor.resetTranspose());
         this.bindButton('btn-detect-key', () => Editor.detectKey());
         this.bindInput('search-box', (e) => this.filterSongs(e.target.value));
+        this.bindInput('bpm-editor-input', (e) => {
+            if (!AppState.currentSong) return;
+            const val = parseInt(e.target.value);
+            AppState.currentSong.bpm = isNaN(val) ? null : val;
+            Storage.updateSaveStatus('unsaved');
+        });
         this.bindSelect('key-editor-select', (e) => {
             if (!AppState.currentSong) return;
             AppState.currentSong.keyBase = e.target.value;
             Storage.updateSaveStatus('unsaved');
+        });
+        this.bindSelect('sort-select', (e) => {
+            AppState.settings.sortBy = e.target.value;
+            Storage.saveSettings();
+            this.renderSongsList();
         });
     },
 
@@ -399,7 +414,6 @@ const Router = {
         }
     },
 
-    // Recalcula la tonalidad de TODAS las canciones ya guardadas, en un solo clic
     bulkDetectKeys() {
         if (AppState.songs.length === 0) {
             alert('No hay canciones cargadas todavía.');
@@ -421,6 +435,34 @@ const Router = {
         alert(`✅ Listo. Se actualizó la tonalidad de ${updatedCount} de ${AppState.songs.length} canción(es).`);
     },
 
+    keyIndex(keyBase) {
+        if (!keyBase) return 99;
+        const root = keyBase.replace('m', '');
+        let idx = Transposer.notes.indexOf(root);
+        if (idx === -1) idx = Transposer.notesFlat.indexOf(root);
+        return idx === -1 ? 99 : idx;
+    },
+
+    sortSongs(songs) {
+        const sortBy = AppState.settings.sortBy || 'alpha';
+        const arr = [...songs];
+        switch (sortBy) {
+            case 'alpha':
+                arr.sort((a, b) => a.title.localeCompare(b.title, 'es', { sensitivity: 'base' }));
+                break;
+            case 'recent':
+                arr.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+                break;
+            case 'key':
+                arr.sort((a, b) => this.keyIndex(a.keyBase) - this.keyIndex(b.keyBase));
+                break;
+            case 'bpm':
+                arr.sort((a, b) => (b.bpm || 0) - (a.bpm || 0));
+                break;
+        }
+        return arr;
+    },
+
     renderSongsList() {
         const grid = document.getElementById('songs-grid');
         const emptyState = document.getElementById('empty-state');
@@ -431,11 +473,12 @@ const Router = {
         } else {
             emptyState.style.display = 'none';
             grid.style.display = 'block';
-            grid.innerHTML = AppState.songs.map(song => `
+            const sorted = this.sortSongs(AppState.songs);
+            grid.innerHTML = sorted.map(song => `
                 <div class="song-item" onclick="Router.viewSong('${song.id}')">
                     <div class="song-info">
                         <div class="song-title">${song.title}</div>
-                        <div class="song-meta">${song.artist ? `${song.artist} • ` : ''}${song.keyBase}</div>
+                        <div class="song-meta">${song.artist ? `${song.artist} • ` : ''}${song.keyBase}${song.bpm ? ` • ${song.bpm} BPM` : ''}</div>
                     </div>
                     <div class="song-actions" onclick="event.stopPropagation()">
                         <button class="action-btn edit-btn" onclick="Router.editSong('${song.id}')" title="Editar">
@@ -601,7 +644,7 @@ const Router = {
         if (!title) { alert('El título es obligatorio'); return; }
         const songData = {
             id: songId, title, artist: document.getElementById('modal-artist').value.trim(),
-            keyBase: document.getElementById('modal-key').value, autoSections: AppState.settings.autoSections,
+            keyBase: document.getElementById('modal-key').value, bpm: null, autoSections: AppState.settings.autoSections,
             sections: [], createdAt: new Date().toISOString(), updatedAt: new Date().toISOString()
         };
         AppState.currentSong = songData;
@@ -631,6 +674,9 @@ const Router = {
         const detectedKey = KeyDetector.detectKey(sections);
         if (detectedKey) AppState.currentSong.keyBase = detectedKey;
 
+        const bpmMatch = text.match(/TEMPO:\s*(\d+)/i);
+        if (bpmMatch) AppState.currentSong.bpm = parseInt(bpmMatch[1]);
+
         AppState.isCreatingNew = false;
         this.closeModal();
         Editor.loadSong(AppState.currentSong);
@@ -642,7 +688,7 @@ const Router = {
             title: '📄 Importar PDFs en lote',
             content: `
                 <p style="margin-bottom: 1rem; color: var(--text-secondary); font-size: 0.9rem;">
-                    Selecciona varios PDFs a la vez (en tono original, no en grados). La tonalidad se detecta automáticamente a partir de los acordes. Podrás editar cada una después.
+                    Selecciona varios PDFs a la vez (en tono original, no en grados). La tonalidad y el BPM se detectan automáticamente. Podrás editar cada una después.
                 </p>
                 <div class="form-group">
                     <input type="file" class="form-input" id="pdf-bulk-input" accept=".pdf" multiple>
@@ -677,6 +723,10 @@ const Router = {
                     explicitKey = keyMatch[1].charAt(0).toUpperCase() + keyMatch[1].slice(1);
                 }
 
+                let bpm = null;
+                const bpmMatch = text.match(/TEMPO:\s*(\d+)/i);
+                if (bpmMatch) bpm = parseInt(bpmMatch[1]);
+
                 const lines = text.split('\n');
                 const cleanedLines = lines.filter(line => {
                     const t = line.trim();
@@ -700,6 +750,7 @@ const Router = {
                     title: title || 'Sin título',
                     artist: '',
                     keyBase: finalKey,
+                    bpm: bpm,
                     autoSections: true,
                     sections: sections.length > 0 ? sections : [{ label: 'Sin sección', pairs: [{ acordes: '', letra: '(No se detectaron acordes, revisa manualmente)' }] }],
                     createdAt: new Date().toISOString(),
@@ -795,7 +846,7 @@ const Router = {
                             <input type="checkbox" checked data-idx="${idx}" class="import-checkbox">
                             <div class="import-preview-info">
                                 <div class="import-preview-title">${song.title}</div>
-                                <div class="import-preview-meta">Tonalidad detectada: ${song.keyBase} • ${song.sections.length} sección(es)</div>
+                                <div class="import-preview-meta">Tonalidad: ${song.keyBase}${song.bpm ? ` • ${song.bpm} BPM` : ''} • ${song.sections.length} sección(es)</div>
                             </div>
                         </div>
                     `).join('')}
@@ -882,6 +933,8 @@ const Editor = {
     updateChips() {
         const keySelect = document.getElementById('key-editor-select');
         if (keySelect) keySelect.value = AppState.currentSong.keyBase;
+        const bpmInput = document.getElementById('bpm-editor-input');
+        if (bpmInput) bpmInput.value = AppState.currentSong.bpm || '';
     },
 
     detectKey() {
