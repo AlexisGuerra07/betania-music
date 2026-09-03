@@ -9,6 +9,7 @@ const AppState = {
     cameFromSetlistId: null,
     currentTranspose: 0,
     notationMode: 'chords',
+    voiceMode: false,
     isSaving: false,
     lastSaveTime: 0,
     settings: { fontSize: 14, autoSections: true, sortBy: 'alpha' },
@@ -408,7 +409,6 @@ const Router = {
         document.querySelectorAll('.nav-tab').forEach(tab => {
             tab.classList.toggle('active', tab.dataset.route === view);
         });
-        // Repertorio-detail comparte pestaña activa con "repertorio"
         if (view === 'repertorio-detail') {
             const repTab = document.querySelector('.nav-tab[data-route="repertorio"]');
             if (repTab) repTab.classList.add('active');
@@ -462,6 +462,7 @@ const Router = {
         this.bindButton('btn-transpose-down-reader', () => this.transposeSong(-1));
         this.bindButton('btn-reset-key-reader', () => this.resetTransposition());
         this.bindButton('btn-toggle-notation', () => this.toggleNotation());
+        this.bindButton('btn-voice-mode', () => this.toggleVoiceMode());
         this.bindButton('btn-save-song', () => this.saveCurrentSong());
         this.bindButton('btn-add-section', () => Editor.addSection());
         this.bindButton('btn-add-pair-editor', () => Editor.addPair());
@@ -664,11 +665,9 @@ const Router = {
         AppState.currentSong = song;
         AppState.currentTranspose = 0;
         AppState.notationMode = 'chords';
+        AppState.voiceMode = false;
 
-        const toggleBtn = document.getElementById('btn-toggle-notation');
-        if (toggleBtn) toggleBtn.textContent = '🎼 Ver en grados';
-        const setlistNav = document.getElementById('setlist-nav-controls');
-        if (setlistNav) setlistNav.style.display = 'none';
+        this.resetReaderControlsUI();
 
         document.getElementById('reader-title').textContent = song.title;
         document.getElementById('reader-meta').textContent = `${song.artist || 'Sin autor'} • ${song.keyBase}`;
@@ -677,7 +676,6 @@ const Router = {
         this.navigate('song-reader');
     },
 
-    // Abre una canción en el contexto de un repertorio, mostrando navegación anterior/siguiente
     viewSetlistSong(songId) {
         if (!AppState.currentSetlist) return;
         const song = AppState.songs.find(s => s.id === songId);
@@ -687,9 +685,9 @@ const Router = {
         AppState.currentSong = song;
         AppState.currentTranspose = 0;
         AppState.notationMode = 'chords';
+        AppState.voiceMode = false;
 
-        const toggleBtn = document.getElementById('btn-toggle-notation');
-        if (toggleBtn) toggleBtn.textContent = '🎼 Ver en grados';
+        this.resetReaderControlsUI();
 
         document.getElementById('reader-title').textContent = song.title;
         document.getElementById('reader-meta').textContent = `${song.artist || 'Sin autor'} • ${song.keyBase}`;
@@ -697,6 +695,20 @@ const Router = {
         this.renderSongContent();
         this.updateSetlistNavControls();
         this.navigate('song-reader');
+    },
+
+    resetReaderControlsUI() {
+        const toggleBtn = document.getElementById('btn-toggle-notation');
+        if (toggleBtn) toggleBtn.textContent = '🎼 Ver en grados';
+
+        const voiceBtn = document.getElementById('btn-voice-mode');
+        if (voiceBtn) voiceBtn.classList.remove('active-mode');
+
+        const songContent = document.getElementById('song-content');
+        if (songContent) songContent.classList.remove('voice-mode');
+
+        const setlistNav = document.getElementById('setlist-nav-controls');
+        if (setlistNav) setlistNav.style.display = 'none';
     },
 
     updateSetlistNavControls() {
@@ -740,7 +752,6 @@ const Router = {
         if (confirm('¿Estás seguro de que quieres eliminar esta canción?')) {
             AppState.songs = AppState.songs.filter(s => s.id !== songId);
             Storage.saveSongs();
-            // Quitar también de todos los repertorios
             AppState.setlists.forEach(sl => {
                 sl.songIds = (sl.songIds || []).filter(id => id !== songId);
             });
@@ -776,6 +787,8 @@ const Router = {
                 }).join('')}
             </div>
         `).join('');
+
+        content.classList.toggle('voice-mode', !!AppState.voiceMode);
     },
 
     transposeSong(semitones) {
@@ -815,6 +828,20 @@ const Router = {
             keyLabel.textContent = 'Grados';
         } else {
             keyLabel.textContent = Transposer.cleanChord(Transposer.transpose(AppState.currentSong.keyBase, AppState.currentTranspose));
+        }
+
+        this.renderSongContent();
+    },
+
+    // Alterna el Modo Voz: oculta acordes y agranda la letra, para cantantes
+    toggleVoiceMode() {
+        if (!AppState.currentSong) return;
+        AppState.voiceMode = !AppState.voiceMode;
+
+        const btn = document.getElementById('btn-voice-mode');
+        if (btn) {
+            btn.textContent = AppState.voiceMode ? '🎸 Ver acordes' : '🎤 Modo Voz';
+            btn.classList.toggle('active-mode', AppState.voiceMode);
         }
 
         this.renderSongContent();
