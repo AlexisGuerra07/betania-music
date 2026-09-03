@@ -17,6 +17,7 @@
             <nav>
                 <div class="nav-tabs">
                     <button class="nav-tab active" data-route="canciones">Canciones</button>
+                    <button class="nav-tab" data-route="repertorio">Repertorio</button>
                     <button class="nav-tab" data-route="edicion">Edición</button>
                 </div>
             </nav>
@@ -24,6 +25,7 @@
     </header>
 
     <div class="app-container">
+        <!-- Songs List View -->
         <div class="view active" id="view-canciones">
             <div class="songs-container">
                 <div class="section-header">
@@ -54,12 +56,55 @@
             </div>
         </div>
 
+        <!-- Repertorio List View -->
+        <div class="view" id="view-repertorio">
+            <div class="songs-container">
+                <div class="section-header">
+                    <h2 class="section-title">Repertorio</h2>
+                    <button class="btn-add-song" id="btn-new-setlist">+ Nuevo repertorio</button>
+                </div>
+
+                <div class="empty-state" id="repertorio-empty-state">
+                    <h3>Aún no hay repertorios</h3>
+                    <p>Crea uno para armar la lista de canciones del domingo.</p>
+                </div>
+
+                <div class="songs-grid" id="repertorio-grid" style="display: none;"></div>
+            </div>
+        </div>
+
+        <!-- Repertorio Detail View -->
+        <div class="view" id="view-repertorio-detail">
+            <div class="songs-container">
+                <div class="section-header" style="flex-direction: column; align-items: stretch; gap: 1rem;">
+                    <button class="btn" id="btn-back-to-repertorios" style="align-self: flex-start;">← Volver a repertorios</button>
+                    <input type="text" id="setlist-name-input" placeholder="Nombre del repertorio" 
+                           style="font-size: 1.5rem; font-weight: 700; border: none; background: transparent; outline: none; padding: 0.25rem 0;">
+                    <button class="btn" id="btn-add-songs-to-setlist" style="align-self: flex-start;">+ Añadir canciones</button>
+                </div>
+
+                <div id="setlist-empty-state" class="empty-state">
+                    <h3>Repertorio vacío</h3>
+                    <p>Usa "+ Añadir canciones" para armar la lista.</p>
+                </div>
+
+                <div class="songs-grid" id="setlist-songs-list" style="display: none;"></div>
+            </div>
+        </div>
+
+        <!-- Song Reader View -->
         <div class="view" id="view-song-reader">
             <div class="song-reader">
                 <div class="reader-header">
-                    <button class="btn" id="btn-back-to-list">← Volver a canciones</button>
+                    <button class="btn" id="btn-back-to-list">← Volver</button>
                     <div class="reader-title" id="reader-title">Título de la canción</div>
                     <div class="reader-meta" id="reader-meta">Autor • Tonalidad base</div>
+
+                    <div id="setlist-nav-controls" style="display:none; margin-bottom: 1rem; padding: 0.75rem 1rem; background: var(--bg-secondary); border-radius: 8px; border: 1px solid var(--border-color); display: none; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap;">
+                        <button class="btn btn-sm" id="btn-prev-setlist-song">◀ Anterior</button>
+                        <span id="setlist-position-label" style="font-size: 0.85rem; color: var(--text-secondary); font-weight: 600;">1 / 5</span>
+                        <button class="btn btn-sm" id="btn-next-setlist-song">Siguiente ▶</button>
+                    </div>
                     
                     <div class="reader-controls">
                         <div class="transpose-controls">
@@ -78,6 +123,7 @@
             </div>
         </div>
 
+        <!-- Editor View -->
         <div class="view" id="view-edicion">
             <div class="editor-container">
                 <div class="editor-sidebar">
