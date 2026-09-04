@@ -11,10 +11,9 @@ firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
 const ADMIN_EMAIL = 'alexisg898@gmail.com';
 
-// ============ WAKE LOCK — evita que la pantalla se bloquee al ver una canción ============
+// ============ WAKE LOCK ============
 const WakeLockManager = {
     sentinel: null,
-
     async request() {
         try {
             if ('wakeLock' in navigator) {
@@ -25,7 +24,6 @@ const WakeLockManager = {
             console.log('No se pudo activar Wake Lock:', err);
         }
     },
-
     release() {
         if (this.sentinel) {
             this.sentinel.release();
@@ -39,6 +37,57 @@ document.addEventListener('visibilitychange', () => {
         WakeLockManager.request();
     }
 });
+
+// ============ HISTORIAL DE NAVEGACIÓN (integra el botón "atrás" del dispositivo) ============
+const HistoryManager = {
+    init() {
+        history.replaceState({ view: 'canciones' }, '', location.href);
+        window.addEventListener('popstate', (e) => this.handlePopState(e));
+    },
+
+    push(state) {
+        history.pushState(state, '', location.href);
+    },
+
+    handlePopState(e) {
+        const state = e.state || { view: 'canciones' };
+
+        // Si estábamos en pantalla completa y el destino no la pide, solo salimos de pantalla completa
+        if (AppState.fullscreenMode && !state.fullscreen) {
+            Router.exitFullscreenMode();
+            return;
+        }
+
+        // Si estábamos editando, guardamos antes de salir
+        if (AppState.currentView === 'edicion' && AppState.currentSong) {
+            Router.saveCurrentSong();
+        }
+
+        if (state.view === 'song-reader' && state.songId) {
+            if (state.setlistId) {
+                const sl = AppState.setlists.find(s => s.id === state.setlistId);
+                if (sl) AppState.currentSetlist = sl;
+                Router.viewSetlistSong(state.songId, false);
+            } else {
+                Router.viewSong(state.songId, false);
+            }
+            if (state.fullscreen) {
+                AppState.fullscreenMode = true;
+                document.body.classList.add('fullscreen-active');
+            }
+        } else if (state.view === 'repertorio-detail' && state.setlistId) {
+            const sl = AppState.setlists.find(s => s.id === state.setlistId);
+            if (sl) {
+                AppState.currentSetlist = sl;
+                Router.navigate('repertorio-detail', false);
+            } else {
+                Router.navigate('repertorio', false);
+            }
+        } else {
+            Router.navigate(state.view || 'canciones', false);
+        }
+    }
+};
 
 // Estado global de la aplicación
 const AppState = {
@@ -404,7 +453,7 @@ const Transposer = {
     }
 };
 
-// Detector automático de tonalidad — SOLO evaluamos tonalidades MAYORES, criterio unificado
+// Detector automático de tonalidad — SOLO evaluamos tonalidades MAYORES
 const KeyDetector = {
     majorQualities: ['maj', 'min', 'min', 'maj', 'maj', 'min', 'dim'],
     majorOffsets: [0, 2, 4, 5, 7, 9, 11],
@@ -552,7 +601,7 @@ const Router = {
         });
         this.setupMainButtons();
         this.setupSwipeNavigation();
-        this.navigate('canciones');
+        this.navigate('canciones', false);
     },
 
     setupSwipeNavigation() {
@@ -584,7 +633,7 @@ const Router = {
         }, { passive: true });
     },
 
-    navigate(view) {
+    navigate(view, push = true) {
         if (view === 'edicion' && !AppState.isAdmin) view = 'canciones';
 
         if (AppState.currentView === 'song-reader' && view !== 'song-reader') {
@@ -613,6 +662,10 @@ const Router = {
         if (view === 'repertorio') this.renderSetlistsList();
         if (view === 'repertorio-detail') this.renderSetlistDetail();
         if (view === 'edicion' && AppState.isCreatingNew) this.showInitialDialog();
+
+        if (push) {
+            HistoryManager.push({ view });
+        }
     },
 
     setupMainButtons() {
@@ -628,21 +681,10 @@ const Router = {
         this.bindButton('btn-import-pdfs', () => { if (AppState.isAdmin) this.showBulkPDFImport(); });
         this.bindButton('btn-bulk-detect-keys', () => { if (AppState.isAdmin) this.bulkDetectKeys(); });
         this.bindButton('btn-migrate-local', () => { if (AppState.isAdmin) Storage.migrateLocalData(); });
-        this.bindButton('btn-back-to-list', () => {
-            if (AppState.cameFromSetlistId) {
-                const sl = AppState.setlists.find(s => s.id === AppState.cameFromSetlistId);
-                AppState.cameFromSetlistId = null;
-                if (sl) {
-                    AppState.currentSetlist = sl;
-                    this.navigate('repertorio-detail');
-                    return;
-                }
-            }
-            this.navigate('canciones');
-        });
+        this.bindButton('btn-back-to-list', () => { history.back(); });
         this.bindButton('btn-back-from-editor', () => {
             this.saveCurrentSong();
-            this.navigate('canciones');
+            history.back();
         });
         this.bindButton('btn-edit-song', () => {
             if (AppState.currentSong && AppState.isAdmin) this.editSong(AppState.currentSong.id);
@@ -654,8 +696,8 @@ const Router = {
         this.bindButton('btn-voice-mode', () => this.toggleVoiceMode());
         this.bindButton('btn-font-increase', () => this.adjustReaderFontSize(0.1));
         this.bindButton('btn-font-decrease', () => this.adjustReaderFontSize(-0.1));
-        this.bindButton('btn-fullscreen-toggle', () => this.toggleFullscreenMode());
-        this.bindButton('btn-fullscreen-exit', () => this.toggleFullscreenMode());
+        this.bindButton('btn-fullscreen-toggle', () => this.enterFullscreenMode());
+        this.bindButton('btn-fullscreen-exit', () => this.requestExitFullscreen());
         this.bindButton('btn-save-song', () => this.saveCurrentSong());
         this.bindButton('btn-add-section', () => Editor.addSection());
         this.bindButton('btn-add-pair-editor', () => Editor.addPair());
@@ -692,10 +734,7 @@ const Router = {
         });
 
         this.bindButton('btn-new-setlist', () => this.showNewSetlistModal());
-        this.bindButton('btn-back-to-repertorios', () => {
-            AppState.currentSetlist = null;
-            this.navigate('repertorio');
-        });
+        this.bindButton('btn-back-to-repertorios', () => { history.back(); });
         this.bindButton('btn-add-songs-to-setlist', () => this.showAddSongsToSetlistModal());
         this.bindInput('setlist-name-input', (e) => {
             if (!AppState.currentSetlist) return;
@@ -730,10 +769,20 @@ const Router = {
         }
     },
 
-    toggleFullscreenMode() {
-        if (!AppState.currentSong) return;
-        AppState.fullscreenMode = !AppState.fullscreenMode;
-        document.body.classList.toggle('fullscreen-active', AppState.fullscreenMode);
+    enterFullscreenMode() {
+        if (!AppState.currentSong || AppState.fullscreenMode) return;
+        AppState.fullscreenMode = true;
+        document.body.classList.add('fullscreen-active');
+        HistoryManager.push({
+            view: 'song-reader',
+            songId: AppState.currentSong.id,
+            setlistId: AppState.currentSetlist ? AppState.currentSetlist.id : null,
+            fullscreen: true
+        });
+    },
+
+    requestExitFullscreen() {
+        if (AppState.fullscreenMode) history.back();
     },
 
     exitFullscreenMode() {
@@ -898,7 +947,7 @@ const Router = {
         this.applyReaderFontSize();
     },
 
-    viewSong(songId) {
+    viewSong(songId, push = true) {
         const song = AppState.songs.find(s => s.id === songId);
         if (!song) return;
         AppState.cameFromSetlistId = null;
@@ -917,11 +966,15 @@ const Router = {
         document.getElementById('current-key-reader').textContent = song.keyBase;
         this.renderSongContent();
         this.applyReaderFontSize();
-        this.navigate('song-reader');
+        this.navigate('song-reader', false);
         WakeLockManager.request();
+
+        if (push) {
+            HistoryManager.push({ view: 'song-reader', songId: song.id, setlistId: null });
+        }
     },
 
-    viewSetlistSong(songId) {
+    viewSetlistSong(songId, push = true) {
         if (!AppState.currentSetlist) return;
         const song = AppState.songs.find(s => s.id === songId);
         if (!song) return;
@@ -943,8 +996,12 @@ const Router = {
         this.renderSongContent();
         this.applyReaderFontSize();
         this.updateSetlistNavControls();
-        this.navigate('song-reader');
+        this.navigate('song-reader', false);
         WakeLockManager.request();
+
+        if (push) {
+            HistoryManager.push({ view: 'song-reader', songId: song.id, setlistId: AppState.currentSetlist.id });
+        }
     },
 
     resetReaderControlsUI() {
@@ -991,7 +1048,7 @@ const Router = {
         const newIdx = idx + direction;
         if (newIdx < 0 || newIdx >= ids.length) return;
         const wasFullscreen = AppState.fullscreenMode;
-        this.viewSetlistSong(ids[newIdx]);
+        this.viewSetlistSong(ids[newIdx], false);
         if (wasFullscreen) {
             AppState.fullscreenMode = true;
             document.body.classList.add('fullscreen-active');
@@ -1225,7 +1282,7 @@ const Router = {
         Storage.saveSetlists();
         AppState.currentSetlist = setlist;
         this.closeModal();
-        this.navigate('repertorio-detail');
+        this.openSetlist(setlist.id);
     },
 
     renderSetlistsList() {
@@ -1260,11 +1317,14 @@ const Router = {
         `).join('');
     },
 
-    openSetlist(setlistId) {
+    openSetlist(setlistId, push = true) {
         const sl = AppState.setlists.find(s => s.id === setlistId);
         if (!sl) return;
         AppState.currentSetlist = sl;
-        this.navigate('repertorio-detail');
+        this.navigate('repertorio-detail', false);
+        if (push) {
+            HistoryManager.push({ view: 'repertorio-detail', setlistId });
+        }
     },
 
     deleteSetlist(setlistId) {
@@ -1884,6 +1944,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (AppState.currentView === 'repertorio-detail') Router.renderSetlistDetail();
     });
 
+    HistoryManager.init();
     Auth.init();
     Router.init();
 
@@ -1893,11 +1954,11 @@ document.addEventListener('DOMContentLoaded', () => {
             e.preventDefault();
             if (AppState.currentView === 'edicion') Router.saveCurrentSong();
         } else if (e.key === 'Escape') {
-            if (AppState.currentView === 'edicion') {
+            if (AppState.fullscreenMode) {
+                Router.requestExitFullscreen();
+            } else if (AppState.currentView === 'edicion') {
                 Router.saveCurrentSong();
-                Router.navigate('canciones');
-            } else if (AppState.fullscreenMode) {
-                Router.exitFullscreenMode();
+                history.back();
             }
         }
     });
