@@ -238,7 +238,7 @@ const Transposer = {
     }
 };
 
-// Detector automático de tonalidad — siempre devuelve mayor
+// Detector automático de tonalidad — SOLO evaluamos tonalidades MAYORES, criterio unificado
 const KeyDetector = {
     majorQualities: ['maj', 'min', 'min', 'maj', 'maj', 'min', 'dim'],
     majorOffsets: [0, 2, 4, 5, 7, 9, 11],
