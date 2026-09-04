@@ -1,3 +1,16 @@
+// ============ FIREBASE ============
+const firebaseConfig = {
+  apiKey: "AIzaSyAq6nR416IldHvVbt0E5ECl-8Rb9PCM0S4",
+  authDomain: "betania-music.firebaseapp.com",
+  projectId: "betania-music",
+  storageBucket: "betania-music.firebasestorage.app",
+  messagingSenderId: "651916728496",
+  appId: "1:651916728496:web:1848e1c6579941c7660375"
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+const ADMIN_EMAIL = 'alexisg898@gmail.com';
+
 // Estado global de la aplicación
 const AppState = {
     currentView: 'canciones',
@@ -14,21 +27,24 @@ const AppState = {
     lastSaveTime: 0,
     settings: { fontSize: 14, autoSections: true, sortBy: 'alpha' },
     isCreatingNew: false,
-    pendingImports: []
+    pendingImports: [],
+    isAdmin: false,
+    currentUser: null
 };
 
-// Storage
+// Storage — ahora usa Firestore en vez de localStorage
 const Storage = {
-    SONGS_KEY: 'betania_songs_v4',
     SETTINGS_KEY: 'betania_settings_v4',
-    SETLISTS_KEY: 'betania_setlists_v1',
+    songsUnsub: null,
+    setlistsUnsub: null,
 
     saveSongs() {
         try {
             const deduplicated = this.deduplicateSongs(AppState.songs);
-            localStorage.setItem(this.SONGS_KEY, JSON.stringify(deduplicated));
             AppState.songs = deduplicated;
-            this.updateSaveStatus('saved');
+            db.collection('appdata').doc('songs').set({ songs: deduplicated })
+                .then(() => this.updateSaveStatus('saved'))
+                .catch(err => { console.error('Error guardando canciones:', err); alert('Error al guardar: ' + err.message); });
             return true;
         } catch (error) {
             console.error('Error saving songs:', error);
@@ -36,13 +52,31 @@ const Storage = {
         }
     },
 
-    loadSongs() {
+    listenSongs(callback) {
+        if (this.songsUnsub) this.songsUnsub();
+        this.songsUnsub = db.collection('appdata').doc('songs').onSnapshot(doc => {
+            AppState.songs = doc.exists ? (doc.data().songs || []) : [];
+            if (callback) callback();
+        }, err => console.error('Error escuchando canciones:', err));
+    },
+
+    saveSetlists() {
         try {
-            const data = localStorage.getItem(this.SONGS_KEY);
-            if (data) AppState.songs = JSON.parse(data);
+            db.collection('appdata').doc('setlists').set({ setlists: AppState.setlists })
+                .catch(err => { console.error('Error guardando repertorios:', err); alert('Error al guardar: ' + err.message); });
+            return true;
         } catch (error) {
-            console.error('Error loading songs:', error);
+            console.error('Error saving setlists:', error);
+            return false;
         }
+    },
+
+    listenSetlists(callback) {
+        if (this.setlistsUnsub) this.setlistsUnsub();
+        this.setlistsUnsub = db.collection('appdata').doc('setlists').onSnapshot(doc => {
+            AppState.setlists = doc.exists ? (doc.data().setlists || []) : [];
+            if (callback) callback();
+        }, err => console.error('Error escuchando repertorios:', err));
     },
 
     saveSettings() {
@@ -76,22 +110,122 @@ const Storage = {
         return Array.from(map.values());
     },
 
-    saveSetlists() {
-        try {
-            localStorage.setItem(this.SETLISTS_KEY, JSON.stringify(AppState.setlists));
-            return true;
-        } catch (error) {
-            console.error('Error saving setlists:', error);
-            return false;
+    // Sube canciones/repertorios que quedaron en localStorage de versiones anteriores
+    migrateLocalData() {
+        const localSongsRaw = localStorage.getItem('betania_songs_v4');
+        const localSetlistsRaw = localStorage.getItem('betania_setlists_v1');
+
+        let addedSongs = 0;
+        let addedSetlists = 0;
+
+        if (localSongsRaw) {
+            const localSongs = JSON.parse(localSongsRaw);
+            const existingIds = new Set(AppState.songs.map(s => s.id));
+            const newSongs = localSongs.filter(s => !existingIds.has(s.id));
+            if (newSongs.length > 0) {
+                AppState.songs = [...AppState.songs, ...newSongs];
+                addedSongs = newSongs.length;
+            }
+        }
+
+        if (localSetlistsRaw) {
+            const localSetlists = JSON.parse(localSetlistsRaw);
+            const existingIds = new Set(AppState.setlists.map(s => s.id));
+            const newSetlists = localSetlists.filter(s => !existingIds.has(s.id));
+            if (newSetlists.length > 0) {
+                AppState.setlists = [...AppState.setlists, ...newSetlists];
+                addedSetlists = newSetlists.length;
+            }
+        }
+
+        if (addedSongs === 0 && addedSetlists === 0) {
+            alert('No se encontraron datos locales nuevos para migrar.');
+            return;
+        }
+
+        if (!confirm(`Se subirán ${addedSongs} canción(es) y ${addedSetlists} repertorio(s) locales a la nube. ¿Continuar?`)) return;
+
+        if (addedSongs > 0) this.saveSongs();
+        if (addedSetlists > 0) this.saveSetlists();
+
+        alert(`✅ Migración completa: ${addedSongs} canción(es) y ${addedSetlists} repertorio(s) subidos.`);
+    }
+};
+
+// ============ AUTENTICACIÓN ============
+const Auth = {
+    init() {
+        firebase.auth().onAuthStateChanged(user => {
+            AppState.currentUser = user;
+            AppState.isAdmin = !!(user && user.email === ADMIN_EMAIL);
+            this.updateUI();
+        });
+        this.bindButtons();
+    },
+
+    bindButtons() {
+        const loginBtn = document.getElementById('btn-login');
+        if (loginBtn && !loginBtn.hasAttribute('data-bound')) {
+            loginBtn.addEventListener('click', () => this.signIn());
+            loginBtn.setAttribute('data-bound', 'true');
+        }
+        const logoutBtn = document.getElementById('btn-logout');
+        if (logoutBtn && !logoutBtn.hasAttribute('data-bound')) {
+            logoutBtn.addEventListener('click', () => this.signOut());
+            logoutBtn.setAttribute('data-bound', 'true');
         }
     },
 
-    loadSetlists() {
-        try {
-            const data = localStorage.getItem(this.SETLISTS_KEY);
-            if (data) AppState.setlists = JSON.parse(data);
-        } catch (error) {
-            console.error('Error loading setlists:', error);
+    signIn() {
+        const provider = new firebase.auth.GoogleAuthProvider();
+        firebase.auth().signInWithPopup(provider).catch(err => {
+            console.error(err);
+            alert('Error al iniciar sesión: ' + err.message);
+        });
+    },
+
+    signOut() {
+        firebase.auth().signOut();
+    },
+
+    updateUI() {
+        const loginBtn = document.getElementById('btn-login');
+        const logoutBtn = document.getElementById('btn-logout');
+        const userLabel = document.getElementById('user-email-label');
+
+        if (AppState.isAdmin) {
+            if (loginBtn) loginBtn.style.display = 'none';
+            if (logoutBtn) logoutBtn.style.display = 'inline-flex';
+            if (userLabel) { userLabel.style.display = 'inline'; userLabel.textContent = AppState.currentUser.email; }
+        } else {
+            if (loginBtn) loginBtn.style.display = 'inline-flex';
+            if (logoutBtn) logoutBtn.style.display = 'none';
+            if (userLabel) userLabel.style.display = 'none';
+        }
+
+        const showIfAdmin = (id, displayValue) => {
+            const el = document.getElementById(id);
+            if (el) el.style.display = AppState.isAdmin ? displayValue : 'none';
+        };
+
+        showIfAdmin('nav-tab-edicion', 'inline-block');
+        showIfAdmin('btn-add-song', 'inline-flex');
+        showIfAdmin('btn-import-pdfs', 'inline-flex');
+        showIfAdmin('btn-bulk-detect-keys', 'inline-flex');
+        showIfAdmin('btn-migrate-local', 'inline-flex');
+        showIfAdmin('btn-edit-song', 'inline-flex');
+        showIfAdmin('btn-new-setlist', 'inline-flex');
+        showIfAdmin('btn-add-songs-to-setlist', 'inline-flex');
+
+        const setlistNameInput = document.getElementById('setlist-name-input');
+        if (setlistNameInput) setlistNameInput.readOnly = !AppState.isAdmin;
+
+        if (AppState.currentView === 'canciones') Router.renderSongsList();
+        if (AppState.currentView === 'repertorio') Router.renderSetlistsList();
+        if (AppState.currentView === 'repertorio-detail') Router.renderSetlistDetail();
+
+        if (!AppState.isAdmin && AppState.currentView === 'edicion') {
+            Router.navigate('canciones');
         }
     }
 };
@@ -389,6 +523,8 @@ const Router = {
     },
 
     navigate(view) {
+        if (view === 'edicion' && !AppState.isAdmin) view = 'canciones';
+
         AppState.currentView = view;
         document.querySelectorAll('.nav-tab').forEach(tab => {
             tab.classList.toggle('active', tab.dataset.route === view);
@@ -418,11 +554,13 @@ const Router = {
             this.navigate('canciones');
         });
         this.bindButton('btn-add-song', () => {
+            if (!AppState.isAdmin) return;
             AppState.isCreatingNew = true;
             this.navigate('edicion');
         });
-        this.bindButton('btn-import-pdfs', () => this.showBulkPDFImport());
-        this.bindButton('btn-bulk-detect-keys', () => this.bulkDetectKeys());
+        this.bindButton('btn-import-pdfs', () => { if (AppState.isAdmin) this.showBulkPDFImport(); });
+        this.bindButton('btn-bulk-detect-keys', () => { if (AppState.isAdmin) this.bulkDetectKeys(); });
+        this.bindButton('btn-migrate-local', () => { if (AppState.isAdmin) Storage.migrateLocalData(); });
         this.bindButton('btn-back-to-list', () => {
             if (AppState.cameFromSetlistId) {
                 const sl = AppState.setlists.find(s => s.id === AppState.cameFromSetlistId);
@@ -440,7 +578,7 @@ const Router = {
             this.navigate('canciones');
         });
         this.bindButton('btn-edit-song', () => {
-            if (AppState.currentSong) this.editSong(AppState.currentSong.id);
+            if (AppState.currentSong && AppState.isAdmin) this.editSong(AppState.currentSong.id);
         });
         this.bindButton('btn-transpose-up-reader', () => this.transposeSong(1));
         this.bindButton('btn-transpose-down-reader', () => this.transposeSong(-1));
@@ -483,14 +621,14 @@ const Router = {
         });
 
         // Repertorio
-        this.bindButton('btn-new-setlist', () => this.showNewSetlistModal());
+        this.bindButton('btn-new-setlist', () => { if (AppState.isAdmin) this.showNewSetlistModal(); });
         this.bindButton('btn-back-to-repertorios', () => {
             AppState.currentSetlist = null;
             this.navigate('repertorio');
         });
-        this.bindButton('btn-add-songs-to-setlist', () => this.showAddSongsToSetlistModal());
+        this.bindButton('btn-add-songs-to-setlist', () => { if (AppState.isAdmin) this.showAddSongsToSetlistModal(); });
         this.bindInput('setlist-name-input', (e) => {
-            if (!AppState.currentSetlist) return;
+            if (!AppState.currentSetlist || !AppState.isAdmin) return;
             AppState.currentSetlist.name = e.target.value;
             Storage.saveSetlists();
         });
@@ -588,6 +726,7 @@ const Router = {
                         <div class="song-title">${song.title}</div>
                         <div class="song-meta">${song.artist ? `${song.artist} • ` : ''}${song.keyBase}${song.bpm ? ` • ${song.bpm} BPM` : ''}</div>
                     </div>
+                    ${AppState.isAdmin ? `
                     <div class="song-actions" onclick="event.stopPropagation()">
                         <button class="action-btn edit-btn" onclick="Router.editSong('${song.id}')" title="Editar">
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -601,13 +740,14 @@ const Router = {
                                 <path d="m19,6v14a2,2 0 0,1 -2,2H7a2,2 0 0,1 -2,-2V6m3,0V4a2,2 0 0,1 2,-2h4a2,2 0 0,1 2,2v2"></path>
                             </svg>
                         </button>
-                    </div>
+                    </div>` : ''}
                 </div>
             `).join('');
         }
     },
 
     saveCurrentSong() {
+        if (!AppState.isAdmin) return;
         if (AppState.isSaving) return;
         const now = Date.now();
         if (now - AppState.lastSaveTime < 800) return;
@@ -636,7 +776,6 @@ const Router = {
                 if (!exists) AppState.songs.push(AppState.currentSong);
             }
             Storage.saveSongs();
-            Storage.updateSaveStatus('saved');
         } finally {
             setTimeout(() => {
                 AppState.isSaving = false;
@@ -713,6 +852,9 @@ const Router = {
 
         const setlistNav = document.getElementById('setlist-nav-controls');
         if (setlistNav) setlistNav.style.display = 'none';
+
+        const editBtn = document.getElementById('btn-edit-song');
+        if (editBtn) editBtn.style.display = AppState.isAdmin ? 'inline-flex' : 'none';
     },
 
     updateSetlistNavControls() {
@@ -743,6 +885,7 @@ const Router = {
     },
 
     editSong(songId) {
+        if (!AppState.isAdmin) return;
         const song = AppState.songs.find(s => s.id === songId);
         if (!song) return;
         AppState.editingSongId = songId;
@@ -753,6 +896,7 @@ const Router = {
     },
 
     deleteSong(songId) {
+        if (!AppState.isAdmin) return;
         if (confirm('¿Estás seguro de que quieres eliminar esta canción?')) {
             AppState.songs = AppState.songs.filter(s => s.id !== songId);
             Storage.saveSongs();
@@ -851,6 +995,7 @@ const Router = {
     },
 
     showInitialDialog() {
+        if (!AppState.isAdmin) { AppState.isCreatingNew = false; this.navigate('canciones'); return; }
         const newSongId = this.generateId();
         this.createModal({
             title: 'Nueva Canción',
@@ -983,6 +1128,7 @@ const Router = {
                     <div class="song-title">${sl.name}</div>
                     <div class="song-meta">${(sl.songIds || []).length} canción(es)</div>
                 </div>
+                ${AppState.isAdmin ? `
                 <div class="song-actions" onclick="event.stopPropagation()">
                     <button class="action-btn delete-btn" onclick="Router.deleteSetlist('${sl.id}')" title="Eliminar">
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -990,7 +1136,7 @@ const Router = {
                             <path d="m19,6v14a2,2 0 0,1 -2,2H7a2,2 0 0,1 -2,-2V6m3,0V4a2,2 0 0,1 2,-2h4a2,2 0 0,1 2,2v2"></path>
                         </svg>
                     </button>
-                </div>
+                </div>` : ''}
             </div>
         `).join('');
     },
@@ -1003,6 +1149,7 @@ const Router = {
     },
 
     deleteSetlist(setlistId) {
+        if (!AppState.isAdmin) return;
         if (confirm('¿Eliminar este repertorio?')) {
             AppState.setlists = AppState.setlists.filter(s => s.id !== setlistId);
             Storage.saveSetlists();
@@ -1015,7 +1162,10 @@ const Router = {
         const sl = AppState.currentSetlist;
 
         const nameInput = document.getElementById('setlist-name-input');
-        if (nameInput) nameInput.value = sl.name;
+        if (nameInput) { nameInput.value = sl.name; nameInput.readOnly = !AppState.isAdmin; }
+
+        const addBtn = document.getElementById('btn-add-songs-to-setlist');
+        if (addBtn) addBtn.style.display = AppState.isAdmin ? 'inline-flex' : 'none';
 
         const list = document.getElementById('setlist-songs-list');
         const empty = document.getElementById('setlist-empty-state');
@@ -1037,6 +1187,7 @@ const Router = {
                     <div class="song-title">${idx + 1}. ${song.title}</div>
                     <div class="song-meta">${song.keyBase}${song.bpm ? ` • ${song.bpm} BPM` : ''}</div>
                 </div>
+                ${AppState.isAdmin ? `
                 <div class="song-actions" onclick="event.stopPropagation()">
                     <button class="action-btn" onclick="Router.moveSetlistSong(${idx}, -1)" title="Subir" ${idx === 0 ? 'style="opacity:0.3;pointer-events:none;"' : ''}>
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 19V5M5 12l7-7 7 7"/></svg>
@@ -1050,12 +1201,13 @@ const Router = {
                             <path d="m19,6v14a2,2 0 0,1 -2,2H7a2,2 0 0,1 -2,-2V6m3,0V4a2,2 0 0,1 2,-2h4a2,2 0 0,1 2,2v2"></path>
                         </svg>
                     </button>
-                </div>
+                </div>` : ''}
             </div>
         `).join('');
     },
 
     moveSetlistSong(index, direction) {
+        if (!AppState.isAdmin) return;
         const sl = AppState.currentSetlist;
         if (!sl) return;
         const newIndex = index + direction;
@@ -1067,6 +1219,7 @@ const Router = {
     },
 
     removeSetlistSong(songId) {
+        if (!AppState.isAdmin) return;
         const sl = AppState.currentSetlist;
         if (!sl) return;
         sl.songIds = sl.songIds.filter(id => id !== songId);
@@ -1119,6 +1272,7 @@ const Router = {
     },
 
     confirmAddSongsToSetlist() {
+        if (!AppState.isAdmin) return;
         const checked = document.querySelectorAll('.setlist-add-checkbox:checked');
         const sl = AppState.currentSetlist;
         if (!sl) return;
@@ -1337,6 +1491,7 @@ const Router = {
     },
 
     saveBulkImports() {
+        if (!AppState.isAdmin) return;
         const checkboxes = document.querySelectorAll('.import-checkbox');
         let savedCount = 0;
 
@@ -1600,14 +1755,22 @@ const Editor = {
 
 // Inicialización
 document.addEventListener('DOMContentLoaded', () => {
-    Storage.loadSongs();
     Storage.loadSettings();
-    Storage.loadSetlists();
 
     if (typeof pdfjsLib !== 'undefined') {
         pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
     }
 
+    Storage.listenSongs(() => {
+        if (AppState.currentView === 'canciones') Router.renderSongsList();
+        if (AppState.currentView === 'repertorio-detail') Router.renderSetlistDetail();
+    });
+    Storage.listenSetlists(() => {
+        if (AppState.currentView === 'repertorio') Router.renderSetlistsList();
+        if (AppState.currentView === 'repertorio-detail') Router.renderSetlistDetail();
+    });
+
+    Auth.init();
     Router.init();
 
     document.addEventListener('keydown', (e) => {
