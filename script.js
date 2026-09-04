@@ -110,7 +110,6 @@ const Storage = {
         return Array.from(map.values());
     },
 
-    // Sube canciones/repertorios que quedaron en localStorage de versiones anteriores
     migrateLocalData() {
         const localSongsRaw = localStorage.getItem('betania_songs_v4');
         const localSetlistsRaw = localStorage.getItem('betania_setlists_v1');
@@ -203,6 +202,7 @@ const Auth = {
             if (userLabel) userLabel.style.display = 'none';
         }
 
+        // Estas funciones (canciones) siguen restringidas solo al líder
         const showIfAdmin = (id, displayValue) => {
             const el = document.getElementById(id);
             if (el) el.style.display = AppState.isAdmin ? displayValue : 'none';
@@ -214,11 +214,15 @@ const Auth = {
         showIfAdmin('btn-bulk-detect-keys', 'inline-flex');
         showIfAdmin('btn-migrate-local', 'inline-flex');
         showIfAdmin('btn-edit-song', 'inline-flex');
-        showIfAdmin('btn-new-setlist', 'inline-flex');
-        showIfAdmin('btn-add-songs-to-setlist', 'inline-flex');
+
+        // Repertorios: ahora visibles y usables para TODOS, con o sin sesión
+        const newSetlistBtn = document.getElementById('btn-new-setlist');
+        if (newSetlistBtn) newSetlistBtn.style.display = 'inline-flex';
+        const addSongsBtn = document.getElementById('btn-add-songs-to-setlist');
+        if (addSongsBtn) addSongsBtn.style.display = 'inline-flex';
 
         const setlistNameInput = document.getElementById('setlist-name-input');
-        if (setlistNameInput) setlistNameInput.readOnly = !AppState.isAdmin;
+        if (setlistNameInput) setlistNameInput.readOnly = false;
 
         if (AppState.currentView === 'canciones') Router.renderSongsList();
         if (AppState.currentView === 'repertorio') Router.renderSetlistsList();
@@ -519,7 +523,39 @@ const Router = {
             tab.addEventListener('click', () => this.navigate(tab.dataset.route));
         });
         this.setupMainButtons();
+        this.setupSwipeNavigation();
         this.navigate('canciones');
+    },
+
+    // Deslizar entre canciones de un repertorio (izquierda = siguiente, derecha = anterior)
+    setupSwipeNavigation() {
+        let touchStartX = null;
+        let touchStartY = null;
+
+        document.addEventListener('touchstart', (e) => {
+            if (AppState.currentView !== 'song-reader' || !AppState.currentSetlist) return;
+            touchStartX = e.touches[0].clientX;
+            touchStartY = e.touches[0].clientY;
+        }, { passive: true });
+
+        document.addEventListener('touchend', (e) => {
+            if (touchStartX === null || AppState.currentView !== 'song-reader' || !AppState.currentSetlist) return;
+            const touchEndX = e.changedTouches[0].clientX;
+            const touchEndY = e.changedTouches[0].clientY;
+            const diffX = touchEndX - touchStartX;
+            const diffY = touchEndY - touchStartY;
+            touchStartX = null;
+            touchStartY = null;
+
+            // Solo actuar si el movimiento fue mayormente horizontal (no un scroll vertical normal)
+            if (Math.abs(diffX) < 70 || Math.abs(diffX) < Math.abs(diffY) * 1.5) return;
+
+            if (diffX < 0) {
+                Router.gotoSetlistSong(1); // deslizar hacia la izquierda -> siguiente
+            } else {
+                Router.gotoSetlistSong(-1); // deslizar hacia la derecha -> anterior
+            }
+        }, { passive: true });
     },
 
     navigate(view) {
@@ -620,15 +656,15 @@ const Router = {
             this.renderSongsList();
         });
 
-        // Repertorio
-        this.bindButton('btn-new-setlist', () => { if (AppState.isAdmin) this.showNewSetlistModal(); });
+        // Repertorio — abierto a todos
+        this.bindButton('btn-new-setlist', () => this.showNewSetlistModal());
         this.bindButton('btn-back-to-repertorios', () => {
             AppState.currentSetlist = null;
             this.navigate('repertorio');
         });
-        this.bindButton('btn-add-songs-to-setlist', () => { if (AppState.isAdmin) this.showAddSongsToSetlistModal(); });
+        this.bindButton('btn-add-songs-to-setlist', () => this.showAddSongsToSetlistModal());
         this.bindInput('setlist-name-input', (e) => {
-            if (!AppState.currentSetlist || !AppState.isAdmin) return;
+            if (!AppState.currentSetlist) return;
             AppState.currentSetlist.name = e.target.value;
             Storage.saveSetlists();
         });
@@ -1078,7 +1114,7 @@ const Router = {
         Editor.loadSong(AppState.currentSong);
     },
 
-    // ============ REPERTORIO ============
+    // ============ REPERTORIO — abierto a todos, con o sin sesión ============
     showNewSetlistModal() {
         const days = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'];
         const today = new Date();
@@ -1091,6 +1127,10 @@ const Router = {
                     <label class="form-label">Nombre *</label>
                     <input type="text" class="form-input" id="modal-setlist-name" value="${defaultName}">
                 </div>
+                <div class="form-group">
+                    <label class="form-label">Tu nombre (opcional, para identificar quién lo creó)</label>
+                    <input type="text" class="form-input" id="modal-setlist-creator" placeholder="Ej: Alexis">
+                </div>
             `,
             actions: [
                 { text: 'Cancelar', action: () => this.closeModal() },
@@ -1102,9 +1142,11 @@ const Router = {
     createSetlist() {
         const name = document.getElementById('modal-setlist-name').value.trim();
         if (!name) { alert('El nombre es obligatorio'); return; }
+        const creatorName = document.getElementById('modal-setlist-creator').value.trim();
         const setlist = {
             id: this.generateId(),
             name,
+            creatorName: creatorName || '',
             songIds: [],
             createdAt: new Date().toISOString()
         };
@@ -1133,9 +1175,8 @@ const Router = {
             <div class="song-item" onclick="Router.openSetlist('${sl.id}')">
                 <div class="song-info">
                     <div class="song-title">${sl.name}</div>
-                    <div class="song-meta">${(sl.songIds || []).length} canción(es)</div>
+                    <div class="song-meta">${(sl.songIds || []).length} canción(es)${sl.creatorName ? ' • por ' + sl.creatorName : ''}</div>
                 </div>
-                ${AppState.isAdmin ? `
                 <div class="song-actions" onclick="event.stopPropagation()">
                     <button class="action-btn delete-btn" onclick="Router.deleteSetlist('${sl.id}')" title="Eliminar">
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -1143,7 +1184,7 @@ const Router = {
                             <path d="m19,6v14a2,2 0 0,1 -2,2H7a2,2 0 0,1 -2,-2V6m3,0V4a2,2 0 0,1 2,-2h4a2,2 0 0,1 2,2v2"></path>
                         </svg>
                     </button>
-                </div>` : ''}
+                </div>
             </div>
         `).join('');
     },
@@ -1156,7 +1197,6 @@ const Router = {
     },
 
     deleteSetlist(setlistId) {
-        if (!AppState.isAdmin) return;
         if (confirm('¿Eliminar este repertorio?')) {
             AppState.setlists = AppState.setlists.filter(s => s.id !== setlistId);
             Storage.saveSetlists();
@@ -1169,10 +1209,10 @@ const Router = {
         const sl = AppState.currentSetlist;
 
         const nameInput = document.getElementById('setlist-name-input');
-        if (nameInput) { nameInput.value = sl.name; nameInput.readOnly = !AppState.isAdmin; }
+        if (nameInput) { nameInput.value = sl.name; nameInput.readOnly = false; }
 
         const addBtn = document.getElementById('btn-add-songs-to-setlist');
-        if (addBtn) addBtn.style.display = AppState.isAdmin ? 'inline-flex' : 'none';
+        if (addBtn) addBtn.style.display = 'inline-flex';
 
         const list = document.getElementById('setlist-songs-list');
         const empty = document.getElementById('setlist-empty-state');
@@ -1194,7 +1234,6 @@ const Router = {
                     <div class="song-title">${idx + 1}. ${song.title}</div>
                     <div class="song-meta">${song.keyBase}${song.bpm ? ` • ${song.bpm} BPM` : ''}</div>
                 </div>
-                ${AppState.isAdmin ? `
                 <div class="song-actions" onclick="event.stopPropagation()">
                     <button class="action-btn" onclick="Router.moveSetlistSong(${idx}, -1)" title="Subir" ${idx === 0 ? 'style="opacity:0.3;pointer-events:none;"' : ''}>
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 19V5M5 12l7-7 7 7"/></svg>
@@ -1208,13 +1247,12 @@ const Router = {
                             <path d="m19,6v14a2,2 0 0,1 -2,2H7a2,2 0 0,1 -2,-2V6m3,0V4a2,2 0 0,1 2,-2h4a2,2 0 0,1 2,2v2"></path>
                         </svg>
                     </button>
-                </div>` : ''}
+                </div>
             </div>
         `).join('');
     },
 
     moveSetlistSong(index, direction) {
-        if (!AppState.isAdmin) return;
         const sl = AppState.currentSetlist;
         if (!sl) return;
         const newIndex = index + direction;
@@ -1226,7 +1264,6 @@ const Router = {
     },
 
     removeSetlistSong(songId) {
-        if (!AppState.isAdmin) return;
         const sl = AppState.currentSetlist;
         if (!sl) return;
         sl.songIds = sl.songIds.filter(id => id !== songId);
@@ -1240,7 +1277,7 @@ const Router = {
         const available = AppState.songs.filter(s => !currentIds.includes(s.id));
 
         if (available.length === 0) {
-            alert('Todas tus canciones ya están en este repertorio.');
+            alert('Todas las canciones ya están en este repertorio.');
             return;
         }
 
@@ -1279,7 +1316,6 @@ const Router = {
     },
 
     confirmAddSongsToSetlist() {
-        if (!AppState.isAdmin) return;
         const checked = document.querySelectorAll('.setlist-add-checkbox:checked');
         const sl = AppState.currentSetlist;
         if (!sl) return;
