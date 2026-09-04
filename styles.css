@@ -484,3 +484,4 @@ body {
     .chips-container { display: none; }
     .section-header { flex-direction: column; align-items: stretch; gap: 1rem; }
 }
+.auth-section .btn { white-space: nowrap; }
