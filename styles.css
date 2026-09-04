@@ -216,6 +216,12 @@ body {
     border: 1px solid var(--border-color);
 }
 
+.font-size-controls {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+}
+
 .transpose-btn {
     background: var(--primary-color);
     color: white;
