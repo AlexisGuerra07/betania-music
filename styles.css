@@ -470,18 +470,50 @@ body {
 .import-preview-title { font-weight: 600; font-size: 0.9rem; }
 .import-preview-meta { font-size: 0.75rem; color: var(--text-muted); }
 
+/* ============ OPTIMIZACIÓN MÓVIL PARA USO EN VIVO ============ */
 @media (max-width: 768px) {
-    .app-container { padding: 1rem 0.5rem; }
-    .header-content { padding: 0 0.5rem; }
-    .logo-img { width: 40px; height: 40px; }
-    .logo-text { font-size: 1.15rem; }
-    .song-item { padding: 1rem; flex-direction: column; align-items: flex-start; gap: 0.75rem; }
+    .app-container { padding: 0.75rem 0.5rem; }
+    .header-content { padding: 0 0.5rem; flex-wrap: wrap; gap: 0.5rem; }
+    .logo-img { width: 36px; height: 36px; }
+    .logo-text { font-size: 1.1rem; }
+    .nav-tabs { gap: 0.35rem; }
+    .nav-tab { padding: 0.4rem 0.7rem; font-size: 0.8rem; }
+    .auth-section { font-size: 0.75rem; }
+    #user-email-label { display: none !important; }
+
+    /* Lista de canciones más compacta */
+    .song-item { padding: 0.7rem 1rem; min-height: auto; }
+    .song-title { font-size: 1rem; }
+    .song-meta { font-size: 0.78rem; }
+    .section-title { font-size: 1.4rem; }
+    .btn-add-song { padding: 0.6rem 1rem; font-size: 0.8rem; }
+
+    /* Lector: mucho menos padding, todo más compacto para llegar rápido a la letra */
+    .reader-header { padding: 0.85rem 1rem; margin-bottom: 0.75rem; border-radius: 10px; }
+    .reader-title { font-size: 1.25rem; margin-bottom: 0.15rem; }
+    .reader-meta { font-size: 0.8rem; margin-bottom: 0.75rem; }
+    #btn-back-to-list { padding: 0.35rem 0.7rem; font-size: 0.78rem; margin-bottom: 0.5rem; }
+
+    #setlist-nav-controls { padding: 0.5rem 0.75rem; margin-bottom: 0.6rem; }
+    #setlist-nav-controls .btn-sm { padding: 0.3rem 0.6rem; font-size: 0.75rem; }
+
+    .reader-controls { gap: 0.5rem; }
+    .transpose-controls { padding: 0.4rem 0.6rem; gap: 0.35rem; }
+    .transpose-btn { width: 1.6rem; height: 1.6rem; font-size: 0.85rem; }
+    .current-key { padding: 0.3rem 0.6rem; min-width: 2.2rem; font-size: 0.85rem; }
+    .reader-controls .btn-sm, .reader-controls .btn-primary { padding: 0.4rem 0.7rem; font-size: 0.78rem; }
+
+    .song-content { padding: 1rem; border-radius: 10px; }
+    .section { margin-bottom: 1.75rem; }
+    .section-label { padding: 0.3rem 0.7rem; font-size: 0.78rem; margin-bottom: 0.85rem; }
+    .chord-line { font-size: 0.88em; }
+    .pair { margin-bottom: 1.1rem; }
+
+    .song-item { padding: 1rem; flex-direction: column; align-items: flex-start; gap: 0.5rem; }
     .song-actions { margin-left: 0; align-self: flex-end; }
     .editor-container { flex-direction: column; height: auto; }
     .editor-sidebar { width: 100%; order: 1; }
-    .reader-controls { justify-content: center; }
     .toolbar-left, .toolbar-right { flex-wrap: wrap; }
     .chips-container { display: none; }
-    .section-header { flex-direction: column; align-items: stretch; gap: 1rem; }
+    .section-header { flex-direction: column; align-items: stretch; gap: 0.75rem; }
 }
-.auth-section .btn { white-space: nowrap; }
