@@ -52,13 +52,11 @@ const HistoryManager = {
     handlePopState(e) {
         const state = e.state || { view: 'canciones' };
 
-        // Si estábamos en pantalla completa y el destino no la pide, solo salimos de pantalla completa
         if (AppState.fullscreenMode && !state.fullscreen) {
             Router.exitFullscreenMode();
             return;
         }
 
-        // Si estábamos editando, guardamos antes de salir
         if (AppState.currentView === 'edicion' && AppState.currentSong) {
             Router.saveCurrentSong();
         }
@@ -604,13 +602,20 @@ const Router = {
         this.navigate('canciones', false);
     },
 
+    // Deslizar entre canciones — con margen de borde para no chocar con el gesto de "atrás" de iOS
     setupSwipeNavigation() {
         let touchStartX = null;
         let touchStartY = null;
+        const edgeMargin = 30; // px reservados en los bordes para el gesto nativo de "atrás" de iOS
 
         document.addEventListener('touchstart', (e) => {
             if (AppState.currentView !== 'song-reader' || !AppState.currentSetlist) return;
-            touchStartX = e.touches[0].clientX;
+            const x = e.touches[0].clientX;
+            if (x < edgeMargin || x > window.innerWidth - edgeMargin) {
+                touchStartX = null;
+                return;
+            }
+            touchStartX = x;
             touchStartY = e.touches[0].clientY;
         }, { passive: true });
 
