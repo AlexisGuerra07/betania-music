@@ -32,7 +32,7 @@ const AppState = {
     currentUser: null
 };
 
-// Storage — ahora usa Firestore en vez de localStorage
+// Storage — usa Firestore en vez de localStorage
 const Storage = {
     SETTINGS_KEY: 'betania_settings_v4',
     songsUnsub: null,
@@ -795,10 +795,11 @@ const Router = {
     },
 
     formatReaderMeta(song) {
-        const artist = song.artist ? song.artist : 'Sin autor';
-        const bpm = song.bpm ? `${song.bpm} BPM` : 'Sin BPM';
-        const compas = song.compas ? `Compás ${song.compas}` : null;
-        return compas ? `${artist} • ${bpm} • ${compas}` : `${artist} • ${bpm}`;
+        const parts = [];
+        if (song.artist) parts.push(song.artist);
+        if (song.bpm) parts.push(`${song.bpm} BPM`);
+        if (song.compas) parts.push(`Compás ${song.compas}`);
+        return parts.length > 0 ? parts.join(' • ') : '';
     },
 
     viewSong(songId) {
@@ -813,7 +814,10 @@ const Router = {
         this.resetReaderControlsUI();
 
         document.getElementById('reader-title').textContent = song.title;
-        document.getElementById('reader-meta').textContent = this.formatReaderMeta(song);
+        const metaText = this.formatReaderMeta(song);
+        const metaEl = document.getElementById('reader-meta');
+        metaEl.textContent = metaText;
+        metaEl.style.display = metaText ? 'block' : 'none';
         document.getElementById('current-key-reader').textContent = song.keyBase;
         this.renderSongContent();
         this.navigate('song-reader');
@@ -833,7 +837,10 @@ const Router = {
         this.resetReaderControlsUI();
 
         document.getElementById('reader-title').textContent = song.title;
-        document.getElementById('reader-meta').textContent = this.formatReaderMeta(song);
+        const metaText = this.formatReaderMeta(song);
+        const metaEl = document.getElementById('reader-meta');
+        metaEl.textContent = metaText;
+        metaEl.style.display = metaText ? 'block' : 'none';
         document.getElementById('current-key-reader').textContent = song.keyBase;
         this.renderSongContent();
         this.updateSetlistNavControls();
