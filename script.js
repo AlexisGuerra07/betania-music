@@ -11,6 +11,35 @@ firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
 const ADMIN_EMAIL = 'alexisg898@gmail.com';
 
+// ============ WAKE LOCK — evita que la pantalla se bloquee al ver una canción ============
+const WakeLockManager = {
+    sentinel: null,
+
+    async request() {
+        try {
+            if ('wakeLock' in navigator) {
+                this.sentinel = await navigator.wakeLock.request('screen');
+                this.sentinel.addEventListener('release', () => { this.sentinel = null; });
+            }
+        } catch (err) {
+            console.log('No se pudo activar Wake Lock:', err);
+        }
+    },
+
+    release() {
+        if (this.sentinel) {
+            this.sentinel.release();
+            this.sentinel = null;
+        }
+    }
+};
+
+document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible' && AppState.currentView === 'song-reader') {
+        WakeLockManager.request();
+    }
+});
+
 // Estado global de la aplicación
 const AppState = {
     currentView: 'canciones',
@@ -25,7 +54,7 @@ const AppState = {
     voiceMode: false,
     isSaving: false,
     lastSaveTime: 0,
-    settings: { fontSize: 14, autoSections: true, sortBy: 'alpha' },
+    settings: { fontSize: 14, autoSections: true, sortBy: 'alpha', readerFontScale: 1 },
     isCreatingNew: false,
     pendingImports: [],
     isAdmin: false,
@@ -202,7 +231,6 @@ const Auth = {
             if (userLabel) userLabel.style.display = 'none';
         }
 
-        // Estas funciones (canciones) siguen restringidas solo al líder
         const showIfAdmin = (id, displayValue) => {
             const el = document.getElementById(id);
             if (el) el.style.display = AppState.isAdmin ? displayValue : 'none';
@@ -215,7 +243,6 @@ const Auth = {
         showIfAdmin('btn-migrate-local', 'inline-flex');
         showIfAdmin('btn-edit-song', 'inline-flex');
 
-        // Repertorios: ahora visibles y usables para TODOS, con o sin sesión
         const newSetlistBtn = document.getElementById('btn-new-setlist');
         if (newSetlistBtn) newSetlistBtn.style.display = 'inline-flex';
         const addSongsBtn = document.getElementById('btn-add-songs-to-setlist');
@@ -527,7 +554,6 @@ const Router = {
         this.navigate('canciones');
     },
 
-    // Deslizar entre canciones de un repertorio (izquierda = siguiente, derecha = anterior)
     setupSwipeNavigation() {
         let touchStartX = null;
         let touchStartY = null;
@@ -547,19 +573,22 @@ const Router = {
             touchStartX = null;
             touchStartY = null;
 
-            // Solo actuar si el movimiento fue mayormente horizontal (no un scroll vertical normal)
             if (Math.abs(diffX) < 70 || Math.abs(diffX) < Math.abs(diffY) * 1.5) return;
 
             if (diffX < 0) {
-                Router.gotoSetlistSong(1); // deslizar hacia la izquierda -> siguiente
+                Router.gotoSetlistSong(1);
             } else {
-                Router.gotoSetlistSong(-1); // deslizar hacia la derecha -> anterior
+                Router.gotoSetlistSong(-1);
             }
         }, { passive: true });
     },
 
     navigate(view) {
         if (view === 'edicion' && !AppState.isAdmin) view = 'canciones';
+
+        if (AppState.currentView === 'song-reader' && view !== 'song-reader') {
+            WakeLockManager.release();
+        }
 
         AppState.currentView = view;
         document.querySelectorAll('.nav-tab').forEach(tab => {
@@ -621,6 +650,8 @@ const Router = {
         this.bindButton('btn-reset-key-reader', () => this.resetTransposition());
         this.bindButton('btn-toggle-notation', () => this.toggleNotation());
         this.bindButton('btn-voice-mode', () => this.toggleVoiceMode());
+        this.bindButton('btn-font-increase', () => this.adjustReaderFontSize(0.1));
+        this.bindButton('btn-font-decrease', () => this.adjustReaderFontSize(-0.1));
         this.bindButton('btn-save-song', () => this.saveCurrentSong());
         this.bindButton('btn-add-section', () => Editor.addSection());
         this.bindButton('btn-add-pair-editor', () => Editor.addPair());
@@ -656,7 +687,6 @@ const Router = {
             this.renderSongsList();
         });
 
-        // Repertorio — abierto a todos
         this.bindButton('btn-new-setlist', () => this.showNewSetlistModal());
         this.bindButton('btn-back-to-repertorios', () => {
             AppState.currentSetlist = null;
@@ -838,6 +868,21 @@ const Router = {
         return parts.length > 0 ? parts.join(' • ') : '';
     },
 
+    applyReaderFontSize() {
+        const content = document.getElementById('song-content');
+        if (!content) return;
+        const scale = AppState.settings.readerFontScale || 1;
+        content.style.fontSize = (15 * scale) + 'px';
+    },
+
+    adjustReaderFontSize(delta) {
+        let scale = (AppState.settings.readerFontScale || 1) + delta;
+        scale = Math.max(0.6, Math.min(2.2, Math.round(scale * 10) / 10));
+        AppState.settings.readerFontScale = scale;
+        Storage.saveSettings();
+        this.applyReaderFontSize();
+    },
+
     viewSong(songId) {
         const song = AppState.songs.find(s => s.id === songId);
         if (!song) return;
@@ -856,7 +901,9 @@ const Router = {
         metaEl.style.display = metaText ? 'block' : 'none';
         document.getElementById('current-key-reader').textContent = song.keyBase;
         this.renderSongContent();
+        this.applyReaderFontSize();
         this.navigate('song-reader');
+        WakeLockManager.request();
     },
 
     viewSetlistSong(songId) {
@@ -879,8 +926,10 @@ const Router = {
         metaEl.style.display = metaText ? 'block' : 'none';
         document.getElementById('current-key-reader').textContent = song.keyBase;
         this.renderSongContent();
+        this.applyReaderFontSize();
         this.updateSetlistNavControls();
         this.navigate('song-reader');
+        WakeLockManager.request();
     },
 
     resetReaderControlsUI() {
