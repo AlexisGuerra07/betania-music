@@ -98,7 +98,7 @@
                 <div class="reader-header">
                     <button class="btn" id="btn-back-to-list">← Volver</button>
                     <div class="reader-title" id="reader-title">Título de la canción</div>
-                    <div class="reader-meta" id="reader-meta">Autor • BPM</div>
+                    <div class="reader-meta" id="reader-meta">Autor • BPM • Compás</div>
 
                     <div id="setlist-nav-controls" style="display:none; margin-bottom: 1rem; padding: 0.75rem 1rem; background: var(--bg-secondary); border-radius: 8px; border: 1px solid var(--border-color); align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap;">
                         <button class="btn btn-sm" id="btn-prev-setlist-song">◀ Anterior</button>
@@ -134,10 +134,12 @@
                         <button class="btn btn-sm" id="btn-add-section" style="width: 100%; margin-top: 0.5rem;">+ Sección</button>
                     </div>
                     <div class="sidebar-section">
-                        <h3 class="sidebar-title">Tonalidad y BPM</h3>
+                        <h3 class="sidebar-title">Tonalidad, BPM y Compás</h3>
                         <button class="btn btn-sm" id="btn-detect-key" style="width: 100%; margin-bottom: 0.5rem;">🔍 Detectar tonalidad</button>
                         <label class="form-label" style="margin-bottom: 0.25rem;">BPM</label>
-                        <input type="number" id="bpm-editor-input" class="form-input" placeholder="Ej: 128" style="padding: 0.5rem;">
+                        <input type="number" id="bpm-editor-input" class="form-input" placeholder="Ej: 128" style="padding: 0.5rem; margin-bottom: 0.75rem;">
+                        <label class="form-label" style="margin-bottom: 0.25rem;">Compás</label>
+                        <input type="text" id="compas-editor-input" class="form-input" placeholder="Ej: 4/4" style="padding: 0.5rem;">
                     </div>
                     <div class="sidebar-section">
                         <h3 class="sidebar-title">Acciones</h3>
