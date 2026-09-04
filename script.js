@@ -52,6 +52,7 @@ const AppState = {
     currentTranspose: 0,
     notationMode: 'chords',
     voiceMode: false,
+    fullscreenMode: false,
     isSaving: false,
     lastSaveTime: 0,
     settings: { fontSize: 14, autoSections: true, sortBy: 'alpha', readerFontScale: 1 },
@@ -588,6 +589,7 @@ const Router = {
 
         if (AppState.currentView === 'song-reader' && view !== 'song-reader') {
             WakeLockManager.release();
+            this.exitFullscreenMode();
         }
 
         AppState.currentView = view;
@@ -652,6 +654,8 @@ const Router = {
         this.bindButton('btn-voice-mode', () => this.toggleVoiceMode());
         this.bindButton('btn-font-increase', () => this.adjustReaderFontSize(0.1));
         this.bindButton('btn-font-decrease', () => this.adjustReaderFontSize(-0.1));
+        this.bindButton('btn-fullscreen-toggle', () => this.toggleFullscreenMode());
+        this.bindButton('btn-fullscreen-exit', () => this.toggleFullscreenMode());
         this.bindButton('btn-save-song', () => this.saveCurrentSong());
         this.bindButton('btn-add-section', () => Editor.addSection());
         this.bindButton('btn-add-pair-editor', () => Editor.addPair());
@@ -724,6 +728,17 @@ const Router = {
             el.addEventListener('change', handler);
             el.setAttribute('data-bound', 'true');
         }
+    },
+
+    toggleFullscreenMode() {
+        if (!AppState.currentSong) return;
+        AppState.fullscreenMode = !AppState.fullscreenMode;
+        document.body.classList.toggle('fullscreen-active', AppState.fullscreenMode);
+    },
+
+    exitFullscreenMode() {
+        AppState.fullscreenMode = false;
+        document.body.classList.remove('fullscreen-active');
     },
 
     bulkDetectKeys() {
@@ -947,6 +962,8 @@ const Router = {
 
         const editBtn = document.getElementById('btn-edit-song');
         if (editBtn) editBtn.style.display = AppState.isAdmin ? 'inline-flex' : 'none';
+
+        this.exitFullscreenMode();
     },
 
     updateSetlistNavControls() {
@@ -973,7 +990,12 @@ const Router = {
         const idx = ids.indexOf(AppState.currentSong.id);
         const newIdx = idx + direction;
         if (newIdx < 0 || newIdx >= ids.length) return;
+        const wasFullscreen = AppState.fullscreenMode;
         this.viewSetlistSong(ids[newIdx]);
+        if (wasFullscreen) {
+            AppState.fullscreenMode = true;
+            document.body.classList.add('fullscreen-active');
+        }
     },
 
     editSong(songId) {
@@ -1874,6 +1896,8 @@ document.addEventListener('DOMContentLoaded', () => {
             if (AppState.currentView === 'edicion') {
                 Router.saveCurrentSong();
                 Router.navigate('canciones');
+            } else if (AppState.fullscreenMode) {
+                Router.exitFullscreenMode();
             }
         }
     });
