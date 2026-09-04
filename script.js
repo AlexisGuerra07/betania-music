@@ -38,7 +38,7 @@ document.addEventListener('visibilitychange', () => {
     }
 });
 
-// ============ HISTORIAL DE NAVEGACIÓN (integra el botón "atrás" del dispositivo) ============
+// ============ HISTORIAL DE NAVEGACIÓN ============
 const HistoryManager = {
     init() {
         history.replaceState({ view: 'canciones' }, '', location.href);
@@ -97,6 +97,7 @@ const AppState = {
     currentSetlist: null,
     cameFromSetlistId: null,
     currentTranspose: 0,
+    baseTransposeOffset: 0,
     notationMode: 'chords',
     voiceMode: false,
     fullscreenMode: false,
@@ -295,6 +296,8 @@ const Auth = {
         if (newSetlistBtn) newSetlistBtn.style.display = 'inline-flex';
         const addSongsBtn = document.getElementById('btn-add-songs-to-setlist');
         if (addSongsBtn) addSongsBtn.style.display = 'inline-flex';
+        const uniformKeyBtn = document.getElementById('btn-uniform-key');
+        if (uniformKeyBtn) uniformKeyBtn.style.display = 'inline-flex';
 
         const setlistNameInput = document.getElementById('setlist-name-input');
         if (setlistNameInput) setlistNameInput.readOnly = false;
@@ -602,11 +605,10 @@ const Router = {
         this.navigate('canciones', false);
     },
 
-    // Deslizar entre canciones — con margen de borde para no chocar con el gesto de "atrás" de iOS
     setupSwipeNavigation() {
         let touchStartX = null;
         let touchStartY = null;
-        const edgeMargin = 30; // px reservados en los bordes para el gesto nativo de "atrás" de iOS
+        const edgeMargin = 30;
 
         document.addEventListener('touchstart', (e) => {
             if (AppState.currentView !== 'song-reader' || !AppState.currentSetlist) return;
@@ -722,6 +724,16 @@ const Router = {
             AppState.currentSong.compas = e.target.value.trim();
             Storage.updateSaveStatus('unsaved');
         });
+        this.bindSelect('original-key-editor-select', (e) => {
+            if (!AppState.currentSong) return;
+            AppState.currentSong.originalKey = e.target.value;
+            Storage.updateSaveStatus('unsaved');
+        });
+        this.bindInput('youtube-link-editor-input', (e) => {
+            if (!AppState.currentSong) return;
+            AppState.currentSong.youtubeLink = e.target.value.trim();
+            Storage.updateSaveStatus('unsaved');
+        });
         this.bindInput('song-artist-editor', (e) => {
             if (!AppState.currentSong) return;
             AppState.currentSong.artist = e.target.value;
@@ -741,6 +753,7 @@ const Router = {
         this.bindButton('btn-new-setlist', () => this.showNewSetlistModal());
         this.bindButton('btn-back-to-repertorios', () => { history.back(); });
         this.bindButton('btn-add-songs-to-setlist', () => this.showAddSongsToSetlistModal());
+        this.bindButton('btn-uniform-key', () => this.showUniformKeyModal());
         this.bindInput('setlist-name-input', (e) => {
             if (!AppState.currentSetlist) return;
             AppState.currentSetlist.name = e.target.value;
@@ -937,6 +950,18 @@ const Router = {
         return parts.length > 0 ? parts.join(' • ') : '';
     },
 
+    formatReaderExtra(song) {
+        let html = '';
+        if (song.originalKey) {
+            html += `<span>Tonalidad original: <strong>${song.originalKey}</strong></span>`;
+        }
+        if (song.youtubeLink) {
+            if (html) html += ' &nbsp;•&nbsp; ';
+            html += `<a href="${song.youtubeLink}" target="_blank" rel="noopener" style="color: var(--primary-color); font-weight:600; text-decoration:none;">▶ Ver en YouTube</a>`;
+        }
+        return html;
+    },
+
     applyReaderFontSize() {
         const content = document.getElementById('song-content');
         if (!content) return;
@@ -952,12 +977,26 @@ const Router = {
         this.applyReaderFontSize();
     },
 
+    // Calcula cuántos semitonos hay que aplicar a la canción para llevarla a la tonalidad uniforme del repertorio
+    computeUniformOffset(song, setlist) {
+        if (!setlist || !setlist.uniformKey || !song.keyBase) return 0;
+        const targetIdx = Transposer.notes.indexOf(setlist.uniformKey);
+        const root = song.keyBase.replace('m', '');
+        let songIdx = Transposer.notes.indexOf(root);
+        if (songIdx === -1) songIdx = Transposer.notesFlat.indexOf(root);
+        if (targetIdx === -1 || songIdx === -1) return 0;
+        let diff = (targetIdx - songIdx + 12) % 12;
+        if (diff > 6) diff -= 12;
+        return diff;
+    },
+
     viewSong(songId, push = true) {
         const song = AppState.songs.find(s => s.id === songId);
         if (!song) return;
         AppState.cameFromSetlistId = null;
         AppState.currentSong = song;
         AppState.currentTranspose = 0;
+        AppState.baseTransposeOffset = 0;
         AppState.notationMode = 'chords';
         AppState.voiceMode = false;
 
@@ -968,6 +1007,14 @@ const Router = {
         const metaEl = document.getElementById('reader-meta');
         metaEl.textContent = metaText;
         metaEl.style.display = metaText ? 'block' : 'none';
+
+        const extraEl = document.getElementById('reader-extra-info');
+        const extraHtml = this.formatReaderExtra(song);
+        if (extraEl) {
+            extraEl.innerHTML = extraHtml;
+            extraEl.style.display = extraHtml ? 'block' : 'none';
+        }
+
         document.getElementById('current-key-reader').textContent = song.keyBase;
         this.renderSongContent();
         this.applyReaderFontSize();
@@ -986,7 +1033,9 @@ const Router = {
 
         AppState.cameFromSetlistId = AppState.currentSetlist.id;
         AppState.currentSong = song;
-        AppState.currentTranspose = 0;
+        const baseOffset = this.computeUniformOffset(song, AppState.currentSetlist);
+        AppState.currentTranspose = baseOffset;
+        AppState.baseTransposeOffset = baseOffset;
         AppState.notationMode = 'chords';
         AppState.voiceMode = false;
 
@@ -997,7 +1046,12 @@ const Router = {
         const metaEl = document.getElementById('reader-meta');
         metaEl.textContent = metaText;
         metaEl.style.display = metaText ? 'block' : 'none';
-        document.getElementById('current-key-reader').textContent = song.keyBase;
+
+        // La tonalidad original / YouTube solo se muestran fuera de repertorios, para no cargar la vista
+        const extraEl = document.getElementById('reader-extra-info');
+        if (extraEl) { extraEl.style.display = 'none'; extraEl.innerHTML = ''; }
+
+        document.getElementById('current-key-reader').textContent = Transposer.cleanChord(Transposer.transpose(song.keyBase, baseOffset));
         this.renderSongContent();
         this.applyReaderFontSize();
         this.updateSetlistNavControls();
@@ -1025,6 +1079,9 @@ const Router = {
         const editBtn = document.getElementById('btn-edit-song');
         if (editBtn) editBtn.style.display = AppState.isAdmin ? 'inline-flex' : 'none';
 
+        const extraEl = document.getElementById('reader-extra-info');
+        if (extraEl) { extraEl.style.display = 'none'; extraEl.innerHTML = ''; }
+
         this.exitFullscreenMode();
     },
 
@@ -1038,7 +1095,9 @@ const Router = {
         if (idx === -1) { setlistNav.style.display = 'none'; return; }
 
         setlistNav.style.display = 'flex';
-        posLabel.textContent = `${idx + 1} / ${ids.length}`;
+        let label = `${idx + 1} / ${ids.length}`;
+        if (AppState.currentSetlist.uniformKey) label += ` • Tono: ${AppState.currentSetlist.uniformKey}`;
+        posLabel.textContent = label;
 
         const prevBtn = document.getElementById('btn-prev-setlist-song');
         const nextBtn = document.getElementById('btn-next-setlist-song');
@@ -1128,11 +1187,12 @@ const Router = {
     },
 
     resetTransposition() {
-        if (AppState.currentTranspose === 0) return;
-        AppState.currentTranspose = 0;
+        const target = AppState.baseTransposeOffset || 0;
+        if (AppState.currentTranspose === target) return;
+        AppState.currentTranspose = target;
 
         if (AppState.notationMode !== 'degrees') {
-            document.getElementById('current-key-reader').textContent = AppState.currentSong.keyBase;
+            document.getElementById('current-key-reader').textContent = Transposer.cleanChord(Transposer.transpose(AppState.currentSong.keyBase, target));
         }
 
         this.renderSongContent();
@@ -1206,7 +1266,8 @@ const Router = {
         if (!title) { alert('El título es obligatorio'); return; }
         const songData = {
             id: songId, title, artist: document.getElementById('modal-artist').value.trim(),
-            keyBase: document.getElementById('modal-key').value, bpm: null, compas: '', autoSections: AppState.settings.autoSections,
+            keyBase: document.getElementById('modal-key').value, bpm: null, compas: '',
+            originalKey: '', youtubeLink: '', autoSections: AppState.settings.autoSections,
             sections: [], createdAt: new Date().toISOString(), updatedAt: new Date().toISOString()
         };
         AppState.currentSong = songData;
@@ -1280,6 +1341,7 @@ const Router = {
             id: this.generateId(),
             name,
             creatorName: creatorName || '',
+            uniformKey: null,
             songIds: [],
             createdAt: new Date().toISOString()
         };
@@ -1308,7 +1370,7 @@ const Router = {
             <div class="song-item" onclick="Router.openSetlist('${sl.id}')">
                 <div class="song-info">
                     <div class="song-title">${sl.name}</div>
-                    <div class="song-meta">${(sl.songIds || []).length} canción(es)${sl.creatorName ? ' • por ' + sl.creatorName : ''}</div>
+                    <div class="song-meta">${(sl.songIds || []).length} canción(es)${sl.creatorName ? ' • por ' + sl.creatorName : ''}${sl.uniformKey ? ' • 🎯 ' + sl.uniformKey : ''}</div>
                 </div>
                 <div class="song-actions" onclick="event.stopPropagation()">
                     <button class="action-btn delete-btn" onclick="Router.deleteSetlist('${sl.id}')" title="Eliminar">
@@ -1350,6 +1412,19 @@ const Router = {
         const addBtn = document.getElementById('btn-add-songs-to-setlist');
         if (addBtn) addBtn.style.display = 'inline-flex';
 
+        const uniformBtn = document.getElementById('btn-uniform-key');
+        if (uniformBtn) uniformBtn.style.display = 'inline-flex';
+
+        const badge = document.getElementById('uniform-key-badge');
+        if (badge) {
+            if (sl.uniformKey) {
+                badge.style.display = 'inline';
+                badge.textContent = `🎯 Tonalidad uniforme: ${sl.uniformKey}`;
+            } else {
+                badge.style.display = 'none';
+            }
+        }
+
         const list = document.getElementById('setlist-songs-list');
         const empty = document.getElementById('setlist-empty-state');
 
@@ -1364,11 +1439,14 @@ const Router = {
         empty.style.display = 'none';
         list.style.display = 'block';
 
-        list.innerHTML = songs.map((song, idx) => `
+        list.innerHTML = songs.map((song, idx) => {
+            const offset = this.computeUniformOffset(song, sl);
+            const displayKey = offset !== 0 ? Transposer.cleanChord(Transposer.transpose(song.keyBase, offset)) : song.keyBase;
+            return `
             <div class="song-item" onclick="Router.viewSetlistSong('${song.id}')">
                 <div class="song-info">
                     <div class="song-title">${idx + 1}. ${song.title}</div>
-                    <div class="song-meta">${song.keyBase}${song.bpm ? ` • ${song.bpm} BPM` : ''}</div>
+                    <div class="song-meta">${displayKey}${offset !== 0 ? ` (orig. ${song.keyBase})` : ''}${song.bpm ? ` • ${song.bpm} BPM` : ''}</div>
                 </div>
                 <div class="song-actions" onclick="event.stopPropagation()">
                     <button class="action-btn" onclick="Router.moveSetlistSong(${idx}, -1)" title="Subir" ${idx === 0 ? 'style="opacity:0.3;pointer-events:none;"' : ''}>
@@ -1385,7 +1463,8 @@ const Router = {
                     </button>
                 </div>
             </div>
-        `).join('');
+        `;
+        }).join('');
     },
 
     moveSetlistSong(index, direction) {
@@ -1459,6 +1538,41 @@ const Router = {
             const id = cb.dataset.songId;
             if (!sl.songIds.includes(id)) sl.songIds.push(id);
         });
+        Storage.saveSetlists();
+        this.closeModal();
+        this.renderSetlistDetail();
+    },
+
+    showUniformKeyModal() {
+        if (!AppState.currentSetlist) return;
+        const currentKey = AppState.currentSetlist.uniformKey || '';
+        const keys = ['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
+        this.createModal({
+            title: 'Tonalidad uniforme del repertorio',
+            content: `
+                <p style="margin-bottom:1rem; color:var(--text-secondary); font-size:0.9rem;">
+                    Elige una tonalidad y todas las canciones de este repertorio se transportarán automáticamente a ella al abrirlas, sin modificar los datos originales de cada canción.
+                </p>
+                <div class="form-group">
+                    <label class="form-label">Tonalidad</label>
+                    <select class="form-select" id="modal-uniform-key">
+                        <option value="">Sin tonalidad uniforme (usar la de cada canción)</option>
+                        ${keys.map(k => `<option value="${k}" ${k === currentKey ? 'selected' : ''}>${k}</option>`).join('')}
+                    </select>
+                </div>
+            `,
+            actions: [
+                { text: 'Cancelar', action: () => this.closeModal() },
+                { text: 'Aplicar', primary: true, action: () => this.applyUniformKey() }
+            ]
+        });
+    },
+
+    applyUniformKey() {
+        const val = document.getElementById('modal-uniform-key').value;
+        const sl = AppState.currentSetlist;
+        if (!sl) return;
+        sl.uniformKey = val || null;
         Storage.saveSetlists();
         this.closeModal();
         this.renderSetlistDetail();
@@ -1542,6 +1656,8 @@ const Router = {
                     keyBase: finalKey,
                     bpm: bpm,
                     compas: compas,
+                    originalKey: '',
+                    youtubeLink: '',
                     autoSections: true,
                     sections: sections.length > 0 ? sections : [{ label: 'Sin sección', pairs: [{ acordes: '', letra: '(No se detectaron acordes, revisa manualmente)' }] }],
                     createdAt: new Date().toISOString(),
@@ -1750,6 +1866,10 @@ const Editor = {
         if (bpmInput) bpmInput.value = AppState.currentSong.bpm || '';
         const compasInput = document.getElementById('compas-editor-input');
         if (compasInput) compasInput.value = AppState.currentSong.compas || '';
+        const originalKeySelect = document.getElementById('original-key-editor-select');
+        if (originalKeySelect) originalKeySelect.value = AppState.currentSong.originalKey || '';
+        const youtubeInput = document.getElementById('youtube-link-editor-input');
+        if (youtubeInput) youtubeInput.value = AppState.currentSong.youtubeLink || '';
     },
 
     detectKey() {
