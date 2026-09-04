@@ -1322,4 +1322,304 @@ const Router = {
                         <div class="import-preview-item">
                             <input type="checkbox" checked data-idx="${idx}" class="import-checkbox">
                             <div class="import-preview-info">
-                                <div
+                                <div class="import-preview-title">${song.title}</div>
+                                <div class="import-preview-meta">Tonalidad: ${song.keyBase}${song.bpm ? ` • ${song.bpm} BPM` : ''}${song.compas ? ` • ${song.compas}` : ''} • ${song.sections.length} sección(es)</div>
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+            `,
+            actions: [
+                { text: 'Cancelar todo', action: () => { AppState.pendingImports = []; this.closeModal(); } },
+                { text: 'Guardar seleccionadas', primary: true, action: () => this.saveBulkImports() }
+            ]
+        });
+    },
+
+    saveBulkImports() {
+        const checkboxes = document.querySelectorAll('.import-checkbox');
+        let savedCount = 0;
+
+        checkboxes.forEach(cb => {
+            if (cb.checked) {
+                const idx = parseInt(cb.dataset.idx);
+                const song = AppState.pendingImports[idx];
+                AppState.songs.push(song);
+                savedCount++;
+            }
+        });
+
+        Storage.saveSongs();
+        AppState.pendingImports = [];
+        this.closeModal();
+        this.renderSongsList();
+        alert(`✅ Se guardaron ${savedCount} canción(es).`);
+    },
+    // ============ FIN IMPORTACIÓN MASIVA ============
+
+    createModal({ title, content, actions = [] }) {
+        const overlay = document.createElement('div');
+        overlay.className = 'modal-overlay';
+        overlay.id = 'modal-overlay';
+        overlay.innerHTML = `
+            <div class="modal">
+                <div class="modal-header">
+                    <h3 class="modal-title">${title}</h3>
+                    <button class="btn-xs" onclick="Router.closeModal()">✕</button>
+                </div>
+                <div class="modal-content">${content}</div>
+                <div class="modal-footer">
+                    ${actions.map((a, i) => `<button class="btn ${a.primary ? 'btn-primary' : ''}" onclick="Router.executeModalAction(${i})">${a.text}</button>`).join('')}
+                </div>
+            </div>
+        `;
+        overlay._actions = actions;
+        document.body.appendChild(overlay);
+        overlay.addEventListener('click', (e) => { if (e.target === overlay) this.closeModal(); });
+        return overlay;
+    },
+
+    executeModalAction(index) {
+        const overlay = document.getElementById('modal-overlay');
+        if (overlay && overlay._actions && overlay._actions[index]) overlay._actions[index].action();
+    },
+
+    closeModal() {
+        const overlay = document.getElementById('modal-overlay');
+        if (overlay) overlay.remove();
+    },
+
+    generateId() {
+        return Date.now().toString(36) + Math.random().toString(36).substr(2);
+    }
+};
+
+// Editor
+const Editor = {
+    currentTranspose: 0,
+
+    loadSong(song) {
+        AppState.currentSong = song;
+        document.getElementById('song-title-editor').value = song.title;
+        const artistInput = document.getElementById('song-artist-editor');
+        if (artistInput) artistInput.value = song.artist || '';
+        this.render();
+        this.renderOutline();
+        this.updateChips();
+        Storage.updateSaveStatus('saved');
+    },
+
+    updateChips() {
+        const keySelect = document.getElementById('key-editor-select');
+        if (keySelect) keySelect.value = AppState.currentSong.keyBase;
+        const bpmInput = document.getElementById('bpm-editor-input');
+        if (bpmInput) bpmInput.value = AppState.currentSong.bpm || '';
+        const compasInput = document.getElementById('compas-editor-input');
+        if (compasInput) compasInput.value = AppState.currentSong.compas || '';
+    },
+
+    detectKey() {
+        if (!AppState.currentSong || !AppState.currentSong.sections) return;
+        const detected = KeyDetector.detectKey(AppState.currentSong.sections);
+        if (!detected) {
+            alert('No se pudieron detectar suficientes acordes para calcular la tonalidad.');
+            return;
+        }
+        AppState.currentSong.keyBase = detected;
+        this.updateChips();
+        Storage.updateSaveStatus('unsaved');
+        alert(`Tonalidad detectada: ${detected}`);
+    },
+
+    render() {
+        const content = document.getElementById('editor-content');
+        if (!AppState.currentSong || !AppState.currentSong.sections || AppState.currentSong.sections.length === 0) {
+            content.innerHTML = '<div class="empty-state"><h3>No hay contenido</h3><p>Usa "+ Sección" para empezar a añadir contenido.</p></div>';
+            return;
+        }
+        content.innerHTML = AppState.currentSong.sections.map((section, sIndex) => `
+            <div class="section-editor" data-section="${sIndex}">
+                <div class="section-header-editor">
+                    <input type="text" class="section-label-input" value="${section.label}" onchange="Editor.updateSectionLabel(${sIndex}, this.value)">
+                    <div class="section-actions">
+                        <button class="btn-xs" onclick="Editor.addPairToSection(${sIndex})">+ Par</button>
+                        <button class="btn-xs" onclick="Editor.moveSection(${sIndex}, -1)">↑</button>
+                        <button class="btn-xs" onclick="Editor.moveSection(${sIndex}, 1)">↓</button>
+                        <button class="btn-xs" onclick="Editor.deleteSection(${sIndex})">🗑️</button>
+                    </div>
+                </div>
+                ${section.pairs ? section.pairs.map((pair, pIndex) => this.renderPair(pair, sIndex, pIndex)).join('') : ''}
+            </div>
+        `).join('');
+        this.setupTextareaAutoResize();
+    },
+
+    renderPair(pair, sIndex, pIndex) {
+        return `
+            <div class="pair-editor">
+                <div class="pair-header">
+                    <span class="pair-label">Acordes/Letra ${pIndex + 1}</span>
+                    <div class="pair-actions">
+                        <button class="btn-xs" onclick="Editor.duplicatePair(${sIndex}, ${pIndex})">📋</button>
+                        <button class="btn-xs" onclick="Editor.movePair(${sIndex}, ${pIndex}, -1)">↑</button>
+                        <button class="btn-xs" onclick="Editor.movePair(${sIndex}, ${pIndex}, 1)">↓</button>
+                        <button class="btn-xs" onclick="Editor.deletePair(${sIndex}, ${pIndex})">🗑️</button>
+                    </div>
+                </div>
+                <textarea class="chord-input" placeholder="Acordes..." onchange="Editor.updatePair(${sIndex}, ${pIndex}, 'acordes', this.value)" style="font-size: ${AppState.settings.fontSize}px;">${pair.acordes || ''}</textarea>
+                <textarea class="lyric-input" placeholder="Letra..." onchange="Editor.updatePair(${sIndex}, ${pIndex}, 'letra', this.value)" style="font-size: ${AppState.settings.fontSize}px;">${pair.letra || ''}</textarea>
+            </div>
+        `;
+    },
+
+    renderOutline() {
+        const outline = document.getElementById('sections-outline');
+        if (!AppState.currentSong || !AppState.currentSong.sections) {
+            outline.innerHTML = '<div class="text-center">Sin secciones</div>';
+            return;
+        }
+        outline.innerHTML = AppState.currentSong.sections.map((section, index) => `
+            <div class="outline-item" onclick="Editor.scrollToSection(${index})">
+                <span>${section.label}</span>
+                <span style="font-size: 0.8rem; opacity: 0.7;">${section.pairs ? section.pairs.length : 0}</span>
+            </div>
+        `).join('');
+    },
+
+    setupTextareaAutoResize() {
+        document.querySelectorAll('.chord-input, .lyric-input').forEach(t => {
+            t.addEventListener('input', () => { t.style.height = 'auto'; t.style.height = t.scrollHeight + 'px'; });
+            t.style.height = 'auto';
+            t.style.height = t.scrollHeight + 'px';
+        });
+    },
+
+    updateSectionLabel(sIndex, value) {
+        AppState.currentSong.sections[sIndex].label = value;
+        this.renderOutline();
+        Storage.updateSaveStatus('unsaved');
+    },
+
+    updatePair(sIndex, pIndex, field, value) {
+        AppState.currentSong.sections[sIndex].pairs[pIndex][field] = value;
+        Storage.updateSaveStatus('unsaved');
+    },
+
+    addSection() {
+        const name = prompt('Nombre de la nueva sección:', 'Nueva sección');
+        if (!name) return;
+        if (!AppState.currentSong.sections) AppState.currentSong.sections = [];
+        AppState.currentSong.sections.push({ label: name, pairs: [] });
+        this.render(); this.renderOutline();
+        Storage.updateSaveStatus('unsaved');
+    },
+
+    addPair() {
+        if (!AppState.currentSong.sections || AppState.currentSong.sections.length === 0) this.addSection();
+        this.addPairToSection(AppState.currentSong.sections.length - 1);
+    },
+
+    addPairToSection(sIndex) {
+        if (!AppState.currentSong.sections[sIndex]) return;
+        if (!AppState.currentSong.sections[sIndex].pairs) AppState.currentSong.sections[sIndex].pairs = [];
+        AppState.currentSong.sections[sIndex].pairs.push({ acordes: '', letra: '' });
+        this.render(); this.renderOutline();
+        Storage.updateSaveStatus('unsaved');
+    },
+
+    duplicatePair(sIndex, pIndex) {
+        const pair = AppState.currentSong.sections[sIndex].pairs[pIndex];
+        if (!pair) return;
+        AppState.currentSong.sections[sIndex].pairs.splice(pIndex + 1, 0, { acordes: pair.acordes, letra: pair.letra });
+        this.render();
+        Storage.updateSaveStatus('unsaved');
+    },
+
+    movePair(sIndex, pIndex, direction) {
+        const section = AppState.currentSong.sections[sIndex];
+        const newIndex = pIndex + direction;
+        if (newIndex < 0 || newIndex >= section.pairs.length) return;
+        const pair = section.pairs.splice(pIndex, 1)[0];
+        section.pairs.splice(newIndex, 0, pair);
+        this.render();
+        Storage.updateSaveStatus('unsaved');
+    },
+
+    deletePair(sIndex, pIndex) {
+        if (confirm('¿Eliminar este par?')) {
+            AppState.currentSong.sections[sIndex].pairs.splice(pIndex, 1);
+            this.render();
+            Storage.updateSaveStatus('unsaved');
+        }
+    },
+
+    moveSection(sIndex, direction) {
+        const newIndex = sIndex + direction;
+        if (newIndex < 0 || newIndex >= AppState.currentSong.sections.length) return;
+        const section = AppState.currentSong.sections.splice(sIndex, 1)[0];
+        AppState.currentSong.sections.splice(newIndex, 0, section);
+        this.render(); this.renderOutline();
+        Storage.updateSaveStatus('unsaved');
+    },
+
+    deleteSection(sIndex) {
+        if (confirm('¿Eliminar esta sección y todos sus pares?')) {
+            AppState.currentSong.sections.splice(sIndex, 1);
+            this.render(); this.renderOutline();
+            Storage.updateSaveStatus('unsaved');
+        }
+    },
+
+    scrollToSection(sIndex) {
+        const el = document.querySelector(`[data-section="${sIndex}"]`);
+        if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    },
+
+    transpose(semitones) {
+        this.currentTranspose += semitones;
+        if (!AppState.currentSong.sections) return;
+        AppState.currentSong.sections.forEach(section => {
+            if (section.pairs) {
+                section.pairs.forEach(pair => {
+                    if (pair.acordes && pair.acordes.trim()) {
+                        pair.acordes = Transposer.cleanChord(Transposer.transpose(pair.acordes, semitones));
+                    }
+                });
+            }
+        });
+        this.render();
+        Storage.updateSaveStatus('unsaved');
+    },
+
+    resetTranspose() {
+        if (this.currentTranspose === 0) return;
+        this.transpose(-this.currentTranspose);
+        this.currentTranspose = 0;
+    }
+};
+
+// Inicialización
+document.addEventListener('DOMContentLoaded', () => {
+    Storage.loadSongs();
+    Storage.loadSettings();
+    Storage.loadSetlists();
+
+    if (typeof pdfjsLib !== 'undefined') {
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+    }
+
+    Router.init();
+
+    document.addEventListener('keydown', (e) => {
+        const isCtrlCmd = e.ctrlKey || e.metaKey;
+        if (isCtrlCmd && e.key === 's') {
+            e.preventDefault();
+            if (AppState.currentView === 'edicion') Router.saveCurrentSong();
+        } else if (e.key === 'Escape') {
+            if (AppState.currentView === 'edicion') {
+                Router.saveCurrentSong();
+                Router.navigate('canciones');
+            }
+        }
+    });
+});
