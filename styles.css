@@ -480,6 +480,63 @@ body {
 .import-preview-title { font-weight: 600; font-size: 0.9rem; }
 .import-preview-meta { font-size: 0.75rem; color: var(--text-muted); }
 
+/* ============ MODO PANTALLA COMPLETA (lector, uso en vivo) ============ */
+#btn-fullscreen-exit {
+    display: none;
+    position: fixed;
+    top: 0.5rem;
+    right: 0.5rem;
+    z-index: 500;
+    background: var(--primary-color);
+    color: white;
+    border: none;
+    padding: 0.5rem 0.9rem;
+    border-radius: 8px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    cursor: pointer;
+    box-shadow: var(--shadow-md);
+}
+
+body.fullscreen-active .header,
+body.fullscreen-active #btn-back-to-list,
+body.fullscreen-active #setlist-nav-controls,
+body.fullscreen-active .transpose-controls,
+body.fullscreen-active .font-size-controls,
+body.fullscreen-active #btn-toggle-notation,
+body.fullscreen-active #btn-voice-mode,
+body.fullscreen-active #btn-fullscreen-toggle,
+body.fullscreen-active #btn-edit-song {
+    display: none !important;
+}
+
+body.fullscreen-active #btn-fullscreen-exit {
+    display: inline-flex;
+}
+
+body.fullscreen-active .app-container {
+    padding: 0.5rem;
+    max-width: 100%;
+}
+
+body.fullscreen-active .song-reader {
+    max-width: 100%;
+}
+
+body.fullscreen-active .reader-header {
+    padding: 0.75rem 1rem;
+    margin-bottom: 0.5rem;
+    box-shadow: none;
+    border-radius: 10px;
+}
+
+body.fullscreen-active .reader-title { font-size: 1.5rem; margin-bottom: 0.15rem; }
+body.fullscreen-active .reader-meta { margin-bottom: 0; }
+
+body.fullscreen-active .song-content {
+    padding: 1.25rem;
+}
+
 /* ============ OPTIMIZACIÓN MÓVIL PARA USO EN VIVO ============ */
 @media (max-width: 768px) {
     .app-container { padding: 0.75rem 0.5rem; }
