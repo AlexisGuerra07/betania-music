@@ -5,6 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Betania Music - Gestor de Canciones</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -14,13 +17,20 @@
                 <img src="logo.png" alt="Betania Music" class="logo-img">
                 <div class="logo-text">Betania Music</div>
             </div>
-            <nav>
-                <div class="nav-tabs">
-                    <button class="nav-tab active" data-route="canciones">Canciones</button>
-                    <button class="nav-tab" data-route="repertorio">Repertorio</button>
-                    <button class="nav-tab" data-route="edicion">Edición</button>
+            <div style="display:flex; align-items:center; gap:1.5rem; flex-wrap: wrap;">
+                <nav>
+                    <div class="nav-tabs">
+                        <button class="nav-tab active" data-route="canciones">Canciones</button>
+                        <button class="nav-tab" data-route="repertorio">Repertorio</button>
+                        <button class="nav-tab" data-route="edicion" id="nav-tab-edicion" style="display:none;">Edición</button>
+                    </div>
+                </nav>
+                <div class="auth-section" style="display:flex; align-items:center; gap:0.5rem;">
+                    <span id="user-email-label" style="display:none; font-size:0.8rem; color: var(--text-secondary);"></span>
+                    <button class="btn btn-sm" id="btn-login">🔑 Iniciar sesión</button>
+                    <button class="btn btn-sm" id="btn-logout" style="display:none;">Cerrar sesión</button>
                 </div>
-            </nav>
+            </div>
         </div>
     </header>
 
@@ -31,9 +41,10 @@
                 <div class="section-header">
                     <h2 class="section-title">Canciones</h2>
                     <div style="display:flex; gap:0.75rem; flex-wrap: wrap;">
-                        <button class="btn" id="btn-bulk-detect-keys">🔍 Detectar tonalidades</button>
-                        <button class="btn" id="btn-import-pdfs">📄 Importar PDFs</button>
-                        <button class="btn-add-song" id="btn-add-song">+ Añadir canción</button>
+                        <button class="btn" id="btn-migrate-local" style="display:none;">☁️ Migrar datos locales</button>
+                        <button class="btn" id="btn-bulk-detect-keys" style="display:none;">🔍 Detectar tonalidades</button>
+                        <button class="btn" id="btn-import-pdfs" style="display:none;">📄 Importar PDFs</button>
+                        <button class="btn-add-song" id="btn-add-song" style="display:none;">+ Añadir canción</button>
                     </div>
                 </div>
 
@@ -49,7 +60,7 @@
 
                 <div class="empty-state" id="empty-state">
                     <h3>Aún no hay canciones</h3>
-                    <p>Pulsa "Añadir canción" o "Importar PDFs" para comenzar.</p>
+                    <p>Inicia sesión como líder para añadir canciones, o espera a que se sincronicen.</p>
                 </div>
 
                 <div class="songs-grid" id="songs-grid" style="display: none;"></div>
@@ -61,12 +72,12 @@
             <div class="songs-container">
                 <div class="section-header">
                     <h2 class="section-title">Repertorio</h2>
-                    <button class="btn-add-song" id="btn-new-setlist">+ Nuevo repertorio</button>
+                    <button class="btn-add-song" id="btn-new-setlist" style="display:none;">+ Nuevo repertorio</button>
                 </div>
 
                 <div class="empty-state" id="repertorio-empty-state">
                     <h3>Aún no hay repertorios</h3>
-                    <p>Crea uno para armar la lista de canciones del domingo.</p>
+                    <p>El líder puede crear uno para armar la lista de canciones del domingo.</p>
                 </div>
 
                 <div class="songs-grid" id="repertorio-grid" style="display: none;"></div>
@@ -80,7 +91,7 @@
                     <button class="btn" id="btn-back-to-repertorios" style="align-self: flex-start;">← Volver a repertorios</button>
                     <input type="text" id="setlist-name-input" placeholder="Nombre del repertorio" 
                            style="font-size: 1.5rem; font-weight: 700; border: none; background: transparent; outline: none; padding: 0.25rem 0;">
-                    <button class="btn" id="btn-add-songs-to-setlist" style="align-self: flex-start;">+ Añadir canciones</button>
+                    <button class="btn" id="btn-add-songs-to-setlist" style="align-self: flex-start; display:none;">+ Añadir canciones</button>
                 </div>
 
                 <div id="setlist-empty-state" class="empty-state">
@@ -116,7 +127,7 @@
                         </div>
                         <button class="btn btn-sm" id="btn-toggle-notation">🎼 Ver en grados</button>
                         <button class="btn btn-sm" id="btn-voice-mode">🎤 Modo Voz</button>
-                        <button class="btn btn-primary" id="btn-edit-song">Editar</button>
+                        <button class="btn btn-primary" id="btn-edit-song" style="display:none;">Editar</button>
                     </div>
                 </div>
 
