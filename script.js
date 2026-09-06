@@ -602,7 +602,6 @@ const Router = {
         });
         this.setupMainButtons();
         this.setupSwipeNavigation();
-        this.setupStructureScrollSync();
         this.navigate('canciones', false);
     },
 
@@ -639,47 +638,6 @@ const Router = {
                 Router.gotoSetlistSong(-1);
             }
         }, { passive: true });
-    },
-
-    // Sincroniza el panel de "Orden sugerido" con la sección visible mientras se desliza la letra
-    setupStructureScrollSync() {
-        let ticking = false;
-        window.addEventListener('scroll', () => {
-            if (AppState.currentView !== 'song-reader') return;
-            const panel = document.getElementById('song-structure-panel');
-            if (!panel || panel.style.display === 'none') return;
-            if (ticking) return;
-            ticking = true;
-            requestAnimationFrame(() => {
-                this.updateActiveStructureItem();
-                ticking = false;
-            });
-        }, { passive: true });
-    },
-
-    updateActiveStructureItem() {
-        const sections = document.querySelectorAll('#song-content .section');
-        if (!sections.length) return;
-        let currentLabel = null;
-        const viewportMarker = 160;
-        sections.forEach(sec => {
-            const rect = sec.getBoundingClientRect();
-            if (rect.top <= viewportMarker) {
-                const labelEl = sec.querySelector('.section-label');
-                if (labelEl) currentLabel = labelEl.textContent.toLowerCase().trim();
-            }
-        });
-        if (!currentLabel) return;
-        const items = document.querySelectorAll('#structure-panel-list .structure-item');
-        let firstActive = null;
-        items.forEach(item => {
-            const match = item.dataset.label === currentLabel;
-            item.classList.toggle('active', match);
-            if (match && !firstActive) firstActive = item;
-        });
-        if (firstActive) {
-            firstActive.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
-        }
     },
 
     navigate(view, push = true) {
@@ -1048,38 +1006,26 @@ const Router = {
         if (!structure.length) { panel.style.display = 'none'; return; }
         panel.style.display = 'block';
         list.innerHTML = structure.map((label, idx) => `
-            <div class="structure-item" data-label="${label.toLowerCase().trim()}">${idx + 1}. ${label}</div>
+            <div class="structure-item">${idx + 1}. ${label}</div>
         `).join('');
     },
 
     showStructureEditorModal() {
         if (!AppState.currentSetlist || !AppState.currentSong) return;
         const song = AppState.currentSong;
-        this._structureDraft = this.getSongStructure(song).slice();
-        const sectionLabels = (song.sections || []).map(s => s.label);
+        const existing = this.getSongStructure(song);
+        const prefill = existing.length > 0
+            ? existing.join('\n')
+            : (song.sections || []).map(s => s.label).join('\n');
 
         this.createModal({
             title: `Orden de "${song.title}"`,
             content: `
                 <p style="margin-bottom:1rem; color:var(--text-secondary); font-size:0.9rem;">
-                    Arma el orden en que se tocará la canción hoy. Puedes repetir secciones las veces que hagan falta.
+                    Escribe el orden en que se tocará la canción hoy, una parte por línea. Repite líneas, añade "x2", "x4", o texto libre como "Instrumental" o "Final" según necesites.
                 </p>
-                <div id="structure-editor-list" style="margin-bottom:1rem;"></div>
-                <div class="form-group" style="display:flex; gap:0.5rem; align-items:flex-end;">
-                    <div style="flex:1;">
-                        <label class="form-label">Añadir sección existente</label>
-                        <select class="form-select" id="structure-add-select">
-                            ${sectionLabels.map(l => `<option value="${l}">${l}</option>`).join('')}
-                        </select>
-                    </div>
-                    <button class="btn" onclick="Router.structureAddFromSelect()">+ Añadir</button>
-                </div>
                 <div class="form-group">
-                    <label class="form-label">O texto personalizado (ej: Instrumental, Puente x4)</label>
-                    <div style="display:flex; gap:0.5rem;">
-                        <input type="text" class="form-input" id="structure-add-custom" placeholder="Ej: Instrumental">
-                        <button class="btn" onclick="Router.structureAddCustom()">+ Añadir</button>
-                    </div>
+                    <textarea class="form-textarea" id="structure-textarea" style="min-height:220px; font-family:var(--mono-font); font-size:0.9rem;">${prefill}</textarea>
                 </div>
             `,
             actions: [
@@ -1087,59 +1033,17 @@ const Router = {
                 { text: 'Guardar orden', primary: true, action: () => this.saveStructure() }
             ]
         });
-
-        this.refreshStructureEditorList();
-    },
-
-    refreshStructureEditorList() {
-        const container = document.getElementById('structure-editor-list');
-        if (!container) return;
-        const structure = this._structureDraft || [];
-        container.innerHTML = structure.length > 0 ? structure.map((label, idx) => `
-            <div class="import-preview-item" style="justify-content:space-between;">
-                <span style="flex:1;">${idx + 1}. ${label}</span>
-                <div style="display:flex; gap:0.25rem;">
-                    <button class="btn-xs" onclick="Router.structureMove(${idx}, -1)">↑</button>
-                    <button class="btn-xs" onclick="Router.structureMove(${idx}, 1)">↓</button>
-                    <button class="btn-xs" onclick="Router.structureRemove(${idx})">🗑️</button>
-                </div>
-            </div>
-        `).join('') : '<p style="color:var(--text-muted); font-size:0.85rem;">Aún no hay orden definido.</p>';
-    },
-
-    structureAddFromSelect() {
-        const sel = document.getElementById('structure-add-select');
-        if (!sel || !sel.value) return;
-        this._structureDraft.push(sel.value);
-        this.refreshStructureEditorList();
-    },
-
-    structureAddCustom() {
-        const input = document.getElementById('structure-add-custom');
-        if (!input || !input.value.trim()) return;
-        this._structureDraft.push(input.value.trim());
-        input.value = '';
-        this.refreshStructureEditorList();
-    },
-
-    structureMove(idx, dir) {
-        const arr = this._structureDraft;
-        const newIdx = idx + dir;
-        if (newIdx < 0 || newIdx >= arr.length) return;
-        const item = arr.splice(idx, 1)[0];
-        arr.splice(newIdx, 0, item);
-        this.refreshStructureEditorList();
-    },
-
-    structureRemove(idx) {
-        this._structureDraft.splice(idx, 1);
-        this.refreshStructureEditorList();
     },
 
     saveStructure() {
         if (!AppState.currentSetlist || !AppState.currentSong) { this.closeModal(); return; }
+        const textarea = document.getElementById('structure-textarea');
+        const lines = (textarea ? textarea.value : '')
+            .split('\n')
+            .map(l => l.trim())
+            .filter(l => l.length > 0);
         if (!AppState.currentSetlist.songStructures) AppState.currentSetlist.songStructures = {};
-        AppState.currentSetlist.songStructures[AppState.currentSong.id] = (this._structureDraft || []).slice();
+        AppState.currentSetlist.songStructures[AppState.currentSong.id] = lines;
         Storage.saveSetlists();
         this.closeModal();
         this.renderStructurePanel();
