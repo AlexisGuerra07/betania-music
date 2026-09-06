@@ -754,6 +754,7 @@ const Router = {
         this.bindButton('btn-back-to-repertorios', () => { history.back(); });
         this.bindButton('btn-add-songs-to-setlist', () => this.showAddSongsToSetlistModal());
         this.bindButton('btn-uniform-key', () => this.showUniformKeyModal());
+        this.bindButton('btn-clear-uniform-key', () => this.clearUniformKey());
         this.bindInput('setlist-name-input', (e) => {
             if (!AppState.currentSetlist) return;
             AppState.currentSetlist.name = e.target.value;
@@ -977,7 +978,6 @@ const Router = {
         this.applyReaderFontSize();
     },
 
-    // Calcula cuántos semitonos hay que aplicar a la canción para llevarla a la tonalidad uniforme del repertorio
     computeUniformOffset(song, setlist) {
         if (!setlist || !setlist.uniformKey || !song.keyBase) return 0;
         const targetIdx = Transposer.notes.indexOf(setlist.uniformKey);
@@ -1047,7 +1047,6 @@ const Router = {
         metaEl.textContent = metaText;
         metaEl.style.display = metaText ? 'block' : 'none';
 
-        // La tonalidad original / YouTube solo se muestran fuera de repertorios, para no cargar la vista
         const extraEl = document.getElementById('reader-extra-info');
         if (extraEl) { extraEl.style.display = 'none'; extraEl.innerHTML = ''; }
 
@@ -1416,12 +1415,15 @@ const Router = {
         if (uniformBtn) uniformBtn.style.display = 'inline-flex';
 
         const badge = document.getElementById('uniform-key-badge');
+        const clearBtn = document.getElementById('btn-clear-uniform-key');
         if (badge) {
             if (sl.uniformKey) {
                 badge.style.display = 'inline';
                 badge.textContent = `🎯 Tonalidad uniforme: ${sl.uniformKey}`;
+                if (clearBtn) clearBtn.style.display = 'inline-flex';
             } else {
                 badge.style.display = 'none';
+                if (clearBtn) clearBtn.style.display = 'none';
             }
         }
 
@@ -1575,6 +1577,14 @@ const Router = {
         sl.uniformKey = val || null;
         Storage.saveSetlists();
         this.closeModal();
+        this.renderSetlistDetail();
+    },
+
+    clearUniformKey() {
+        const sl = AppState.currentSetlist;
+        if (!sl) return;
+        sl.uniformKey = null;
+        Storage.saveSetlists();
         this.renderSetlistDetail();
     },
     // ============ FIN REPERTORIO ============
