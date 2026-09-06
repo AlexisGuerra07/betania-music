@@ -250,7 +250,7 @@ body {
     font-family: var(--mono-font);
 }
 
-/* ============ LAYOUT LETRA + PANEL DE ORDEN ============ */
+/* ============ LAYOUT LETRA + PANEL DE ORDEN (sticky puro CSS, sin JS) ============ */
 .song-body-layout {
     display: flex;
     gap: 1rem;
@@ -272,7 +272,7 @@ body {
 }
 
 .song-structure-panel {
-    width: 230px;
+    width: 220px;
     flex-shrink: 0;
     background: white;
     border: 1px solid var(--border-color);
@@ -295,21 +295,13 @@ body {
 }
 
 .structure-item {
-    padding: 0.5rem 0.7rem;
+    padding: 0.45rem 0.65rem;
     border-radius: 6px;
-    margin-bottom: 0.35rem;
+    margin-bottom: 0.3rem;
     font-size: 0.85rem;
     background: var(--bg-secondary);
     border: 1px solid var(--border-color);
-    color: var(--text-secondary);
-    transition: all 0.2s;
-}
-
-.structure-item.active {
-    background: var(--primary-color);
-    color: white;
-    border-color: var(--primary-color);
-    font-weight: 600;
+    color: var(--text-primary);
 }
 
 .section { margin-bottom: 1.25rem; }
@@ -622,18 +614,20 @@ body.fullscreen-active .song-content {
     .current-key { padding: 0.3rem 0.6rem; min-width: 2.2rem; font-size: 0.85rem; }
     .reader-controls .btn-sm, .reader-controls .btn-primary { padding: 0.4rem 0.7rem; font-size: 0.78rem; }
 
-    /* Panel de orden: en móvil va arriba, compacto y con scroll propio */
+    /* Panel de orden: pegajoso (sticky) puro CSS, sin JS que trabe el scroll */
     .song-body-layout { flex-direction: column; }
     .song-structure-panel {
         width: 100%;
-        max-height: 140px;
-        position: static;
+        max-height: 130px;
+        position: sticky;
+        top: 4rem;
+        z-index: 50;
         order: -1;
         margin-bottom: 0.6rem;
-        padding: 0.75rem;
+        padding: 0.7rem;
     }
-    .structure-panel-header { margin-bottom: 0.5rem; }
-    .structure-item { padding: 0.4rem 0.6rem; font-size: 0.8rem; margin-bottom: 0.25rem; }
+    .structure-panel-header { margin-bottom: 0.4rem; }
+    .structure-item { padding: 0.35rem 0.55rem; font-size: 0.8rem; margin-bottom: 0.2rem; }
 
     .song-content { padding: 0.85rem 1rem; border-radius: 10px; line-height: 1.25; }
     .section { margin-bottom: 0.9rem; }
