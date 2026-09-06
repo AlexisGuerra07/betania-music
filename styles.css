@@ -132,11 +132,11 @@ body {
 .empty-state h3 { font-size: 1.5rem; margin-bottom: 0.5rem; color: var(--text-secondary); }
 .empty-state p { color: var(--text-muted); }
 
+/* ============ LISTAS SIN LÍNEAS DIVISORIAS ============ */
 .songs-grid {
     display: flex;
     flex-direction: column;
-    gap: 1px;
-    background: var(--border-color);
+    background: white;
     border-radius: 8px;
     overflow: hidden;
     box-shadow: var(--shadow-sm);
@@ -146,15 +146,13 @@ body {
     background: white;
     padding: 1rem 1.5rem;
     cursor: pointer;
-    transition: all 0.15s;
+    transition: background 0.15s;
     display: flex;
     justify-content: space-between;
     align-items: center;
     min-height: 60px;
 }
 .song-item:hover { background: var(--bg-secondary); }
-.song-item:first-child { border-top-left-radius: 8px; border-top-right-radius: 8px; }
-.song-item:last-child { border-bottom-left-radius: 8px; border-bottom-right-radius: 8px; }
 
 .song-info { flex: 1; min-width: 0; }
 .song-title {
@@ -250,7 +248,7 @@ body {
     font-family: var(--mono-font);
 }
 
-/* ============ LAYOUT LETRA + PANEL DE ORDEN (sticky puro CSS, sin JS) ============ */
+/* ============ LAYOUT LETRA + PANEL DE ORDEN (sticky puro CSS) ============ */
 .song-body-layout {
     display: flex;
     gap: 1rem;
@@ -288,19 +286,15 @@ body {
 .structure-panel-header {
     font-weight: 700;
     font-size: 0.78rem;
-    margin-bottom: 0.75rem;
+    margin-bottom: 0.6rem;
     color: var(--text-secondary);
     text-transform: uppercase;
     letter-spacing: 0.03em;
 }
 
 .structure-item {
-    padding: 0.45rem 0.65rem;
-    border-radius: 6px;
-    margin-bottom: 0.3rem;
+    padding: 0.4rem 0.1rem;
     font-size: 0.85rem;
-    background: var(--bg-secondary);
-    border: 1px solid var(--border-color);
     color: var(--text-primary);
 }
 
@@ -538,6 +532,7 @@ body {
     font-weight: 700;
     cursor: pointer;
     box-shadow: var(--shadow-lg);
+    transition: opacity 0.3s;
 }
 
 body.fullscreen-active .header,
@@ -552,10 +547,6 @@ body.fullscreen-active #btn-fullscreen-toggle,
 body.fullscreen-active #btn-edit-song,
 body.fullscreen-active .reader-extra-info {
     display: none !important;
-}
-
-body.fullscreen-active #btn-fullscreen-exit {
-    display: inline-flex;
 }
 
 body.fullscreen-active .app-container {
@@ -614,20 +605,19 @@ body.fullscreen-active .song-content {
     .current-key { padding: 0.3rem 0.6rem; min-width: 2.2rem; font-size: 0.85rem; }
     .reader-controls .btn-sm, .reader-controls .btn-primary { padding: 0.4rem 0.7rem; font-size: 0.78rem; }
 
-    /* Panel de orden: pegajoso (sticky) puro CSS, sin JS que trabe el scroll */
     .song-body-layout { flex-direction: column; }
     .song-structure-panel {
         width: 100%;
-        max-height: 130px;
+        max-height: 120px;
         position: sticky;
         top: 4rem;
         z-index: 50;
         order: -1;
         margin-bottom: 0.6rem;
-        padding: 0.7rem;
+        padding: 0.65rem 0.85rem;
     }
-    .structure-panel-header { margin-bottom: 0.4rem; }
-    .structure-item { padding: 0.35rem 0.55rem; font-size: 0.8rem; margin-bottom: 0.2rem; }
+    .structure-panel-header { margin-bottom: 0.35rem; }
+    .structure-item { padding: 0.25rem 0.1rem; font-size: 0.8rem; }
 
     .song-content { padding: 0.85rem 1rem; border-radius: 10px; line-height: 1.25; }
     .section { margin-bottom: 0.9rem; }
