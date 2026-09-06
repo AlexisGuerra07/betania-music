@@ -22,9 +22,7 @@ const WakeLockManager = {
             }
         } catch (err) { console.log('No se pudo activar Wake Lock:', err); }
     },
-    release() {
-        if (this.sentinel) { this.sentinel.release(); this.sentinel = null; }
-    }
+    release() { if (this.sentinel) { this.sentinel.release(); this.sentinel = null; } }
 };
 
 document.addEventListener('visibilitychange', () => {
@@ -291,7 +289,7 @@ const ChordParser = {
         const totalChars = line.replace(/\s/g, '').length;
         return totalChars > 0 && (chordChars / totalChars) >= 0.30;
     },
-    isSectionHeader(line) { return this.sectionHeaderRegex.test(this.normalizeTildes(line.trim())); },
+    isSectionHeader(line) { return this.sectionHeaderRegex.test(this.normalizeTildes((line || '').trim())); },
     normalizeSectionName(line) {
         const normalized = this.normalizeTildes(line.replace(/[\[\]:]/g, '').trim());
         const match = normalized.match(this.sectionHeaderRegex);
@@ -621,7 +619,6 @@ const Router = {
             this.renderSongsList();
         });
 
-        // Repertorio — abierto a todos, sin cambios respecto a antes
         this.bindButton('btn-new-setlist', () => this.showNewSetlistModal());
         this.bindButton('btn-back-to-repertorios', () => { history.back(); });
         this.bindButton('btn-add-songs-to-setlist', () => this.showAddSongsToSetlistModal());
@@ -819,6 +816,23 @@ const Router = {
         return diff;
     },
 
+    // Abrevia palabras largas de secciones para el panel lateral compacto
+    abbreviateStructureLabel(label) {
+        const l = (label || '').trim();
+        const abbrevs = [
+            [/instrumental/i, 'Instr.'],
+            [/pre[\s-]?coro/i, 'Pre-C.'],
+            [/interludio/i, 'Interl.'],
+            [/estribillo/i, 'Estrib.'],
+            [/modulaci[oó]n/i, 'Modul.'],
+            [/espont[aá]neo/i, 'Espont.']
+        ];
+        for (const [regex, short] of abbrevs) {
+            if (regex.test(l)) return l.replace(regex, short);
+        }
+        return l;
+    },
+
     // ============ ORDEN DE CANCIÓN — fijo en la canción, solo lo edita el admin ============
     renderStructurePanel() {
         const panel = document.getElementById('song-structure-panel');
@@ -827,7 +841,7 @@ const Router = {
         const structure = (AppState.currentSong && AppState.currentSong.structure) || [];
         if (!structure.length) { panel.style.display = 'none'; return; }
         panel.style.display = 'block';
-        list.innerHTML = structure.map((label, idx) => `<div class="structure-item">${idx + 1}. ${label}</div>`).join('');
+        list.innerHTML = structure.map(label => `<div class="structure-item">${this.abbreviateStructureLabel(label)}</div>`).join('');
     },
 
     viewSong(songId, push = true) {
@@ -961,6 +975,9 @@ const Router = {
         }
     },
 
+    // Renderiza el contenido: cualquier línea de letra "suelta" que sea en realidad
+    // una palabra de sección (CORO, PUENTE, INSTRUMENTAL, etc.) se muestra como etiqueta,
+    // sin importar cómo esté guardada la canción.
     renderSongContent() {
         const content = document.getElementById('song-content');
         if (!AppState.currentSong) return;
@@ -971,6 +988,11 @@ const Router = {
             <div class="section">
                 <div class="section-label">${section.label}</div>
                 ${section.pairs.map(pair => {
+                    const letraTrim = (pair.letra || '').trim();
+                    const acordesEmpty = !pair.acordes || !pair.acordes.trim();
+                    if (letraTrim && acordesEmpty && ChordParser.isSectionHeader(letraTrim)) {
+                        return `<div class="section-label inline-label">${ChordParser.normalizeSectionName(letraTrim)}</div>`;
+                    }
                     let chordDisplay = '';
                     if (pair.acordes) {
                         chordDisplay = mode === 'degrees'
@@ -1559,7 +1581,6 @@ const Editor = {
         alert(`Tonalidad detectada: ${detected}`);
     },
 
-    // ============ Modal de orden de canción (solo admin, se guarda en la canción) ============
     showStructureModal() {
         if (!AppState.currentSong) return;
         const existing = AppState.currentSong.structure || [];
