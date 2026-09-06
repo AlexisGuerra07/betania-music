@@ -38,6 +38,44 @@ document.addEventListener('visibilitychange', () => {
     }
 });
 
+// ============ CONTROL DEL BOTÓN DE SALIR EN PANTALLA COMPLETA ============
+const FullscreenUI = {
+    hideTimer: null,
+    activityBound: false,
+
+    show() {
+        const btn = document.getElementById('btn-fullscreen-exit');
+        if (btn) btn.style.display = 'inline-flex';
+        this.scheduleHide();
+    },
+
+    hide() {
+        const btn = document.getElementById('btn-fullscreen-exit');
+        if (btn) btn.style.display = 'none';
+        if (this.hideTimer) { clearTimeout(this.hideTimer); this.hideTimer = null; }
+    },
+
+    scheduleHide() {
+        if (this.hideTimer) clearTimeout(this.hideTimer);
+        this.hideTimer = setTimeout(() => {
+            const btn = document.getElementById('btn-fullscreen-exit');
+            if (btn) btn.style.display = 'none';
+        }, 3000);
+    },
+
+    bindActivityListeners() {
+        if (this.activityBound) return;
+        this.activityBound = true;
+        const reveal = () => {
+            if (!AppState.fullscreenMode) return;
+            this.show();
+        };
+        document.addEventListener('touchstart', reveal, { passive: true });
+        document.addEventListener('mousemove', reveal, { passive: true });
+        document.addEventListener('click', reveal, { passive: true });
+    }
+};
+
 // ============ HISTORIAL DE NAVEGACIÓN ============
 const HistoryManager = {
     init() {
@@ -72,6 +110,7 @@ const HistoryManager = {
             if (state.fullscreen) {
                 AppState.fullscreenMode = true;
                 document.body.classList.add('fullscreen-active');
+                FullscreenUI.show();
             }
         } else if (state.view === 'repertorio-detail' && state.setlistId) {
             const sl = AppState.setlists.find(s => s.id === state.setlistId);
@@ -602,6 +641,7 @@ const Router = {
         });
         this.setupMainButtons();
         this.setupSwipeNavigation();
+        FullscreenUI.bindActivityListeners();
         this.navigate('canciones', false);
     },
 
@@ -793,6 +833,7 @@ const Router = {
         if (!AppState.currentSong || AppState.fullscreenMode) return;
         AppState.fullscreenMode = true;
         document.body.classList.add('fullscreen-active');
+        FullscreenUI.show();
         HistoryManager.push({
             view: 'song-reader',
             songId: AppState.currentSong.id,
@@ -808,6 +849,7 @@ const Router = {
     exitFullscreenMode() {
         AppState.fullscreenMode = false;
         document.body.classList.remove('fullscreen-active');
+        FullscreenUI.hide();
     },
 
     bulkDetectKeys() {
@@ -1185,6 +1227,7 @@ const Router = {
         if (wasFullscreen) {
             AppState.fullscreenMode = true;
             document.body.classList.add('fullscreen-active');
+            FullscreenUI.show();
         }
     },
 
