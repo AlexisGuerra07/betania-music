@@ -1,4 +1,3 @@
-/* Paleta minimalista en blanco y negro */
 :root {
     --primary-color: #1a1a1a;
     --primary-hover: #000000;
@@ -27,7 +26,6 @@
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
-
 html, body { max-width: 100%; overflow-x: hidden; }
 
 body {
@@ -132,7 +130,6 @@ body {
 .empty-state h3 { font-size: 1.5rem; margin-bottom: 0.5rem; color: var(--text-secondary); }
 .empty-state p { color: var(--text-muted); }
 
-/* ============ LISTAS SIN LÍNEAS DIVISORIAS ============ */
 .songs-grid {
     display: flex;
     flex-direction: column;
@@ -215,11 +212,7 @@ body {
     border: 1px solid var(--border-color);
 }
 
-.font-size-controls {
-    display: flex;
-    align-items: center;
-    gap: 0.35rem;
-}
+.font-size-controls { display: flex; align-items: center; gap: 0.35rem; }
 
 .transpose-btn {
     background: var(--primary-color);
@@ -248,12 +241,7 @@ body {
     font-family: var(--mono-font);
 }
 
-/* ============ LAYOUT LETRA + PANEL DE ORDEN (sticky puro CSS) ============ */
-.song-body-layout {
-    display: flex;
-    gap: 1rem;
-    align-items: flex-start;
-}
+.song-body-layout { display: flex; gap: 1rem; align-items: flex-start; }
 
 .song-content {
     flex: 1;
@@ -315,17 +303,9 @@ body {
 .chord-line { color: var(--primary-color); font-weight: 700; white-space: pre; margin-bottom: 0.1rem; font-size: 0.95em; transition: all 0.2s; }
 .lyric-line { color: var(--text-primary); white-space: pre; font-size: 1em; transition: all 0.2s; }
 
-.song-content.voice-mode .chord-line {
-    display: none;
-}
-.song-content.voice-mode .lyric-line {
-    font-size: 1.25em;
-    font-weight: 500;
-    line-height: 1.7;
-}
-.song-content.voice-mode .pair {
-    margin-bottom: 0.65rem;
-}
+.song-content.voice-mode .chord-line { display: none; }
+.song-content.voice-mode .lyric-line { font-size: 1.25em; font-weight: 500; line-height: 1.7; }
+.song-content.voice-mode .pair { margin-bottom: 0.65rem; }
 
 .editor-container { display: flex; gap: 2rem; height: calc(100vh - 200px); min-height: 600px; }
 
@@ -516,7 +496,6 @@ body {
 .import-preview-title { font-weight: 600; font-size: 0.9rem; }
 .import-preview-meta { font-size: 0.75rem; color: var(--text-muted); }
 
-/* ============ MODO PANTALLA COMPLETA (lector, uso en vivo) ============ */
 #btn-fullscreen-exit {
     display: none;
     position: fixed;
@@ -542,22 +521,15 @@ body.fullscreen-active .transpose-controls,
 body.fullscreen-active .font-size-controls,
 body.fullscreen-active #btn-toggle-notation,
 body.fullscreen-active #btn-voice-mode,
-body.fullscreen-active #btn-song-structure,
 body.fullscreen-active #btn-fullscreen-toggle,
 body.fullscreen-active #btn-edit-song,
 body.fullscreen-active .reader-extra-info {
     display: none !important;
 }
 
-body.fullscreen-active .app-container {
-    padding: 0.5rem;
-    max-width: 100%;
-}
-
-body.fullscreen-active .song-reader {
-    max-width: 100%;
-}
-
+body.fullscreen-active #btn-fullscreen-exit { display: inline-flex; }
+body.fullscreen-active .app-container { padding: 0.5rem; max-width: 100%; }
+body.fullscreen-active .song-reader { max-width: 100%; }
 body.fullscreen-active .reader-header {
     padding: 0.75rem 1rem;
     margin-bottom: 0.5rem;
@@ -565,15 +537,10 @@ body.fullscreen-active .reader-header {
     border-radius: 10px;
     padding-right: 5rem;
 }
-
 body.fullscreen-active .reader-title { font-size: 1.5rem; margin-bottom: 0.15rem; }
 body.fullscreen-active .reader-meta { margin-bottom: 0; }
+body.fullscreen-active .song-content { padding: 1rem 1.25rem; }
 
-body.fullscreen-active .song-content {
-    padding: 1rem 1.25rem;
-}
-
-/* ============ OPTIMIZACIÓN MÓVIL PARA USO EN VIVO ============ */
 @media (max-width: 768px) {
     .app-container { padding: 0.75rem 0.5rem; }
     .header-content { padding: 0 0.5rem; flex-wrap: wrap; gap: 0.5rem; }
@@ -623,11 +590,7 @@ body.fullscreen-active .song-content {
     .section { margin-bottom: 0.9rem; }
     .section-label { padding: 0.25rem 0.6rem; font-size: 0.75rem; margin-bottom: 0.45rem; }
 
-    .chord-line, .lyric-line {
-        white-space: pre-wrap;
-        word-break: break-word;
-        font-size: 0.85em;
-    }
+    .chord-line, .lyric-line { white-space: pre-wrap; word-break: break-word; font-size: 0.85em; }
     .chord-line { margin-bottom: 0.05rem; }
     .song-content.voice-mode .lyric-line { font-size: 1.15em; }
 
