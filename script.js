@@ -581,6 +581,7 @@ const Router = {
         this.bindButton('btn-reset-transpose', () => Editor.resetTranspose());
         this.bindButton('btn-detect-key', () => Editor.detectKey());
         this.bindButton('btn-edit-song-structure', () => Editor.showStructureModal());
+        this.bindButton('btn-song-structure-setlist', () => this.showSetlistStructureModal());
         this.bindInput('search-box', (e) => this.filterSongs(e.target.value));
         this.bindInput('bpm-editor-input', (e) => {
             if (!AppState.currentSong) return;
@@ -816,7 +817,6 @@ const Router = {
         return diff;
     },
 
-    // Abrevia palabras largas de secciones para el panel lateral compacto
     abbreviateStructureLabel(label) {
         const l = (label || '').trim();
         const abbrevs = [
@@ -827,22 +827,69 @@ const Router = {
             [/modulaci[oó]n/i, 'Modul.'],
             [/espont[aá]neo/i, 'Espont.']
         ];
-        for (const [regex, short] of abbrevs) {
-            if (regex.test(l)) return l.replace(regex, short);
-        }
+        for (const [regex, short] of abbrevs) { if (regex.test(l)) return l.replace(regex, short); }
         return l;
     },
 
-    // ============ ORDEN DE CANCIÓN — fijo en la canción, solo lo edita el admin ============
+    // ============ ORDEN DE CANCIÓN ============
+    // Prioridad: orden propio del repertorio (si existe y no está vacío) > orden fijo de la canción
+    getEffectiveStructure(song) {
+        if (!song) return [];
+        if (AppState.currentSetlist && AppState.currentSetlist.songStructures) {
+            const override = AppState.currentSetlist.songStructures[song.id];
+            if (override && override.length > 0) return override;
+        }
+        return song.structure || [];
+    },
+
     renderStructurePanel() {
         const panel = document.getElementById('song-structure-panel');
         const list = document.getElementById('structure-panel-list');
         if (!panel || !list) return;
-        const structure = (AppState.currentSong && AppState.currentSong.structure) || [];
+        const structure = this.getEffectiveStructure(AppState.currentSong);
         if (!structure.length) { panel.style.display = 'none'; return; }
-        panel.style.display = 'block';
+        panel.style.display = 'flex';
         list.innerHTML = structure.map(label => `<div class="structure-item">${this.abbreviateStructureLabel(label)}</div>`).join('');
     },
+
+    // Editar el orden PROPIO DE ESTE REPERTORIO (cualquiera puede) — solo disponible viendo desde un repertorio
+    showSetlistStructureModal() {
+        if (!AppState.currentSetlist || !AppState.currentSong) return;
+        const sl = AppState.currentSetlist;
+        const song = AppState.currentSong;
+        const override = (sl.songStructures && sl.songStructures[song.id]) || [];
+        const prefill = override.length > 0
+            ? override.join('\n')
+            : (song.structure && song.structure.length > 0 ? song.structure.join('\n') : (song.sections || []).map(s => s.label).join('\n'));
+
+        this.createModal({
+            title: `Orden en "${sl.name}"`,
+            content: `
+                <p style="margin-bottom:1rem; color:var(--text-secondary); font-size:0.9rem;">
+                    Este orden aplica solo para "${song.title}" dentro de este repertorio. Cualquiera puede editarlo. Si lo dejas vacío, se usará el orden por defecto de la canción.
+                </p>
+                <div class="form-group">
+                    <textarea class="form-textarea" id="setlist-structure-textarea" style="min-height:220px; font-family:var(--mono-font); font-size:0.9rem;">${prefill}</textarea>
+                </div>
+            `,
+            actions: [
+                { text: 'Cancelar', action: () => this.closeModal() },
+                { text: 'Guardar orden', primary: true, action: () => this.saveSetlistStructure() }
+            ]
+        });
+    },
+
+    saveSetlistStructure() {
+        if (!AppState.currentSetlist || !AppState.currentSong) { this.closeModal(); return; }
+        const textarea = document.getElementById('setlist-structure-textarea');
+        const lines = (textarea ? textarea.value : '').split('\n').map(l => l.trim()).filter(l => l.length > 0);
+        if (!AppState.currentSetlist.songStructures) AppState.currentSetlist.songStructures = {};
+        AppState.currentSetlist.songStructures[AppState.currentSong.id] = lines;
+        Storage.saveSetlists();
+        this.closeModal();
+        this.renderStructurePanel();
+    },
+    // ============ FIN ORDEN DE CANCIÓN ============
 
     viewSong(songId, push = true) {
         const song = AppState.songs.find(s => s.id === songId);
@@ -889,6 +936,9 @@ const Router = {
         AppState.voiceMode = false;
         this.resetReaderControlsUI();
 
+        const structureSetlistBtn = document.getElementById('btn-song-structure-setlist');
+        if (structureSetlistBtn) structureSetlistBtn.style.display = 'inline-flex';
+
         document.getElementById('reader-title').textContent = song.title;
         const metaText = this.formatReaderMeta(song);
         const metaEl = document.getElementById('reader-meta');
@@ -920,6 +970,8 @@ const Router = {
         if (setlistNav) setlistNav.style.display = 'none';
         const editBtn = document.getElementById('btn-edit-song');
         if (editBtn) editBtn.style.display = AppState.isAdmin ? 'inline-flex' : 'none';
+        const structureSetlistBtn = document.getElementById('btn-song-structure-setlist');
+        if (structureSetlistBtn) structureSetlistBtn.style.display = 'none';
         const extraEl = document.getElementById('reader-extra-info');
         if (extraEl) { extraEl.style.display = 'none'; extraEl.innerHTML = ''; }
         this.exitFullscreenMode();
@@ -975,9 +1027,6 @@ const Router = {
         }
     },
 
-    // Renderiza el contenido: cualquier línea de letra "suelta" que sea en realidad
-    // una palabra de sección (CORO, PUENTE, INSTRUMENTAL, etc.) se muestra como etiqueta,
-    // sin importar cómo esté guardada la canción.
     renderSongContent() {
         const content = document.getElementById('song-content');
         if (!AppState.currentSong) return;
@@ -1143,7 +1192,7 @@ const Router = {
         const name = document.getElementById('modal-setlist-name').value.trim();
         if (!name) { alert('El nombre es obligatorio'); return; }
         const creatorName = document.getElementById('modal-setlist-creator').value.trim();
-        const setlist = { id: this.generateId(), name, creatorName: creatorName || '', uniformKey: null, songIds: [], createdAt: new Date().toISOString() };
+        const setlist = { id: this.generateId(), name, creatorName: creatorName || '', uniformKey: null, songStructures: {}, songIds: [], createdAt: new Date().toISOString() };
         AppState.setlists.push(setlist);
         Storage.saveSetlists();
         AppState.currentSetlist = setlist;
@@ -1179,6 +1228,7 @@ const Router = {
     openSetlist(setlistId, push = true) {
         const sl = AppState.setlists.find(s => s.id === setlistId);
         if (!sl) return;
+        if (!sl.songStructures) sl.songStructures = {};
         AppState.currentSetlist = sl;
         this.navigate('repertorio-detail', false);
         if (push) HistoryManager.push({ view: 'repertorio-detail', setlistId });
@@ -1592,7 +1642,7 @@ const Editor = {
             title: `Orden de "${AppState.currentSong.title}"`,
             content: `
                 <p style="margin-bottom:1rem; color:var(--text-secondary); font-size:0.9rem;">
-                    Escribe el orden en que se toca esta canción (escuchando la versión original), una parte por línea. Repite líneas, añade "x2", "x4", o texto libre como "Instrumental" o "Final" según necesites. Este orden es fijo para la canción y solo tú lo puedes cambiar.
+                    Escribe el orden en que se toca esta canción (escuchando la versión original), una parte por línea. Repite líneas, añade "x2", "x4", o texto libre como "Instrumental" o "Final" según necesites. Este es el orden por defecto de la canción; cada repertorio puede tener su propio orden que sobrescribe este.
                 </p>
                 <div class="form-group">
                     <textarea class="form-textarea" id="structure-textarea" style="min-height:220px; font-family:var(--mono-font); font-size:0.9rem;">${prefill}</textarea>
