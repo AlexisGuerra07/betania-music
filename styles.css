@@ -244,11 +244,36 @@ body {
     font-family: var(--mono-font);
 }
 
-.song-body-layout { display: flex; gap: 0.85rem; align-items: flex-start; }
+/* ============ FRANJA HORIZONTAL DE ORDEN (burbujas de colores) ============ */
+.song-structure-bar {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    padding: 0.45rem 0.6rem;
+    margin-bottom: 0.85rem;
+    overflow: hidden;
+}
+
+.structure-bar-inner {
+    display: flex;
+    flex-wrap: nowrap;
+    align-items: center;
+    gap: 5px;
+    overflow: hidden;
+}
+
+.structure-chip {
+    flex-shrink: 0;
+    color: white;
+    font-weight: 700;
+    border-radius: 999px;
+    padding: calc(3px * var(--chip-scale, 1)) calc(9px * var(--chip-scale, 1));
+    font-size: calc(0.75rem * var(--chip-scale, 1));
+    white-space: nowrap;
+    line-height: 1.3;
+}
 
 .song-content {
-    flex: 1;
-    min-width: 0;
     background: white;
     border: 1px solid var(--border-color);
     border-radius: 12px;
@@ -259,28 +284,6 @@ body {
     max-width: 100%;
     overflow-x: hidden;
 }
-
-/* Panel de orden — angosto en escritorio, sin scroll interno */
-.song-structure-panel {
-    width: 108px;
-    flex-shrink: 0;
-    background: var(--bg-secondary);
-    border: 1px solid var(--border-color);
-    border-radius: 10px;
-    padding: 0.6rem 0.5rem;
-    position: sticky;
-    top: 1rem;
-}
-
-.structure-item {
-    padding: 0.3rem 0.15rem;
-    font-size: 0.72rem;
-    font-weight: 600;
-    color: var(--text-secondary);
-    line-height: 1.3;
-    border-bottom: 1px dashed var(--border-color);
-}
-.structure-item:last-child { border-bottom: none; }
 
 .section { margin-bottom: 1.25rem; }
 .section:last-child { margin-bottom: 0; }
@@ -539,9 +542,8 @@ body.fullscreen-active .reader-header {
 }
 body.fullscreen-active .reader-title { font-size: 1.3rem; margin-bottom: 0.1rem; }
 body.fullscreen-active .reader-meta { margin-bottom: 0; font-size: 0.85rem; }
+body.fullscreen-active .song-structure-bar { padding: 0.3rem 0.5rem; margin-bottom: 0.5rem; }
 body.fullscreen-active .song-content { padding: 0.85rem 1.1rem; }
-body.fullscreen-active .song-structure-panel { width: 96px; padding: 0.5rem 0.4rem; }
-body.fullscreen-active .structure-item { font-size: 0.68rem; padding: 0.25rem 0.1rem; }
 
 @media (max-width: 768px) {
     .app-container { padding: 0.75rem 0.5rem; }
@@ -574,27 +576,7 @@ body.fullscreen-active .structure-item { font-size: 0.68rem; padding: 0.25rem 0.
     .current-key { padding: 0.3rem 0.6rem; min-width: 2.2rem; font-size: 0.85rem; }
     .reader-controls .btn-sm, .reader-controls .btn-primary { padding: 0.4rem 0.7rem; font-size: 0.78rem; }
 
-    /* Panel de orden en móvil: chips que se acomodan solos, SIN scroll interno */
-    .song-body-layout { flex-direction: column; }
-    .song-structure-panel {
-        width: 100%;
-        position: static;
-        order: -1;
-        margin-bottom: 0.6rem;
-        padding: 0.5rem 0.6rem;
-        display: flex;
-        flex-wrap: wrap;
-        gap: 0.25rem 0.6rem;
-        align-items: center;
-    }
-    .structure-item {
-        border-bottom: none;
-        padding: 0.15rem 0.4rem;
-        background: white;
-        border: 1px solid var(--border-color);
-        border-radius: 12px;
-        font-size: 0.72rem;
-    }
+    .song-structure-bar { padding: 0.35rem 0.5rem; margin-bottom: 0.6rem; }
 
     .song-content { padding: 0.85rem 1rem; border-radius: 10px; line-height: 1.25; }
     .section { margin-bottom: 0.9rem; }
