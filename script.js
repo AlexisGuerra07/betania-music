@@ -31,6 +31,26 @@ document.addEventListener('visibilitychange', () => {
     }
 });
 
+// ============ PANTALLA DE CARGA (SPLASH) ============
+const SplashManager = {
+    hidden: false,
+    hide() {
+        if (this.hidden) return;
+        this.hidden = true;
+        const el = document.getElementById('app-splash');
+        if (el) {
+            el.classList.add('hidden');
+            setTimeout(() => { if (el.parentNode) el.parentNode.removeChild(el); }, 450);
+        }
+    },
+    checkReady() {
+        if (AppState.songsLoaded && AppState.setlistsLoaded) this.hide();
+    },
+    startSafetyTimeout() {
+        setTimeout(() => this.hide(), 4000);
+    }
+};
+
 // ============ CONTROL DEL BOTÓN DE SALIR EN PANTALLA COMPLETA ============
 const FullscreenUI = {
     hideTimer: null,
@@ -117,7 +137,9 @@ const AppState = {
     isCreatingNew: false,
     pendingImports: [],
     isAdmin: false,
-    currentUser: null
+    currentUser: null,
+    songsLoaded: false,
+    setlistsLoaded: false
 };
 
 // Storage
@@ -1860,17 +1882,25 @@ const Editor = {
 // Inicialización
 document.addEventListener('DOMContentLoaded', () => {
     Storage.loadSettings();
+
     if (typeof pdfjsLib !== 'undefined') {
         pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
     }
+
     Storage.listenSongs(() => {
+        AppState.songsLoaded = true;
+        SplashManager.checkReady();
         if (AppState.currentView === 'canciones') Router.renderSongsList();
         if (AppState.currentView === 'repertorio-detail') Router.renderSetlistDetail();
     });
     Storage.listenSetlists(() => {
+        AppState.setlistsLoaded = true;
+        SplashManager.checkReady();
         if (AppState.currentView === 'repertorio') Router.renderSetlistsList();
         if (AppState.currentView === 'repertorio-detail') Router.renderSetlistDetail();
     });
+
+    SplashManager.startSafetyTimeout();
 
     HistoryManager.init();
     Auth.init();
