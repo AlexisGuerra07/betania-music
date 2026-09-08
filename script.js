@@ -502,6 +502,9 @@ const Router = {
         this.setupMainButtons();
         this.setupSwipeNavigation();
         FullscreenUI.bindActivityListeners();
+        window.addEventListener('resize', () => {
+            if (AppState.currentView === 'song-reader') this.fitStructureBar();
+        });
         this.navigate('canciones', false);
     },
 
@@ -658,12 +661,14 @@ const Router = {
             setlistId: AppState.currentSetlist ? AppState.currentSetlist.id : null,
             fullscreen: true
         });
+        setTimeout(() => this.fitStructureBar(), 50);
     },
     requestExitFullscreen() { if (AppState.fullscreenMode) history.back(); },
     exitFullscreenMode() {
         AppState.fullscreenMode = false;
         document.body.classList.remove('fullscreen-active');
         FullscreenUI.hide();
+        setTimeout(() => this.fitStructureBar(), 50);
     },
 
     bulkDetectKeys() {
@@ -817,22 +822,38 @@ const Router = {
         return diff;
     },
 
-    abbreviateStructureLabel(label) {
-        const l = (label || '').trim();
-        const abbrevs = [
-            [/instrumental/i, 'Instr.'],
-            [/pre[\s-]?coro/i, 'Pre-C.'],
-            [/interludio/i, 'Interl.'],
-            [/estribillo/i, 'Estrib.'],
-            [/modulaci[oó]n/i, 'Modul.'],
-            [/espont[aá]neo/i, 'Espont.']
-        ];
-        for (const [regex, short] of abbrevs) { if (regex.test(l)) return l.replace(regex, short); }
-        return l;
+    // ============ ORDEN DE CANCIÓN — burbujas de colores en franja horizontal ============
+    STRUCTURE_RULES: [
+        [/^pre[\s-]?coro/i, 'PC', '#7c3aed'],
+        [/^estribillo/i, 'C', '#e11d48'],
+        [/^coro/i, 'C', '#dc2626'],
+        [/^(estrofa|verso)/i, 'E', '#2563eb'],
+        [/^intro/i, 'I', '#0d9488'],
+        [/^(puente|bridge)/i, 'P', '#16a34a'],
+        [/^interludio/i, 'INT', '#0891b2'],
+        [/^instr(umental)?\.?/i, 'INST', '#d97706'],
+        [/^solo/i, 'S', '#db2777'],
+        [/^outro/i, 'O', '#78716c'],
+        [/^final/i, 'F', '#111827'],
+        [/^tag/i, 'T', '#6b7280'],
+        [/^modulaci[oó]n/i, 'MOD', '#9333ea'],
+        [/^leyenda/i, 'LEY', '#6b7280'],
+        [/^espont[aá]neo/i, 'ESP', '#059669']
+    ],
+
+    buildStructureChip(rawLabel) {
+        const original = (rawLabel || '').trim();
+        for (const [regex, short, color] of this.STRUCTURE_RULES) {
+            const m = original.match(regex);
+            if (m) {
+                const rest = original.slice(m[0].length).trim();
+                const text = rest ? `${short}${rest}` : short;
+                return { text, color };
+            }
+        }
+        return { text: original, color: '#4b5563' };
     },
 
-    // ============ ORDEN DE CANCIÓN ============
-    // Prioridad: orden propio del repertorio (si existe y no está vacío) > orden fijo de la canción
     getEffectiveStructure(song) {
         if (!song) return [];
         if (AppState.currentSetlist && AppState.currentSetlist.songStructures) {
@@ -842,14 +863,32 @@ const Router = {
         return song.structure || [];
     },
 
-    renderStructurePanel() {
-        const panel = document.getElementById('song-structure-panel');
-        const list = document.getElementById('structure-panel-list');
-        if (!panel || !list) return;
+    renderStructureBar() {
+        const bar = document.getElementById('song-structure-bar');
+        const inner = document.getElementById('structure-bar-inner');
+        if (!bar || !inner) return;
         const structure = this.getEffectiveStructure(AppState.currentSong);
-        if (!structure.length) { panel.style.display = 'none'; return; }
-        panel.style.display = 'flex';
-        list.innerHTML = structure.map(label => `<div class="structure-item">${this.abbreviateStructureLabel(label)}</div>`).join('');
+        if (!structure.length) { bar.style.display = 'none'; inner.innerHTML = ''; return; }
+        bar.style.display = 'block';
+        inner.style.removeProperty('--chip-scale');
+        inner.innerHTML = structure.map(label => {
+            const { text, color } = this.buildStructureChip(label);
+            return `<span class="structure-chip" style="background:${color}">${text}</span>`;
+        }).join('');
+        requestAnimationFrame(() => this.fitStructureBar());
+    },
+
+    fitStructureBar() {
+        const inner = document.getElementById('structure-bar-inner');
+        if (!inner || !inner.children.length) return;
+        let scale = 1;
+        inner.style.setProperty('--chip-scale', scale.toFixed(2));
+        let guard = 0;
+        while (inner.scrollWidth > inner.clientWidth && scale > 0.45 && guard < 20) {
+            scale -= 0.05;
+            inner.style.setProperty('--chip-scale', scale.toFixed(2));
+            guard++;
+        }
     },
 
     // Editar el orden PROPIO DE ESTE REPERTORIO (cualquiera puede) — solo disponible viendo desde un repertorio
@@ -887,7 +926,7 @@ const Router = {
         AppState.currentSetlist.songStructures[AppState.currentSong.id] = lines;
         Storage.saveSetlists();
         this.closeModal();
-        this.renderStructurePanel();
+        this.renderStructureBar();
     },
     // ============ FIN ORDEN DE CANCIÓN ============
 
@@ -915,7 +954,7 @@ const Router = {
         document.getElementById('current-key-reader').textContent = song.keyBase;
         this.renderSongContent();
         this.applyReaderFontSize();
-        this.renderStructurePanel();
+        this.renderStructureBar();
         this.navigate('song-reader', false);
         WakeLockManager.request();
 
@@ -951,7 +990,7 @@ const Router = {
         document.getElementById('current-key-reader').textContent = Transposer.cleanChord(Transposer.transpose(song.keyBase, baseOffset));
         this.renderSongContent();
         this.applyReaderFontSize();
-        this.renderStructurePanel();
+        this.renderStructureBar();
         this.updateSetlistNavControls();
         this.navigate('song-reader', false);
         WakeLockManager.request();
