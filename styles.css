@@ -172,7 +172,6 @@ body {
     text-overflow: ellipsis;
 }
 
-/* Nota de bloque encima de la canción, dentro del repertorio */
 .song-block-note {
     font-size: 0.75rem;
     font-weight: 700;
@@ -204,6 +203,7 @@ body {
 .edit-btn:hover { color: var(--primary-color); background: rgba(17, 24, 39, 0.06); border-color: rgba(17, 24, 39, 0.15); }
 .delete-btn:hover { color: var(--danger-color); background: rgba(220, 38, 38, 0.08); border-color: rgba(220, 38, 38, 0.2); }
 .note-btn:hover { color: #7c3aed; background: rgba(124, 58, 237, 0.08); border-color: rgba(124, 58, 237, 0.2); }
+.note-btn.has-note { color: #7c3aed; }
 
 .song-reader { max-width: 1100px; margin: 0 auto; }
 
@@ -216,7 +216,6 @@ body {
     box-shadow: var(--shadow-sm);
 }
 
-/* Nota de bloque mostrada en el lector cuando se abre desde un repertorio */
 .reader-block-note {
     font-size: 0.8rem;
     font-weight: 700;
@@ -557,7 +556,6 @@ body.fullscreen-active .font-size-controls,
 body.fullscreen-active #btn-toggle-notation,
 body.fullscreen-active #btn-voice-mode,
 body.fullscreen-active #btn-song-structure-setlist,
-body.fullscreen-active #btn-song-parts-setlist,
 body.fullscreen-active #btn-fullscreen-toggle,
 body.fullscreen-active #btn-edit-song,
 body.fullscreen-active .reader-extra-info {
