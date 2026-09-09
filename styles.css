@@ -172,6 +172,20 @@ body {
     text-overflow: ellipsis;
 }
 
+/* Nota de bloque encima de la canción, dentro del repertorio */
+.song-block-note {
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: var(--primary-color);
+    background: var(--bg-tertiary);
+    display: inline-block;
+    padding: 0.15rem 0.5rem;
+    border-radius: 4px;
+    margin-bottom: 0.35rem;
+    white-space: normal;
+    line-height: 1.35;
+}
+
 .song-actions { display: flex; gap: 0.5rem; margin-left: 1rem; flex-shrink: 0; }
 
 .action-btn {
@@ -189,6 +203,7 @@ body {
 .action-btn:hover { background: var(--bg-tertiary); border-color: var(--border-color); }
 .edit-btn:hover { color: var(--primary-color); background: rgba(17, 24, 39, 0.06); border-color: rgba(17, 24, 39, 0.15); }
 .delete-btn:hover { color: var(--danger-color); background: rgba(220, 38, 38, 0.08); border-color: rgba(220, 38, 38, 0.2); }
+.note-btn:hover { color: #7c3aed; background: rgba(124, 58, 237, 0.08); border-color: rgba(124, 58, 237, 0.2); }
 
 .song-reader { max-width: 1100px; margin: 0 auto; }
 
@@ -200,6 +215,21 @@ body {
     margin-bottom: 1.5rem;
     box-shadow: var(--shadow-sm);
 }
+
+/* Nota de bloque mostrada en el lector cuando se abre desde un repertorio */
+.reader-block-note {
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: var(--primary-color);
+    background: var(--bg-tertiary);
+    display: inline-block;
+    padding: 0.3rem 0.7rem;
+    border-radius: 6px;
+    margin-bottom: 0.75rem;
+    white-space: pre-wrap;
+    line-height: 1.4;
+}
+
 .reader-title { font-size: 2rem; font-weight: 700; margin-bottom: 0.5rem; color: var(--text-primary); }
 .reader-meta { color: var(--text-secondary); font-size: 1rem; margin-bottom: 0.5rem; }
 .reader-extra-info { font-size: 0.9rem; color: var(--text-secondary); margin-bottom: 1rem; }
@@ -244,7 +274,22 @@ body {
     font-family: var(--mono-font);
 }
 
-/* ============ FRANJA HORIZONTAL DE ORDEN (burbujas de colores) ============ */
+.song-body-layout { display: flex; gap: 0.85rem; align-items: flex-start; }
+
+.song-content {
+    flex: 1;
+    min-width: 0;
+    background: white;
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    padding: 1.5rem 2rem;
+    box-shadow: var(--shadow-sm);
+    font-family: var(--mono-font);
+    line-height: 1.3;
+    max-width: 100%;
+    overflow-x: hidden;
+}
+
 .song-structure-bar {
     background: var(--bg-secondary);
     border: 1px solid var(--border-color);
@@ -271,18 +316,6 @@ body {
     font-size: calc(0.75rem * var(--chip-scale, 1));
     white-space: nowrap;
     line-height: 1.3;
-}
-
-.song-content {
-    background: white;
-    border: 1px solid var(--border-color);
-    border-radius: 12px;
-    padding: 1.5rem 2rem;
-    box-shadow: var(--shadow-sm);
-    font-family: var(--mono-font);
-    line-height: 1.3;
-    max-width: 100%;
-    overflow-x: hidden;
 }
 
 .section { margin-bottom: 1.25rem; }
@@ -524,6 +557,7 @@ body.fullscreen-active .font-size-controls,
 body.fullscreen-active #btn-toggle-notation,
 body.fullscreen-active #btn-voice-mode,
 body.fullscreen-active #btn-song-structure-setlist,
+body.fullscreen-active #btn-song-parts-setlist,
 body.fullscreen-active #btn-fullscreen-toggle,
 body.fullscreen-active #btn-edit-song,
 body.fullscreen-active .reader-extra-info {
@@ -542,6 +576,7 @@ body.fullscreen-active .reader-header {
 }
 body.fullscreen-active .reader-title { font-size: 1.3rem; margin-bottom: 0.1rem; }
 body.fullscreen-active .reader-meta { margin-bottom: 0; font-size: 0.85rem; }
+body.fullscreen-active .reader-block-note { font-size: 0.72rem; padding: 0.2rem 0.5rem; margin-bottom: 0.5rem; }
 body.fullscreen-active .song-structure-bar { padding: 0.3rem 0.5rem; margin-bottom: 0.5rem; }
 body.fullscreen-active .song-content { padding: 0.85rem 1.1rem; }
 
@@ -564,6 +599,7 @@ body.fullscreen-active .song-content { padding: 0.85rem 1.1rem; }
     .reader-header { padding: 0.85rem 1rem; margin-bottom: 0.6rem; border-radius: 10px; }
     .reader-title { font-size: 1.25rem; margin-bottom: 0.15rem; }
     .reader-meta { font-size: 0.8rem; margin-bottom: 0.3rem; }
+    .reader-block-note { font-size: 0.75rem; padding: 0.25rem 0.6rem; margin-bottom: 0.6rem; }
     .reader-extra-info { font-size: 0.8rem; margin-bottom: 0.6rem; }
     #btn-back-to-list { padding: 0.35rem 0.7rem; font-size: 0.78rem; margin-bottom: 0.5rem; }
 
@@ -595,32 +631,4 @@ body.fullscreen-active .song-content { padding: 0.85rem 1.1rem; }
     .toolbar-left, .toolbar-right { flex-wrap: wrap; }
     .chips-container { display: none; }
     .section-header { flex-direction: column; align-items: stretch; gap: 0.75rem; }
-}
-/* ============ PANTALLA DE CARGA (SPLASH) ============ */
-#app-splash {
-    position: fixed;
-    inset: 0;
-    background: #ffffff;
-    z-index: 5000;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: opacity 0.4s ease;
-}
-
-#app-splash.hidden {
-    opacity: 0;
-    pointer-events: none;
-}
-
-#splash-logo {
-    width: 110px;
-    height: 110px;
-    object-fit: contain;
-    animation: splash-pulse 1.4s ease-in-out infinite;
-}
-
-@keyframes splash-pulse {
-    0%, 100% { opacity: 1; transform: scale(1); }
-    50% { opacity: 0.65; transform: scale(0.95); }
 }
