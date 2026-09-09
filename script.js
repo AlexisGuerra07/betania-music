@@ -607,6 +607,7 @@ const Router = {
         this.bindButton('btn-detect-key', () => Editor.detectKey());
         this.bindButton('btn-edit-song-structure', () => Editor.showStructureModal());
         this.bindButton('btn-song-structure-setlist', () => this.showSetlistStructureModal());
+        this.bindButton('btn-song-parts-setlist', () => this.showSetlistPartsModal());
         this.bindInput('search-box', (e) => this.filterSongs(e.target.value));
         this.bindInput('bpm-editor-input', (e) => {
             if (!AppState.currentSong) return;
@@ -952,6 +953,129 @@ const Router = {
     },
     // ============ FIN ORDEN DE CANCIÓN ============
 
+    // ============ PARTES VISIBLES POR REPERTORIO (ocultar estrofas, dejar solo coro, etc.) ============
+    getEffectiveSections(song) {
+        if (!song || !song.sections) return [];
+        if (AppState.currentSetlist && AppState.currentSetlist.songVisibility) {
+            const hidden = AppState.currentSetlist.songVisibility[song.id];
+            if (hidden && hidden.length > 0) {
+                return song.sections.filter((s, idx) => !hidden.includes(idx));
+            }
+        }
+        return song.sections;
+    },
+
+    showSetlistPartsModal() {
+        if (!AppState.currentSetlist || !AppState.currentSong) return;
+        const sl = AppState.currentSetlist;
+        const song = AppState.currentSong;
+        const hidden = (sl.songVisibility && sl.songVisibility[song.id]) || [];
+
+        this.createModal({
+            title: `Partes a mostrar en "${sl.name}"`,
+            content: `
+                <p style="margin-bottom:1rem; color:var(--text-secondary); font-size:0.9rem;">
+                    Destilda las partes que no se van a tocar hoy. Esto solo afecta cómo se ve "${song.title}" dentro de este repertorio — no borra nada de la canción original.
+                </p>
+                <div id="setlist-parts-list">
+                    ${song.sections.map((s, idx) => `
+                        <div class="import-preview-item">
+                            <input type="checkbox" data-idx="${idx}" class="setlist-part-checkbox" ${hidden.includes(idx) ? '' : 'checked'}>
+                            <div class="import-preview-info">
+                                <div class="import-preview-title">${idx + 1}. ${s.label}</div>
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+            `,
+            actions: [
+                { text: 'Cancelar', action: () => this.closeModal() },
+                { text: 'Mostrar todas', action: () => this.resetSetlistParts() },
+                { text: 'Guardar', primary: true, action: () => this.saveSetlistParts() }
+            ]
+        });
+    },
+
+    saveSetlistParts() {
+        if (!AppState.currentSetlist || !AppState.currentSong) { this.closeModal(); return; }
+        const checkboxes = document.querySelectorAll('.setlist-part-checkbox');
+        const hiddenIdx = [];
+        checkboxes.forEach(cb => { if (!cb.checked) hiddenIdx.push(parseInt(cb.dataset.idx)); });
+        if (!AppState.currentSetlist.songVisibility) AppState.currentSetlist.songVisibility = {};
+        AppState.currentSetlist.songVisibility[AppState.currentSong.id] = hiddenIdx;
+        Storage.saveSetlists();
+        this.closeModal();
+        this.renderSongContent();
+    },
+
+    resetSetlistParts() {
+        if (!AppState.currentSetlist || !AppState.currentSong) { this.closeModal(); return; }
+        if (!AppState.currentSetlist.songVisibility) AppState.currentSetlist.songVisibility = {};
+        AppState.currentSetlist.songVisibility[AppState.currentSong.id] = [];
+        Storage.saveSetlists();
+        this.closeModal();
+        this.renderSongContent();
+    },
+    // ============ FIN PARTES VISIBLES ============
+
+    // ============ NOTA DE BLOQUE POR CANCIÓN, DENTRO DE UN REPERTORIO ============
+    getSongBlockNote(song) {
+        if (!song || !AppState.currentSetlist || !AppState.currentSetlist.songNotes) return '';
+        return AppState.currentSetlist.songNotes[song.id] || '';
+    },
+
+    showSongNoteModal(songId) {
+        if (!AppState.currentSetlist) return;
+        const sl = AppState.currentSetlist;
+        const song = AppState.songs.find(s => s.id === songId);
+        if (!song) return;
+        const existing = (sl.songNotes && sl.songNotes[songId]) || '';
+
+        this.createModal({
+            title: `Nota para "${song.title}"`,
+            content: `
+                <p style="margin-bottom:1rem; color:var(--text-secondary); font-size:0.9rem;">
+                    Escribe aquí la referencia que quieres que aparezca arriba de esta canción dentro de "${sl.name}" (por ejemplo el bloque al que pertenece o el motivo de oración). Solo se ve en este repertorio.
+                </p>
+                <div class="form-group">
+                    <textarea class="form-textarea" id="song-note-textarea" style="min-height:120px; font-size:0.9rem;">${existing}</textarea>
+                </div>
+            `,
+            actions: [
+                { text: 'Cancelar', action: () => this.closeModal() },
+                { text: 'Quitar nota', action: () => this.saveSongNote(songId, '') },
+                { text: 'Guardar', primary: true, action: () => {
+                    const textarea = document.getElementById('song-note-textarea');
+                    this.saveSongNote(songId, textarea ? textarea.value.trim() : '');
+                } }
+            ]
+        });
+    },
+
+    saveSongNote(songId, text) {
+        const sl = AppState.currentSetlist;
+        if (!sl) { this.closeModal(); return; }
+        if (!sl.songNotes) sl.songNotes = {};
+        if (text) sl.songNotes[songId] = text;
+        else delete sl.songNotes[songId];
+        Storage.saveSetlists();
+        this.closeModal();
+        this.renderSetlistDetail();
+        if (AppState.currentSong && AppState.currentSong.id === songId) {
+            this.updateReaderBlockNote();
+        }
+    },
+
+    updateReaderBlockNote() {
+        const el = document.getElementById('reader-block-note');
+        if (!el) return;
+        if (!AppState.currentSetlist || !AppState.currentSong) { el.style.display = 'none'; el.textContent = ''; return; }
+        const note = this.getSongBlockNote(AppState.currentSong);
+        if (note) { el.textContent = note; el.style.display = 'inline-block'; }
+        else { el.style.display = 'none'; el.textContent = ''; }
+    },
+    // ============ FIN NOTA DE BLOQUE ============
+
     viewSong(songId, push = true) {
         const song = AppState.songs.find(s => s.id === songId);
         if (!song) return;
@@ -999,6 +1123,8 @@ const Router = {
 
         const structureSetlistBtn = document.getElementById('btn-song-structure-setlist');
         if (structureSetlistBtn) structureSetlistBtn.style.display = 'inline-flex';
+        const partsSetlistBtn = document.getElementById('btn-song-parts-setlist');
+        if (partsSetlistBtn) partsSetlistBtn.style.display = 'inline-flex';
 
         document.getElementById('reader-title').textContent = song.title;
         const metaText = this.formatReaderMeta(song);
@@ -1013,6 +1139,7 @@ const Router = {
         this.renderSongContent();
         this.applyReaderFontSize();
         this.renderStructureBar();
+        this.updateReaderBlockNote();
         this.updateSetlistNavControls();
         this.navigate('song-reader', false);
         WakeLockManager.request();
@@ -1033,8 +1160,12 @@ const Router = {
         if (editBtn) editBtn.style.display = AppState.isAdmin ? 'inline-flex' : 'none';
         const structureSetlistBtn = document.getElementById('btn-song-structure-setlist');
         if (structureSetlistBtn) structureSetlistBtn.style.display = 'none';
+        const partsSetlistBtn = document.getElementById('btn-song-parts-setlist');
+        if (partsSetlistBtn) partsSetlistBtn.style.display = 'none';
         const extraEl = document.getElementById('reader-extra-info');
         if (extraEl) { extraEl.style.display = 'none'; extraEl.innerHTML = ''; }
+        const blockNoteEl = document.getElementById('reader-block-note');
+        if (blockNoteEl) { blockNoteEl.style.display = 'none'; blockNoteEl.textContent = ''; }
         this.exitFullscreenMode();
     },
 
@@ -1093,8 +1224,9 @@ const Router = {
         if (!AppState.currentSong) return;
         const song = AppState.currentSong;
         const mode = AppState.notationMode || 'chords';
+        const sectionsToShow = this.getEffectiveSections(song);
 
-        content.innerHTML = song.sections.map(section => `
+        content.innerHTML = sectionsToShow.map(section => `
             <div class="section">
                 <div class="section-label">${section.label}</div>
                 ${section.pairs.map(pair => {
@@ -1253,7 +1385,7 @@ const Router = {
         const name = document.getElementById('modal-setlist-name').value.trim();
         if (!name) { alert('El nombre es obligatorio'); return; }
         const creatorName = document.getElementById('modal-setlist-creator').value.trim();
-        const setlist = { id: this.generateId(), name, creatorName: creatorName || '', uniformKey: null, songStructures: {}, songIds: [], createdAt: new Date().toISOString() };
+        const setlist = { id: this.generateId(), name, creatorName: creatorName || '', uniformKey: null, songStructures: {}, songVisibility: {}, songNotes: {}, songIds: [], createdAt: new Date().toISOString() };
         AppState.setlists.push(setlist);
         Storage.saveSetlists();
         AppState.currentSetlist = setlist;
@@ -1290,6 +1422,8 @@ const Router = {
         const sl = AppState.setlists.find(s => s.id === setlistId);
         if (!sl) return;
         if (!sl.songStructures) sl.songStructures = {};
+        if (!sl.songVisibility) sl.songVisibility = {};
+        if (!sl.songNotes) sl.songNotes = {};
         AppState.currentSetlist = sl;
         this.navigate('repertorio-detail', false);
         if (push) HistoryManager.push({ view: 'repertorio-detail', setlistId });
@@ -1327,13 +1461,21 @@ const Router = {
         list.innerHTML = songs.map((song, idx) => {
             const offset = this.computeUniformOffset(song, sl);
             const displayKey = offset !== 0 ? Transposer.cleanChord(Transposer.transpose(song.keyBase, offset)) : song.keyBase;
+            const note = (sl.songNotes && sl.songNotes[song.id]) || '';
             return `
             <div class="song-item" onclick="Router.viewSetlistSong('${song.id}')">
                 <div class="song-info">
+                    ${note ? `<div class="song-block-note">${note}</div>` : ''}
                     <div class="song-title">${idx + 1}. ${song.title}</div>
                     <div class="song-meta">${displayKey}${offset !== 0 ? ` (orig. ${song.keyBase})` : ''}${song.bpm ? ` • ${song.bpm} BPM` : ''}</div>
                 </div>
                 <div class="song-actions" onclick="event.stopPropagation()">
+                    <button class="action-btn note-btn" onclick="Router.showSongNoteModal('${song.id}')" title="Añadir/editar nota">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                            <path d="m18.5 2.5 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                        </svg>
+                    </button>
                     <button class="action-btn" onclick="Router.moveSetlistSong(${idx}, -1)" title="Subir" ${idx === 0 ? 'style="opacity:0.3;pointer-events:none;"' : ''}>
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 19V5M5 12l7-7 7 7"/></svg>
                     </button>
