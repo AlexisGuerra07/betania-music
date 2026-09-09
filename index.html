@@ -1,632 +1,267 @@
-:root {
-    --primary-color: #1a1a1a;
-    --primary-hover: #000000;
-    --secondary-color: #6b7280;
-    --success-color: #16a34a;
-    --danger-color: #dc2626;
-    --warning-color: #d97706;
-
-    --bg-primary: #ffffff;
-    --bg-secondary: #f9fafb;
-    --bg-tertiary: #f3f4f6;
-
-    --text-primary: #111827;
-    --text-secondary: #4b5563;
-    --text-muted: #9ca3af;
-
-    --border-color: #e5e7eb;
-    --border-hover: #d1d5db;
-
-    --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
-    --shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
-    --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.08), 0 2px 4px -2px rgb(0 0 0 / 0.08);
-    --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
-
-    --mono-font: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
-}
-
-* { box-sizing: border-box; margin: 0; padding: 0; }
-html, body { max-width: 100%; overflow-x: hidden; }
-
-body {
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-    font-size: 14px;
-    line-height: 1.5;
-    color: var(--text-primary);
-    background-color: var(--bg-primary);
-    overflow-x: hidden;
-}
-
-.header {
-    background: #ffffff;
-    color: var(--text-primary);
-    padding: 1rem 0;
-    box-shadow: var(--shadow-sm);
-    border-bottom: 1px solid var(--border-color);
-    position: sticky;
-    top: 0;
-    z-index: 100;
-}
-
-.header-content {
-    max-width: 1200px;
-    margin: 0 auto;
-    padding: 0 1rem;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-}
-
-.logo-section { display: flex; align-items: center; gap: 0.75rem; transition: opacity 0.2s; }
-.logo-section:hover { opacity: 0.7; }
-.logo-img { width: 52px; height: 52px; object-fit: contain; display: block; }
-.logo-text { font-size: 1.5rem; font-weight: 700; color: var(--text-primary); letter-spacing: -0.02em; white-space: nowrap; }
-
-.nav-tabs { display: flex; gap: 0.5rem; }
-
-.nav-tab {
-    background: transparent;
-    border: 1px solid var(--border-color);
-    color: var(--text-secondary);
-    padding: 0.5rem 1rem;
-    border-radius: 6px;
-    cursor: pointer;
-    transition: all 0.2s;
-    font-size: 0.875rem;
-    font-weight: 500;
-}
-.nav-tab:hover { background: var(--bg-tertiary); color: var(--text-primary); }
-.nav-tab.active { background: var(--primary-color); color: white; border-color: var(--primary-color); }
-
-.app-container { max-width: 1200px; margin: 0 auto; padding: 2rem 1rem; overflow-x: hidden; }
-.view { display: none; }
-.view.active { display: block; }
-
-.songs-container { max-width: 800px; margin: 0 auto; }
-
-.section-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    margin-bottom: 2rem;
-    flex-wrap: wrap;
-    gap: 1rem;
-}
-
-.section-title { font-size: 2rem; font-weight: 700; color: var(--text-primary); letter-spacing: -0.02em; }
-
-.btn-add-song {
-    background: var(--primary-color);
-    color: white;
-    border: none;
-    padding: 0.75rem 1.5rem;
-    border-radius: 8px;
-    font-weight: 600;
-    cursor: pointer;
-    transition: background 0.2s;
-    font-size: 0.875rem;
-}
-.btn-add-song:hover { background: var(--primary-hover); }
-
-.search-container { margin-bottom: 2rem; }
-
-.search-box {
-    width: 100%;
-    padding: 0.75rem 1rem;
-    border: 2px solid var(--border-color);
-    border-radius: 8px;
-    font-size: 1rem;
-    transition: border-color 0.2s;
-}
-.search-box:focus { outline: none; border-color: var(--primary-color); }
-
-.empty-state {
-    text-align: center;
-    padding: 4rem 2rem;
-    background: var(--bg-secondary);
-    border-radius: 12px;
-    border: 2px dashed var(--border-color);
-}
-.empty-state h3 { font-size: 1.5rem; margin-bottom: 0.5rem; color: var(--text-secondary); }
-.empty-state p { color: var(--text-muted); }
-
-.songs-grid {
-    display: flex;
-    flex-direction: column;
-    background: white;
-    border-radius: 8px;
-    overflow: hidden;
-    box-shadow: var(--shadow-sm);
-    border: none;
-}
-
-.song-item {
-    background: white;
-    padding: 1rem 1.5rem;
-    cursor: pointer;
-    transition: background 0.15s;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    min-height: 60px;
-    border: none;
-    box-shadow: none;
-}
-.song-item:hover { background: var(--bg-secondary); }
-
-.song-info { flex: 1; min-width: 0; }
-.song-title {
-    font-size: 1.1rem;
-    font-weight: 600;
-    margin-bottom: 0.25rem;
-    color: var(--text-primary);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-}
-.song-meta {
-    color: var(--text-secondary);
-    font-size: 0.85rem;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-}
-
-.song-block-note {
-    font-size: 0.75rem;
-    font-weight: 700;
-    color: var(--primary-color);
-    background: var(--bg-tertiary);
-    display: inline-block;
-    padding: 0.15rem 0.5rem;
-    border-radius: 4px;
-    margin-bottom: 0.35rem;
-    white-space: normal;
-    line-height: 1.35;
-}
-
-.song-actions { display: flex; gap: 0.5rem; margin-left: 1rem; flex-shrink: 0; }
-
-.action-btn {
-    background: transparent;
-    border: 1px solid transparent;
-    padding: 0.5rem;
-    border-radius: 4px;
-    cursor: pointer;
-    transition: all 0.2s;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: var(--text-muted);
-}
-.action-btn:hover { background: var(--bg-tertiary); border-color: var(--border-color); }
-.edit-btn:hover { color: var(--primary-color); background: rgba(17, 24, 39, 0.06); border-color: rgba(17, 24, 39, 0.15); }
-.delete-btn:hover { color: var(--danger-color); background: rgba(220, 38, 38, 0.08); border-color: rgba(220, 38, 38, 0.2); }
-.note-btn:hover { color: #7c3aed; background: rgba(124, 58, 237, 0.08); border-color: rgba(124, 58, 237, 0.2); }
-.note-btn.has-note { color: #7c3aed; }
-
-.song-reader { max-width: 1100px; margin: 0 auto; }
-
-.reader-header {
-    background: white;
-    border: 1px solid var(--border-color);
-    border-radius: 12px;
-    padding: 2rem;
-    margin-bottom: 1.5rem;
-    box-shadow: var(--shadow-sm);
-}
-
-.reader-block-note {
-    font-size: 0.8rem;
-    font-weight: 700;
-    color: var(--primary-color);
-    background: var(--bg-tertiary);
-    display: inline-block;
-    padding: 0.3rem 0.7rem;
-    border-radius: 6px;
-    margin-bottom: 0.75rem;
-    white-space: pre-wrap;
-    line-height: 1.4;
-}
-
-.reader-title { font-size: 2rem; font-weight: 700; margin-bottom: 0.5rem; color: var(--text-primary); }
-.reader-meta { color: var(--text-secondary); font-size: 1rem; margin-bottom: 0.5rem; }
-.reader-extra-info { font-size: 0.9rem; color: var(--text-secondary); margin-bottom: 1rem; }
-.reader-controls { display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; }
-
-.transpose-controls {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    background: var(--bg-secondary);
-    padding: 0.75rem 1rem;
-    border-radius: 8px;
-    border: 1px solid var(--border-color);
-}
-
-.font-size-controls { display: flex; align-items: center; gap: 0.35rem; }
-
-.transpose-btn {
-    background: var(--primary-color);
-    color: white;
-    border: none;
-    width: 2rem;
-    height: 2rem;
-    border-radius: 4px;
-    cursor: pointer;
-    font-size: 1rem;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: background 0.2s;
-}
-.transpose-btn:hover { background: var(--primary-hover); }
-
-.current-key {
-    background: white;
-    border: 1px solid var(--border-color);
-    padding: 0.5rem 1rem;
-    border-radius: 6px;
-    font-weight: 600;
-    min-width: 3rem;
-    text-align: center;
-    font-family: var(--mono-font);
-}
-
-.song-body-layout { display: flex; gap: 0.85rem; align-items: flex-start; }
-
-.song-content {
-    flex: 1;
-    min-width: 0;
-    background: white;
-    border: 1px solid var(--border-color);
-    border-radius: 12px;
-    padding: 1.5rem 2rem;
-    box-shadow: var(--shadow-sm);
-    font-family: var(--mono-font);
-    line-height: 1.3;
-    max-width: 100%;
-    overflow-x: hidden;
-}
-
-.song-structure-bar {
-    background: var(--bg-secondary);
-    border: 1px solid var(--border-color);
-    border-radius: 10px;
-    padding: 0.45rem 0.6rem;
-    margin-bottom: 0.85rem;
-    overflow: hidden;
-}
-
-.structure-bar-inner {
-    display: flex;
-    flex-wrap: nowrap;
-    align-items: center;
-    gap: 5px;
-    overflow: hidden;
-}
-
-.structure-chip {
-    flex-shrink: 0;
-    color: white;
-    font-weight: 700;
-    border-radius: 999px;
-    padding: calc(3px * var(--chip-scale, 1)) calc(9px * var(--chip-scale, 1));
-    font-size: calc(0.75rem * var(--chip-scale, 1));
-    white-space: nowrap;
-    line-height: 1.3;
-}
-
-.section { margin-bottom: 1.25rem; }
-.section:last-child { margin-bottom: 0; }
-.section-label {
-    background: var(--primary-color);
-    color: white;
-    padding: 0.35rem 0.8rem;
-    border-radius: 6px;
-    font-weight: 600;
-    margin-bottom: 0.6rem;
-    display: inline-block;
-    font-size: 0.85rem;
-}
-.section-label.inline-label { margin: 0.35rem 0 0.35rem; }
-
-.pair { margin-bottom: 0.5rem; max-width: 100%; }
-.chord-line { color: var(--primary-color); font-weight: 700; white-space: pre; margin-bottom: 0.1rem; font-size: 0.95em; transition: all 0.2s; }
-.lyric-line { color: var(--text-primary); white-space: pre; font-size: 1em; transition: all 0.2s; }
-
-.song-content.voice-mode .chord-line { display: none; }
-.song-content.voice-mode .lyric-line { font-size: 1.25em; font-weight: 500; line-height: 1.7; }
-.song-content.voice-mode .pair { margin-bottom: 0.65rem; }
-
-.editor-container { display: flex; gap: 2rem; height: calc(100vh - 200px); min-height: 600px; }
-
-.editor-sidebar {
-    width: 250px;
-    background: white;
-    border: 1px solid var(--border-color);
-    border-radius: 12px;
-    padding: 1.5rem;
-    box-shadow: var(--shadow-sm);
-    overflow-y: auto;
-}
-.sidebar-section { margin-bottom: 2rem; }
-.sidebar-section:last-child { margin-bottom: 0; }
-.sidebar-title { font-size: 1rem; font-weight: 600; margin-bottom: 1rem; color: var(--text-primary); }
-
-.outline-item {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 0.5rem;
-    border-radius: 6px;
-    cursor: pointer;
-    transition: background 0.2s;
-    margin-bottom: 0.25rem;
-    font-size: 0.875rem;
-}
-.outline-item:hover { background: var(--bg-tertiary); }
-
-.editor-main {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    background: white;
-    border: 1px solid var(--border-color);
-    border-radius: 12px;
-    box-shadow: var(--shadow-sm);
-    overflow: hidden;
-}
-
-.editor-toolbar {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 1rem 1.5rem;
-    border-bottom: 1px solid var(--border-color);
-    background: var(--bg-secondary);
-    flex-wrap: wrap;
-    gap: 0.5rem;
-}
-.toolbar-left { display: flex; align-items: center; gap: 1rem; }
-.toolbar-right { display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; }
-.chips-container { display: flex; gap: 0.5rem; }
-
-.chip {
-    background: var(--bg-tertiary);
-    border: 1px solid var(--border-color);
-    padding: 0.25rem 0.75rem;
-    border-radius: 20px;
-    font-size: 0.75rem;
-    display: flex;
-    align-items: center;
-    gap: 0.25rem;
-}
-
-.save-indicator { font-size: 0.75rem; color: var(--success-color); font-weight: 500; }
-.save-indicator.unsaved { color: var(--warning-color); }
-
-.editor-content { flex: 1; padding: 1.5rem; overflow-y: auto; }
-
-.section-editor {
-    background: var(--bg-secondary);
-    border: 1px solid var(--border-color);
-    border-radius: 12px;
-    padding: 1.5rem;
-    margin-bottom: 2rem;
-}
-.section-header-editor { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 0.5rem; }
-
-.section-label-input {
-    background: var(--primary-color);
-    color: white;
-    border: none;
-    padding: 0.5rem 1rem;
-    border-radius: 6px;
-    font-weight: 600;
-    font-size: 0.875rem;
-}
-.section-label-input:focus { outline: none; box-shadow: 0 0 0 2px rgba(17, 24, 39, 0.25); }
-.section-actions { display: flex; gap: 0.5rem; }
-
-.pair-editor { background: white; border: 1px solid var(--border-color); border-radius: 8px; padding: 1rem; margin-bottom: 1rem; }
-.pair-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem; }
-.pair-label { font-size: 0.75rem; color: var(--text-secondary); font-weight: 600; }
-.pair-actions { display: flex; gap: 0.25rem; }
-
-.chord-input, .lyric-input {
-    width: 100%;
-    border: 1px solid var(--border-color);
-    border-radius: 6px;
-    padding: 0.75rem;
-    font-family: var(--mono-font);
-    resize: vertical;
-    min-height: 2.5rem;
-    margin-bottom: 0.5rem;
-    transition: border-color 0.2s;
-}
-.chord-input:focus, .lyric-input:focus { outline: none; border-color: var(--primary-color); }
-.chord-input { background: rgba(17, 24, 39, 0.03); }
-
-.btn, .btn-sm, .btn-xs {
-    border: 1px solid var(--border-color);
-    background: white;
-    color: var(--text-primary);
-    padding: 0.5rem 1rem;
-    border-radius: 6px;
-    cursor: pointer;
-    font-weight: 500;
-    transition: all 0.2s;
-    font-size: 0.875rem;
-    text-decoration: none;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: 0.25rem;
-}
-.btn:hover, .btn-sm:hover, .btn-xs:hover { background: var(--bg-secondary); border-color: var(--border-hover); }
-
-.btn.active-mode { background: var(--primary-color); color: white; border-color: var(--primary-color); }
-
-.btn-primary { background: var(--primary-color); color: white; border-color: var(--primary-color); }
-.btn-primary:hover { background: var(--primary-hover); border-color: var(--primary-hover); }
-.btn-danger { background: var(--danger-color); color: white; border-color: var(--danger-color); }
-.btn-danger:hover { background: #b91c1c; border-color: #b91c1c; }
-.btn-sm { padding: 0.375rem 0.75rem; font-size: 0.8rem; }
-.btn-xs { padding: 0.25rem 0.5rem; font-size: 0.75rem; border-radius: 4px; }
-
-.form-group { margin-bottom: 1.5rem; }
-.form-label { display: block; margin-bottom: 0.5rem; font-weight: 500; color: var(--text-primary); font-size: 0.875rem; }
-
-.form-input, .form-select, .form-textarea {
-    width: 100%;
-    padding: 0.75rem;
-    border: 2px solid var(--border-color);
-    border-radius: 6px;
-    font-size: 1rem;
-    transition: border-color 0.2s;
-}
-.form-input:focus, .form-select:focus, .form-textarea:focus { outline: none; border-color: var(--primary-color); }
-.form-textarea { min-height: 200px; resize: vertical; font-family: var(--mono-font); line-height: 1.6; }
-
-.modal-overlay {
-    position: fixed;
-    inset: 0;
-    background: rgba(0, 0, 0, 0.5);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 1000;
-    padding: 1rem;
-}
-
-.modal {
-    background: white;
-    border-radius: 12px;
-    box-shadow: var(--shadow-lg);
-    max-width: 500px;
-    width: 100%;
-    max-height: 80vh;
-    overflow-y: auto;
-}
-.modal-header { display: flex; justify-content: space-between; align-items: center; padding: 1.5rem; border-bottom: 1px solid var(--border-color); }
-.modal-title { font-size: 1.25rem; font-weight: 600; color: var(--text-primary); }
-.modal-content { padding: 1.5rem; }
-.modal-footer { display: flex; justify-content: flex-end; gap: 0.75rem; padding: 1.5rem; border-top: 1px solid var(--border-color); }
-
-.import-preview-item {
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-    padding: 0.75rem;
-    border: 1px solid var(--border-color);
-    border-radius: 8px;
-    margin-bottom: 0.5rem;
-}
-.import-preview-item input[type="checkbox"] { width: 18px; height: 18px; flex-shrink: 0; }
-.import-preview-info { flex: 1; min-width: 0; }
-.import-preview-title { font-weight: 600; font-size: 0.9rem; }
-.import-preview-meta { font-size: 0.75rem; color: var(--text-muted); }
-
-#btn-fullscreen-exit {
-    display: none;
-    position: fixed;
-    top: max(0.5rem, env(safe-area-inset-top));
-    right: 0.5rem;
-    z-index: 900;
-    background: var(--primary-color);
-    color: white;
-    border: none;
-    width: 2.4rem;
-    height: 2.4rem;
-    border-radius: 50%;
-    font-size: 1.1rem;
-    font-weight: 700;
-    cursor: pointer;
-    box-shadow: var(--shadow-lg);
-    transition: opacity 0.3s;
-    padding: 0;
-}
-
-body.fullscreen-active .header,
-body.fullscreen-active #btn-back-to-list,
-body.fullscreen-active #setlist-nav-controls,
-body.fullscreen-active .transpose-controls,
-body.fullscreen-active .font-size-controls,
-body.fullscreen-active #btn-toggle-notation,
-body.fullscreen-active #btn-voice-mode,
-body.fullscreen-active #btn-song-structure-setlist,
-body.fullscreen-active #btn-fullscreen-toggle,
-body.fullscreen-active #btn-edit-song,
-body.fullscreen-active .reader-extra-info {
-    display: none !important;
-}
-
-body.fullscreen-active #btn-fullscreen-exit { display: inline-flex; align-items: center; justify-content: center; }
-body.fullscreen-active .app-container { padding: 0.5rem; max-width: 100%; }
-body.fullscreen-active .song-reader { max-width: 100%; }
-body.fullscreen-active .reader-header {
-    padding: 0.6rem 0.85rem;
-    margin-bottom: 0.4rem;
-    box-shadow: none;
-    border-radius: 10px;
-    padding-right: 3.2rem;
-}
-body.fullscreen-active .reader-title { font-size: 1.3rem; margin-bottom: 0.1rem; }
-body.fullscreen-active .reader-meta { margin-bottom: 0; font-size: 0.85rem; }
-body.fullscreen-active .reader-block-note { font-size: 0.72rem; padding: 0.2rem 0.5rem; margin-bottom: 0.5rem; }
-body.fullscreen-active .song-structure-bar { padding: 0.3rem 0.5rem; margin-bottom: 0.5rem; }
-body.fullscreen-active .song-content { padding: 0.85rem 1.1rem; }
-
-@media (max-width: 768px) {
-    .app-container { padding: 0.75rem 0.5rem; }
-    .header-content { padding: 0 0.5rem; flex-wrap: wrap; gap: 0.5rem; }
-    .logo-img { width: 36px; height: 36px; }
-    .logo-text { font-size: 1.1rem; }
-    .nav-tabs { gap: 0.35rem; }
-    .nav-tab { padding: 0.4rem 0.7rem; font-size: 0.8rem; }
-    .auth-section { font-size: 0.75rem; }
-    #user-email-label { display: none !important; }
-
-    .song-item { padding: 0.7rem 1rem; min-height: auto; }
-    .song-title { font-size: 1rem; }
-    .song-meta { font-size: 0.78rem; }
-    .section-title { font-size: 1.4rem; }
-    .btn-add-song { padding: 0.6rem 1rem; font-size: 0.8rem; }
-
-    .reader-header { padding: 0.85rem 1rem; margin-bottom: 0.6rem; border-radius: 10px; }
-    .reader-title { font-size: 1.25rem; margin-bottom: 0.15rem; }
-    .reader-meta { font-size: 0.8rem; margin-bottom: 0.3rem; }
-    .reader-block-note { font-size: 0.75rem; padding: 0.25rem 0.6rem; margin-bottom: 0.6rem; }
-    .reader-extra-info { font-size: 0.8rem; margin-bottom: 0.6rem; }
-    #btn-back-to-list { padding: 0.35rem 0.7rem; font-size: 0.78rem; margin-bottom: 0.5rem; }
-
-    #setlist-nav-controls { padding: 0.5rem 0.75rem; margin-bottom: 0.5rem; }
-    #setlist-nav-controls .btn-sm { padding: 0.3rem 0.6rem; font-size: 0.75rem; }
-
-    .reader-controls { gap: 0.5rem; }
-    .transpose-controls { padding: 0.4rem 0.6rem; gap: 0.35rem; }
-    .transpose-btn { width: 1.6rem; height: 1.6rem; font-size: 0.85rem; }
-    .current-key { padding: 0.3rem 0.6rem; min-width: 2.2rem; font-size: 0.85rem; }
-    .reader-controls .btn-sm, .reader-controls .btn-primary { padding: 0.4rem 0.7rem; font-size: 0.78rem; }
-
-    .song-structure-bar { padding: 0.35rem 0.5rem; margin-bottom: 0.6rem; }
-
-    .song-content { padding: 0.85rem 1rem; border-radius: 10px; line-height: 1.25; }
-    .section { margin-bottom: 0.9rem; }
-    .section-label { padding: 0.25rem 0.6rem; font-size: 0.75rem; margin-bottom: 0.45rem; }
-
-    .chord-line, .lyric-line { white-space: pre-wrap; word-break: break-word; font-size: 0.85em; }
-    .chord-line { margin-bottom: 0.05rem; }
-    .song-content.voice-mode .lyric-line { font-size: 1.15em; }
-
-    .pair { margin-bottom: 0.4rem; }
-
-    .song-item { padding: 1rem; flex-direction: column; align-items: flex-start; gap: 0.5rem; }
-    .song-actions { margin-left: 0; align-self: flex-end; }
-    .editor-container { flex-direction: column; height: auto; }
-    .editor-sidebar { width: 100%; order: 1; }
-    .toolbar-left, .toolbar-right { flex-wrap: wrap; }
-    .chips-container { display: none; }
-    .section-header { flex-direction: column; align-items: stretch; gap: 0.75rem; }
-}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Betania Music - Gestor de Canciones</title>
+
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#1a1a1a">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Betania Music">
+    <link rel="apple-touch-icon" href="logo.webp">
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div id="app-splash">
+        <img src="logo.webp" alt="Betania Music" id="splash-logo">
+    </div>
+
+    <button id="btn-fullscreen-exit">✕</button>
+
+    <header class="header">
+        <div class="header-content">
+            <div class="logo-section" id="logo-home" style="cursor: pointer;">
+                <img src="logo.webp" alt="Betania Music" class="logo-img">
+                <div class="logo-text">Betania Music</div>
+            </div>
+            <div style="display:flex; align-items:center; gap:1.5rem; flex-wrap: wrap;">
+                <nav>
+                    <div class="nav-tabs">
+                        <button class="nav-tab active" data-route="canciones">Canciones</button>
+                        <button class="nav-tab" data-route="repertorio">Repertorio</button>
+                        <button class="nav-tab" data-route="edicion" id="nav-tab-edicion" style="display:none;">Edición</button>
+                    </div>
+                </nav>
+                <div class="auth-section" style="display:flex; align-items:center; gap:0.5rem;">
+                    <span id="user-email-label" style="display:none; font-size:0.8rem; color: var(--text-secondary);"></span>
+                    <button class="btn btn-sm" id="btn-login">🔑 Iniciar sesión</button>
+                    <button class="btn btn-sm" id="btn-logout" style="display:none;">Cerrar sesión</button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <div class="app-container">
+        <!-- Songs List View -->
+        <div class="view active" id="view-canciones">
+            <div class="songs-container">
+                <div class="section-header">
+                    <h2 class="section-title">Canciones</h2>
+                    <div style="display:flex; gap:0.75rem; flex-wrap: wrap;">
+                        <button class="btn" id="btn-migrate-local" style="display:none;">☁️ Migrar datos locales</button>
+                        <button class="btn" id="btn-bulk-detect-keys" style="display:none;">🔍 Detectar tonalidades</button>
+                        <button class="btn" id="btn-import-pdfs" style="display:none;">📄 Importar PDFs</button>
+                        <button class="btn-add-song" id="btn-add-song" style="display:none;">+ Añadir canción</button>
+                    </div>
+                </div>
+
+                <div class="search-container" style="display:flex; gap:0.75rem; flex-wrap: wrap;">
+                    <input type="text" class="search-box" id="search-box" placeholder="Buscar por título o autor..." style="flex:1; min-width: 200px;">
+                    <select id="sort-select" style="padding: 0.75rem 1rem; border: 2px solid var(--border-color); border-radius: 8px; font-size: 0.9rem; background: white; color: var(--text-primary); cursor: pointer;">
+                        <option value="alpha">Orden alfabético (A-Z)</option>
+                        <option value="recent">Últimas añadidas</option>
+                        <option value="key">Tonalidad</option>
+                        <option value="bpm">BPM (mayor a menor)</option>
+                    </select>
+                </div>
+
+                <div class="empty-state" id="empty-state">
+                    <h3>Aún no hay canciones</h3>
+                    <p>Inicia sesión como líder para añadir canciones, o espera a que se sincronicen.</p>
+                </div>
+
+                <div class="songs-grid" id="songs-grid" style="display: none;"></div>
+            </div>
+        </div>
+
+        <!-- Repertorio List View -->
+        <div class="view" id="view-repertorio">
+            <div class="songs-container">
+                <div class="section-header">
+                    <h2 class="section-title">Repertorio</h2>
+                    <button class="btn-add-song" id="btn-new-setlist">+ Nuevo repertorio</button>
+                </div>
+
+                <div class="empty-state" id="repertorio-empty-state">
+                    <h3>Aún no hay repertorios</h3>
+                    <p>Crea uno para armar la lista de canciones del domingo.</p>
+                </div>
+
+                <div class="songs-grid" id="repertorio-grid" style="display: none;"></div>
+            </div>
+        </div>
+
+        <!-- Repertorio Detail View -->
+        <div class="view" id="view-repertorio-detail">
+            <div class="songs-container">
+                <div class="section-header" style="flex-direction: column; align-items: stretch; gap: 1rem;">
+                    <button class="btn" id="btn-back-to-repertorios" style="align-self: flex-start;">← Volver a repertorios</button>
+                    <input type="text" id="setlist-name-input" placeholder="Nombre del repertorio" 
+                           style="font-size: 1.5rem; font-weight: 700; border: none; background: transparent; outline: none; padding: 0.25rem 0;">
+                    <div style="display:flex; gap:0.5rem; flex-wrap:wrap; align-items:center;">
+                        <button class="btn" id="btn-add-songs-to-setlist">+ Añadir canciones</button>
+                        <button class="btn" id="btn-uniform-key">🎯 Tonalidad uniforme</button>
+                        <span id="uniform-key-badge" style="display:none; font-size:0.85rem; color:var(--text-secondary); font-weight:600;"></span>
+                        <button class="btn btn-sm" id="btn-clear-uniform-key" style="display:none;">↩️ Volver a tonalidades originales</button>
+                    </div>
+                </div>
+
+                <div id="setlist-empty-state" class="empty-state">
+                    <h3>Repertorio vacío</h3>
+                    <p>Usa "+ Añadir canciones" para armar la lista.</p>
+                </div>
+
+                <div class="songs-grid" id="setlist-songs-list" style="display: none;"></div>
+            </div>
+        </div>
+
+        <!-- Song Reader View -->
+        <div class="view" id="view-song-reader">
+            <div class="song-reader">
+                <div class="reader-header">
+                    <button class="btn" id="btn-back-to-list">← Volver</button>
+                    <div class="reader-block-note" id="reader-block-note" style="display:none;"></div>
+                    <div class="reader-title" id="reader-title">Título de la canción</div>
+                    <div class="reader-meta" id="reader-meta">Autor • BPM • Compás</div>
+                    <div class="reader-extra-info" id="reader-extra-info" style="display:none;"></div>
+
+                    <div id="setlist-nav-controls" style="display:none; margin-bottom: 1rem; padding: 0.75rem 1rem; background: var(--bg-secondary); border-radius: 8px; border: 1px solid var(--border-color); align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap;">
+                        <button class="btn btn-sm" id="btn-prev-setlist-song">◀ Anterior</button>
+                        <span id="setlist-position-label" style="font-size: 0.85rem; color: var(--text-secondary); font-weight: 600;">1 / 5</span>
+                        <button class="btn btn-sm" id="btn-next-setlist-song">Siguiente ▶</button>
+                    </div>
+                    
+                    <div class="reader-controls">
+                        <div class="transpose-controls" id="transpose-controls-wrap">
+                            <span style="font-size: 0.8rem; color: var(--text-muted);">Tonalidad:</span>
+                            <button class="transpose-btn" id="btn-transpose-down-reader">♭</button>
+                            <div class="current-key" id="current-key-reader">C</div>
+                            <button class="transpose-btn" id="btn-transpose-up-reader">♯</button>
+                            <button class="btn btn-sm" id="btn-reset-key-reader">Base</button>
+                        </div>
+                        <div class="font-size-controls">
+                            <button class="btn btn-sm" id="btn-font-decrease" title="Achicar letra">A-</button>
+                            <button class="btn btn-sm" id="btn-font-increase" title="Agrandar letra">A+</button>
+                        </div>
+                        <button class="btn btn-sm" id="btn-toggle-notation">🎼 Ver en grados</button>
+                        <button class="btn btn-sm" id="btn-voice-mode">🎤 Modo Voz</button>
+                        <button class="btn btn-sm" id="btn-song-structure-setlist" style="display:none;">🗂️ Orden en este repertorio</button>
+                        <button class="btn btn-sm" id="btn-fullscreen-toggle">⛶ Pantalla completa</button>
+                        <button class="btn btn-primary" id="btn-edit-song" style="display:none;">Editar</button>
+                    </div>
+                </div>
+
+                <div class="song-structure-bar" id="song-structure-bar" style="display:none;">
+                    <div class="structure-bar-inner" id="structure-bar-inner"></div>
+                </div>
+
+                <div class="song-content" id="song-content"></div>
+            </div>
+        </div>
+
+        <!-- Editor View -->
+        <div class="view" id="view-edicion">
+            <div class="editor-container">
+                <div class="editor-sidebar">
+                    <div class="sidebar-section">
+                        <h3 class="sidebar-title">Estructura</h3>
+                        <div id="sections-outline"></div>
+                        <button class="btn btn-sm" id="btn-add-section" style="width: 100%; margin-top: 0.5rem;">+ Sección</button>
+                    </div>
+                    <div class="sidebar-section">
+                        <h3 class="sidebar-title">Tonalidad, BPM y Compás</h3>
+                        <button class="btn btn-sm" id="btn-detect-key" style="width: 100%; margin-bottom: 0.5rem;">🔍 Detectar tonalidad</button>
+                        <label class="form-label" style="margin-bottom: 0.25rem;">BPM</label>
+                        <input type="number" id="bpm-editor-input" class="form-input" placeholder="Ej: 128" style="padding: 0.5rem; margin-bottom: 0.75rem;">
+                        <label class="form-label" style="margin-bottom: 0.25rem;">Compás</label>
+                        <input type="text" id="compas-editor-input" class="form-input" placeholder="Ej: 4/4" style="padding: 0.5rem; margin-bottom: 0.75rem;">
+                        <label class="form-label" style="margin-bottom: 0.25rem;">Tonalidad original (opcional)</label>
+                        <select id="original-key-editor-select" class="form-input" style="padding: 0.5rem; margin-bottom: 0.75rem;">
+                            <option value="">Sin especificar</option>
+                            <option value="C">C</option><option value="C#">C#</option><option value="D">D</option>
+                            <option value="D#">D#</option><option value="E">E</option><option value="F">F</option>
+                            <option value="F#">F#</option><option value="G">G</option><option value="G#">G#</option>
+                            <option value="A">A</option><option value="A#">A#</option><option value="B">B</option>
+                            <option value="Cm">Cm</option><option value="C#m">C#m</option><option value="Dm">Dm</option>
+                            <option value="D#m">D#m</option><option value="Em">Em</option><option value="Fm">Fm</option>
+                            <option value="F#m">F#m</option><option value="Gm">Gm</option><option value="G#m">G#m</option>
+                            <option value="Am">Am</option><option value="A#m">A#m</option><option value="Bm">Bm</option>
+                        </select>
+                        <label class="form-label" style="margin-bottom: 0.25rem;">Link de YouTube (opcional)</label>
+                        <input type="url" id="youtube-link-editor-input" class="form-input" placeholder="https://youtube.com/..." style="padding: 0.5rem;">
+                    </div>
+                    <div class="sidebar-section">
+                        <h3 class="sidebar-title">Orden de la canción</h3>
+                        <p style="font-size:0.78rem; color:var(--text-secondary); margin-bottom:0.6rem; line-height:1.4;">Solo tú defines este orden (escuchando la canción original). Se usa como orden por defecto en cualquier lugar donde se abra esta canción.</p>
+                        <button class="btn btn-sm" id="btn-edit-song-structure" style="width: 100%;">🗂️ Editar orden</button>
+                    </div>
+                    <div class="sidebar-section">
+                        <h3 class="sidebar-title">Acciones</h3>
+                        <button class="btn btn-sm" id="btn-transpose-up" style="width: 100%; margin-bottom: 0.25rem;">♯ Subir tono</button>
+                        <button class="btn btn-sm" id="btn-transpose-down" style="width: 100%; margin-bottom: 0.25rem;">♭ Bajar tono</button>
+                        <button class="btn btn-sm" id="btn-reset-transpose" style="width: 100%;">Reset</button>
+                    </div>
+                </div>
+
+                <div class="editor-main">
+                    <div class="editor-toolbar">
+                        <div class="toolbar-left" style="flex-wrap: wrap;">
+                            <button class="btn btn-sm" id="btn-back-from-editor">← Volver</button>
+                            <input type="text" id="song-title-editor" placeholder="Título de la canción" 
+                                   style="font-size: 1.1rem; font-weight: 600; border: none; background: transparent; outline: none; min-width: 180px;">
+                            <input type="text" id="song-artist-editor" placeholder="Autor / Intérprete" 
+                                   style="font-size: 0.9rem; color: var(--text-secondary); border: none; background: transparent; outline: none; min-width: 150px;">
+                        </div>
+                        <div class="toolbar-right">
+                            <div class="chips-container">
+                                <div class="chip" id="key-chip">
+                                    <span>Tonalidad:</span>
+                                    <select id="key-editor-select" style="border:none; background:transparent; font-weight:600; font-size:0.75rem; cursor:pointer; color: var(--text-primary);">
+                                        <option value="C">C</option>
+                                        <option value="C#">C#</option>
+                                        <option value="D">D</option>
+                                        <option value="D#">D#</option>
+                                        <option value="E">E</option>
+                                        <option value="F">F</option>
+                                        <option value="F#">F#</option>
+                                        <option value="G">G</option>
+                                        <option value="G#">G#</option>
+                                        <option value="A">A</option>
+                                        <option value="A#">A#</option>
+                                        <option value="B">B</option>
+                                        <option value="Cm">Cm</option>
+                                        <option value="C#m">C#m</option>
+                                        <option value="Dm">Dm</option>
+                                        <option value="D#m">D#m</option>
+                                        <option value="Em">Em</option>
+                                        <option value="Fm">Fm</option>
+                                        <option value="F#m">F#m</option>
+                                        <option value="Gm">Gm</option>
+                                        <option value="G#m">G#m</option>
+                                        <option value="Am">Am</option>
+                                        <option value="A#m">A#m</option>
+                                        <option value="Bm">Bm</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <span class="save-indicator" id="save-indicator">Guardado</span>
+                            <button class="btn btn-sm" id="btn-add-pair-editor">+ Par</button>
+                            <button class="btn btn-primary" id="btn-save-song">Guardar</button>
+                        </div>
+                    </div>
+                    <div class="editor-content" id="editor-content"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
