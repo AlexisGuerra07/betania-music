@@ -296,7 +296,7 @@ const Auth = {
 
 // Parser de acordes
 const ChordParser = {
-    chordRegex: /\b([A-G])([#b])?(maj7|maj9|m7|m9|m|dim|aug|add\d+|sus2|sus4|7|9|11|13|°|ø)?(?:\/([A-G])([#b])?)?\b/g,
+    chordRegex: /\b([A-G])([#b]*)(maj7|maj9|m7|m9|m|dim|aug|add\d+|sus2|sus4|7|9|11|13|°|ø)?(?:\/([A-G])([#b]*))?\b/g,
     sectionHeaderRegex: /^\s*(intro|estrofa|verso|pre[\s\-]?coro|coro|puente|bridge|interludio|solo|instrumental|outro|final|tag|estribillo|modulaci[oó]n|leyenda|espontaneo|espontáneo)\s*(?:[:\-]|\b)?\s*(\d+|i{1,3}|[ivx]{1,4}|[1-9]ª|x\d+|\(.*?\)|-\s*[A-Z]\d?)?\s*$/i,
 
     normalizeTildes(text) {
@@ -380,6 +380,15 @@ const ChordParser = {
 const Transposer = {
     notes: ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'],
     notesFlat: ['C', 'Db', 'D', 'Eb', 'E', 'F', 'Gb', 'G', 'Ab', 'A', 'Bb', 'B'],
+
+    // Suma el efecto de una cadena de alteraciones (ej: "b#" se cancelan y dan 0)
+    accidentalShift(accStr) {
+        if (!accStr) return 0;
+        let shift = 0;
+        for (const ch of accStr) shift += (ch === '#' ? 1 : -1);
+        return shift;
+    },
+
     transpose(chord, semitones) {
         if (!chord || semitones === 0) return chord;
         return chord.replace(ChordParser.chordRegex, (match, root, accidental, suffix, bassRoot, bassAccidental) => {
@@ -389,23 +398,28 @@ const Transposer = {
             return newRoot + (suffix || '') + newBass;
         });
     },
+
+    // Ahora acepta cualquier combinación de alteraciones (b, #, bb, b#, etc.) y las combina correctamente
     transposeNote(root, accidental, semitones) {
-        const fullNote = root + (accidental || '');
-        let idx = this.notes.indexOf(fullNote);
-        if (idx === -1) idx = this.notesFlat.indexOf(fullNote);
-        if (idx === -1) idx = this.notes.indexOf(root);
-        if (idx === -1) return fullNote;
-        let newIdx = (idx + semitones) % 12;
+        const baseIdx = this.notes.indexOf(root);
+        if (baseIdx === -1) return root + (accidental || '');
+        const shift = this.accidentalShift(accidental);
+        let newIdx = (baseIdx + shift + semitones) % 12;
         if (newIdx < 0) newIdx += 12;
         return this.chooseBestEnharmonic(newIdx, semitones);
     },
+
     chooseBestEnharmonic(idx, semitones) {
         const sharp = this.notes[idx];
         const flat = this.notesFlat[idx];
         if (!sharp.includes('#') && !sharp.includes('b')) return sharp;
-        if (semitones < 0) { if (sharp === 'F#' || sharp === 'C#') return sharp; return flat; }
+        if (semitones < 0) {
+            if (sharp === 'F#' || sharp === 'C#') return sharp;
+            return flat;
+        }
         return sharp;
     },
+
     cleanChord(chord) {
         const map = {
             'C##':'D','D##':'E','E##':'F#','F##':'G','G##':'A','A##':'B','B##':'C#',
@@ -436,11 +450,10 @@ const KeyDetector = {
                 const matches = [...pair.acordes.matchAll(ChordParser.chordRegex)];
                 matches.forEach(m => {
                     const root = m[1], accidental = m[2] || '', suffix = m[3] || '';
-                    const fullNote = root + accidental;
-                    let idx = Transposer.notes.indexOf(fullNote);
-                    if (idx === -1) idx = Transposer.notesFlat.indexOf(fullNote);
-                    if (idx === -1) idx = Transposer.notes.indexOf(root);
-                    if (idx === -1) return;
+                    const baseIdx = Transposer.notes.indexOf(root);
+                    if (baseIdx === -1) return;
+                    let idx = (baseIdx + Transposer.accidentalShift(accidental)) % 12;
+                    if (idx < 0) idx += 12;
                     const quality = this.simplifyQuality(suffix);
                     const key = idx + '-' + quality;
                     freq[key] = (freq[key] || 0) + 1;
@@ -493,11 +506,10 @@ const KeyDegrees = {
         return idx === -1 ? 0 : idx;
     },
     noteToDegree(root, accidental, keyRootIdx) {
-        const fullNote = root + (accidental || '');
-        let idx = Transposer.notes.indexOf(fullNote);
-        if (idx === -1) idx = Transposer.notesFlat.indexOf(fullNote);
-        if (idx === -1) idx = Transposer.notes.indexOf(root);
-        if (idx === -1) return '?';
+        const baseIdx = Transposer.notes.indexOf(root);
+        if (baseIdx === -1) return '?';
+        let idx = (baseIdx + Transposer.accidentalShift(accidental)) % 12;
+        if (idx < 0) idx += 12;
         const offset = (idx - keyRootIdx + 12) % 12;
         return this.romanByOffset[offset];
     },
@@ -607,7 +619,6 @@ const Router = {
         this.bindButton('btn-detect-key', () => Editor.detectKey());
         this.bindButton('btn-edit-song-structure', () => Editor.showStructureModal());
         this.bindButton('btn-song-structure-setlist', () => this.showSetlistStructureModal());
-        this.bindButton('btn-song-parts-setlist', () => this.showSetlistPartsModal());
         this.bindInput('search-box', (e) => this.filterSongs(e.target.value));
         this.bindInput('bpm-editor-input', (e) => {
             if (!AppState.currentSong) return;
@@ -953,71 +964,6 @@ const Router = {
     },
     // ============ FIN ORDEN DE CANCIÓN ============
 
-    // ============ PARTES VISIBLES POR REPERTORIO (ocultar estrofas, dejar solo coro, etc.) ============
-    getEffectiveSections(song) {
-        if (!song || !song.sections) return [];
-        if (AppState.currentSetlist && AppState.currentSetlist.songVisibility) {
-            const hidden = AppState.currentSetlist.songVisibility[song.id];
-            if (hidden && hidden.length > 0) {
-                return song.sections.filter((s, idx) => !hidden.includes(idx));
-            }
-        }
-        return song.sections;
-    },
-
-    showSetlistPartsModal() {
-        if (!AppState.currentSetlist || !AppState.currentSong) return;
-        const sl = AppState.currentSetlist;
-        const song = AppState.currentSong;
-        const hidden = (sl.songVisibility && sl.songVisibility[song.id]) || [];
-
-        this.createModal({
-            title: `Partes a mostrar en "${sl.name}"`,
-            content: `
-                <p style="margin-bottom:1rem; color:var(--text-secondary); font-size:0.9rem;">
-                    Destilda las partes que no se van a tocar hoy. Esto solo afecta cómo se ve "${song.title}" dentro de este repertorio — no borra nada de la canción original.
-                </p>
-                <div id="setlist-parts-list">
-                    ${song.sections.map((s, idx) => `
-                        <div class="import-preview-item">
-                            <input type="checkbox" data-idx="${idx}" class="setlist-part-checkbox" ${hidden.includes(idx) ? '' : 'checked'}>
-                            <div class="import-preview-info">
-                                <div class="import-preview-title">${idx + 1}. ${s.label}</div>
-                            </div>
-                        </div>
-                    `).join('')}
-                </div>
-            `,
-            actions: [
-                { text: 'Cancelar', action: () => this.closeModal() },
-                { text: 'Mostrar todas', action: () => this.resetSetlistParts() },
-                { text: 'Guardar', primary: true, action: () => this.saveSetlistParts() }
-            ]
-        });
-    },
-
-    saveSetlistParts() {
-        if (!AppState.currentSetlist || !AppState.currentSong) { this.closeModal(); return; }
-        const checkboxes = document.querySelectorAll('.setlist-part-checkbox');
-        const hiddenIdx = [];
-        checkboxes.forEach(cb => { if (!cb.checked) hiddenIdx.push(parseInt(cb.dataset.idx)); });
-        if (!AppState.currentSetlist.songVisibility) AppState.currentSetlist.songVisibility = {};
-        AppState.currentSetlist.songVisibility[AppState.currentSong.id] = hiddenIdx;
-        Storage.saveSetlists();
-        this.closeModal();
-        this.renderSongContent();
-    },
-
-    resetSetlistParts() {
-        if (!AppState.currentSetlist || !AppState.currentSong) { this.closeModal(); return; }
-        if (!AppState.currentSetlist.songVisibility) AppState.currentSetlist.songVisibility = {};
-        AppState.currentSetlist.songVisibility[AppState.currentSong.id] = [];
-        Storage.saveSetlists();
-        this.closeModal();
-        this.renderSongContent();
-    },
-    // ============ FIN PARTES VISIBLES ============
-
     // ============ NOTA DE BLOQUE POR CANCIÓN, DENTRO DE UN REPERTORIO ============
     getSongBlockNote(song) {
         if (!song || !AppState.currentSetlist || !AppState.currentSetlist.songNotes) return '';
@@ -1123,8 +1069,6 @@ const Router = {
 
         const structureSetlistBtn = document.getElementById('btn-song-structure-setlist');
         if (structureSetlistBtn) structureSetlistBtn.style.display = 'inline-flex';
-        const partsSetlistBtn = document.getElementById('btn-song-parts-setlist');
-        if (partsSetlistBtn) partsSetlistBtn.style.display = 'inline-flex';
 
         document.getElementById('reader-title').textContent = song.title;
         const metaText = this.formatReaderMeta(song);
@@ -1160,8 +1104,6 @@ const Router = {
         if (editBtn) editBtn.style.display = AppState.isAdmin ? 'inline-flex' : 'none';
         const structureSetlistBtn = document.getElementById('btn-song-structure-setlist');
         if (structureSetlistBtn) structureSetlistBtn.style.display = 'none';
-        const partsSetlistBtn = document.getElementById('btn-song-parts-setlist');
-        if (partsSetlistBtn) partsSetlistBtn.style.display = 'none';
         const extraEl = document.getElementById('reader-extra-info');
         if (extraEl) { extraEl.style.display = 'none'; extraEl.innerHTML = ''; }
         const blockNoteEl = document.getElementById('reader-block-note');
@@ -1224,9 +1166,8 @@ const Router = {
         if (!AppState.currentSong) return;
         const song = AppState.currentSong;
         const mode = AppState.notationMode || 'chords';
-        const sectionsToShow = this.getEffectiveSections(song);
 
-        content.innerHTML = sectionsToShow.map(section => `
+        content.innerHTML = song.sections.map(section => `
             <div class="section">
                 <div class="section-label">${section.label}</div>
                 ${section.pairs.map(pair => {
@@ -1385,7 +1326,7 @@ const Router = {
         const name = document.getElementById('modal-setlist-name').value.trim();
         if (!name) { alert('El nombre es obligatorio'); return; }
         const creatorName = document.getElementById('modal-setlist-creator').value.trim();
-        const setlist = { id: this.generateId(), name, creatorName: creatorName || '', uniformKey: null, songStructures: {}, songVisibility: {}, songNotes: {}, songIds: [], createdAt: new Date().toISOString() };
+        const setlist = { id: this.generateId(), name, creatorName: creatorName || '', uniformKey: null, songStructures: {}, songNotes: {}, songIds: [], createdAt: new Date().toISOString() };
         AppState.setlists.push(setlist);
         Storage.saveSetlists();
         AppState.currentSetlist = setlist;
@@ -1422,7 +1363,6 @@ const Router = {
         const sl = AppState.setlists.find(s => s.id === setlistId);
         if (!sl) return;
         if (!sl.songStructures) sl.songStructures = {};
-        if (!sl.songVisibility) sl.songVisibility = {};
         if (!sl.songNotes) sl.songNotes = {};
         AppState.currentSetlist = sl;
         this.navigate('repertorio-detail', false);
@@ -1470,10 +1410,9 @@ const Router = {
                     <div class="song-meta">${displayKey}${offset !== 0 ? ` (orig. ${song.keyBase})` : ''}${song.bpm ? ` • ${song.bpm} BPM` : ''}</div>
                 </div>
                 <div class="song-actions" onclick="event.stopPropagation()">
-                    <button class="action-btn note-btn" onclick="Router.showSongNoteModal('${song.id}')" title="Añadir/editar nota">
+                    <button class="action-btn note-btn ${note ? 'has-note' : ''}" onclick="Router.showSongNoteModal('${song.id}')" title="${note ? 'Editar nota' : 'Añadir nota de bloque'}">
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
-                            <path d="m18.5 2.5 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                            <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path>
                         </svg>
                     </button>
                     <button class="action-btn" onclick="Router.moveSetlistSong(${idx}, -1)" title="Subir" ${idx === 0 ? 'style="opacity:0.3;pointer-events:none;"' : ''}>
