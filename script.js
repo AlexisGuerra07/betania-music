@@ -44,7 +44,7 @@ const SplashManager = {
         }
     },
     checkReady() {
-        if (AppState.songsLoaded && AppState.setlistsLoaded) this.hide();
+        if (AppState.songsLoaded && AppState.setlistsLoaded && AppState.vocalProfilesLoaded) this.hide();
     },
     startSafetyTimeout() {
         setTimeout(() => this.hide(), 4000);
@@ -139,7 +139,9 @@ const AppState = {
     isAdmin: false,
     currentUser: null,
     songsLoaded: false,
-    setlistsLoaded: false
+    setlistsLoaded: false,
+    vocalProfiles: {},
+    vocalProfilesLoaded: false
 };
 
 // Storage
@@ -147,6 +149,7 @@ const Storage = {
     SETTINGS_KEY: 'betania_settings_v4',
     songsUnsub: null,
     setlistsUnsub: null,
+    vocalProfilesUnsub: null,
 
     saveSongs() {
         try {
@@ -179,6 +182,22 @@ const Storage = {
         if (this.setlistsUnsub) this.setlistsUnsub();
         this.setlistsUnsub = db.collection('appdata').doc('setlists').onSnapshot(doc => {
             AppState.setlists = doc.exists ? (doc.data().setlists || []) : [];
+            if (callback) callback();
+        }, err => console.error(err));
+    },
+
+    saveVocalProfiles() {
+        try {
+            db.collection('appdata').doc('vocalProfiles').set({ profiles: AppState.vocalProfiles })
+                .catch(err => { console.error(err); alert('Error al guardar: ' + err.message); });
+            return true;
+        } catch (error) { console.error(error); return false; }
+    },
+
+    listenVocalProfiles(callback) {
+        if (this.vocalProfilesUnsub) this.vocalProfilesUnsub();
+        this.vocalProfilesUnsub = db.collection('appdata').doc('vocalProfiles').onSnapshot(doc => {
+            AppState.vocalProfiles = doc.exists ? (doc.data().profiles || {}) : {};
             if (callback) callback();
         }, err => console.error(err));
     },
@@ -286,6 +305,7 @@ const Auth = {
         showIfAdmin('btn-bulk-detect-keys', 'inline-flex');
         showIfAdmin('btn-migrate-local', 'inline-flex');
         showIfAdmin('btn-edit-song', 'inline-flex');
+        showIfAdmin('btn-vocal-profiles', 'inline-flex');
 
         if (AppState.currentView === 'canciones') Router.renderSongsList();
         if (AppState.currentView === 'repertorio') Router.renderSetlistsList();
@@ -598,6 +618,7 @@ const Router = {
         this.bindButton('btn-import-pdfs', () => { if (AppState.isAdmin) this.showBulkPDFImport(); });
         this.bindButton('btn-bulk-detect-keys', () => { if (AppState.isAdmin) this.bulkDetectKeys(); });
         this.bindButton('btn-migrate-local', () => { if (AppState.isAdmin) Storage.migrateLocalData(); });
+        this.bindButton('btn-vocal-profiles', () => { if (AppState.isAdmin) this.showVocalProfilesModal(); });
         this.bindButton('btn-back-to-list', () => { history.back(); });
         this.bindButton('btn-back-from-editor', () => { this.saveCurrentSong(); history.back(); });
         this.bindButton('btn-edit-song', () => { if (AppState.currentSong && AppState.isAdmin) this.editSong(AppState.currentSong.id); });
@@ -856,6 +877,65 @@ const Router = {
         return diff;
     },
 
+    // Offset automático según la voz líder asignada a esta canción en este repertorio.
+    // Se calcula en semitonos respecto a la tonalidad guardada de la canción (referencia: Sarah = 0).
+    // No se aplica si el repertorio tiene una tonalidad uniforme activa (esa manda sobre todo).
+    computeLeadVocalOffset(song, setlist) {
+        if (!setlist || setlist.uniformKey) return 0;
+        const leadVocal = (setlist.songLeadVocals && setlist.songLeadVocals[song.id]) || '';
+        if (!leadVocal) return 0;
+        const profiles = AppState.vocalProfiles || {};
+        const offset = profiles[leadVocal];
+        return (typeof offset === 'number' && !isNaN(offset)) ? offset : 0;
+    },
+
+    // Offset efectivo a aplicar: la tonalidad uniforme del repertorio tiene prioridad;
+    // si no hay, se usa el offset automático de la voz líder asignada.
+    computeEffectiveOffset(song, setlist) {
+        if (setlist && setlist.uniformKey) return this.computeUniformOffset(song, setlist);
+        return this.computeLeadVocalOffset(song, setlist);
+    },
+
+    showVocalProfilesModal() {
+        const names = this.LEAD_VOCAL_OPTIONS;
+        const profiles = AppState.vocalProfiles || {};
+        this.createModal({
+            title: '🎚️ Perfiles de voz',
+            content: `
+                <p style="margin-bottom:1rem; color:var(--text-secondary); font-size:0.9rem;">
+                    Semitonos de diferencia respecto a la tonalidad de referencia (Sarah = 0, ya que casi todo el repertorio está guardado en su tonalidad). Positivo = más agudo, negativo = más grave. Al asignar una voz líder a una canción dentro de un repertorio, se transportará automáticamente este número de semitonos — salvo que ese repertorio tenga activa una "tonalidad uniforme", que tiene prioridad.
+                </p>
+                ${names.map(name => `
+                    <div class="form-group" style="display:flex; align-items:center; justify-content:space-between; gap:1rem; margin-bottom:0.75rem;">
+                        <label class="form-label" style="margin-bottom:0; min-width:100px;">${name}</label>
+                        <input type="number" step="1" class="form-input vocal-profile-input" data-name="${name}" value="${(profiles[name] !== undefined && profiles[name] !== null) ? profiles[name] : 0}" style="max-width:110px;">
+                    </div>
+                `).join('')}
+            `,
+            actions: [
+                { text: 'Cancelar', action: () => this.closeModal() },
+                { text: 'Guardar', primary: true, action: () => this.saveVocalProfilesFromModal() }
+            ]
+        });
+    },
+
+    saveVocalProfilesFromModal() {
+        const inputs = document.querySelectorAll('.vocal-profile-input');
+        const profiles = {};
+        inputs.forEach(inp => {
+            const name = inp.dataset.name;
+            const val = parseInt(inp.value);
+            profiles[name] = isNaN(val) ? 0 : val;
+        });
+        AppState.vocalProfiles = profiles;
+        Storage.saveVocalProfiles();
+        this.closeModal();
+        this.renderSetlistDetail();
+        if (AppState.currentView === 'song-reader' && AppState.currentSetlist && AppState.currentSong) {
+            this.viewSetlistSong(AppState.currentSong.id, false);
+        }
+    },
+
     // ============ ORDEN DE CANCIÓN — burbujas de colores en franja horizontal ============
     STRUCTURE_RULES: [
         [/^pre[\s-]?coro/i, 'PC', '#7c3aed'],
@@ -964,10 +1044,17 @@ const Router = {
     },
     // ============ FIN ORDEN DE CANCIÓN ============
 
-    // ============ NOTA DE BLOQUE POR CANCIÓN, DENTRO DE UN REPERTORIO ============
+    // ============ NOTA DE BLOQUE Y VOZ LÍDER POR CANCIÓN, DENTRO DE UN REPERTORIO ============
+    LEAD_VOCAL_OPTIONS: ['Sarah', 'Aleja', 'Lady', 'Cristina', 'Samuel'],
+
     getSongBlockNote(song) {
         if (!song || !AppState.currentSetlist || !AppState.currentSetlist.songNotes) return '';
         return AppState.currentSetlist.songNotes[song.id] || '';
+    },
+
+    getSongLeadVocal(song) {
+        if (!song || !AppState.currentSetlist || !AppState.currentSetlist.songLeadVocals) return '';
+        return AppState.currentSetlist.songLeadVocals[song.id] || '';
     },
 
     showSongNoteModal(songId) {
@@ -975,40 +1062,59 @@ const Router = {
         const sl = AppState.currentSetlist;
         const song = AppState.songs.find(s => s.id === songId);
         if (!song) return;
-        const existing = (sl.songNotes && sl.songNotes[songId]) || '';
+        const existingNote = (sl.songNotes && sl.songNotes[songId]) || '';
+        const existingLeadVocal = (sl.songLeadVocals && sl.songLeadVocals[songId]) || '';
 
         this.createModal({
             title: `Nota para "${song.title}"`,
             content: `
+                <div class="form-group">
+                    <label class="form-label">🎤 Voz líder (opcional)</label>
+                    <select class="form-select" id="song-lead-vocal-select">
+                        <option value="">Sin asignar</option>
+                        ${this.LEAD_VOCAL_OPTIONS.map(name => `<option value="${name}" ${name === existingLeadVocal ? 'selected' : ''}>${name}</option>`).join('')}
+                    </select>
+                </div>
                 <p style="margin-bottom:1rem; color:var(--text-secondary); font-size:0.9rem;">
                     Escribe aquí la referencia que quieres que aparezca arriba de esta canción dentro de "${sl.name}" (por ejemplo el bloque al que pertenece o el motivo de oración). Solo se ve en este repertorio.
                 </p>
                 <div class="form-group">
-                    <textarea class="form-textarea" id="song-note-textarea" style="min-height:120px; font-size:0.9rem;">${existing}</textarea>
+                    <textarea class="form-textarea" id="song-note-textarea" style="min-height:120px; font-size:0.9rem;">${existingNote}</textarea>
                 </div>
             `,
             actions: [
                 { text: 'Cancelar', action: () => this.closeModal() },
-                { text: 'Quitar nota', action: () => this.saveSongNote(songId, '') },
+                { text: 'Quitar todo', action: () => this.saveSongNote(songId, '', '') },
                 { text: 'Guardar', primary: true, action: () => {
                     const textarea = document.getElementById('song-note-textarea');
-                    this.saveSongNote(songId, textarea ? textarea.value.trim() : '');
+                    const leadVocalSelect = document.getElementById('song-lead-vocal-select');
+                    this.saveSongNote(songId, textarea ? textarea.value.trim() : '', leadVocalSelect ? leadVocalSelect.value : '');
                 } }
             ]
         });
     },
 
-    saveSongNote(songId, text) {
+    saveSongNote(songId, text, leadVocal = undefined) {
         const sl = AppState.currentSetlist;
         if (!sl) { this.closeModal(); return; }
         if (!sl.songNotes) sl.songNotes = {};
+        if (!sl.songLeadVocals) sl.songLeadVocals = {};
         if (text) sl.songNotes[songId] = text;
         else delete sl.songNotes[songId];
+        if (leadVocal !== undefined) {
+            if (leadVocal) sl.songLeadVocals[songId] = leadVocal;
+            else delete sl.songLeadVocals[songId];
+        }
         Storage.saveSetlists();
         this.closeModal();
         this.renderSetlistDetail();
         if (AppState.currentSong && AppState.currentSong.id === songId) {
-            this.updateReaderBlockNote();
+            if (AppState.currentSetlist && AppState.currentSetlist.id === sl.id) {
+                this.viewSetlistSong(songId, false);
+            } else {
+                this.updateReaderBlockNote();
+                this.updateReaderLeadVocal();
+            }
         }
     },
 
@@ -1020,7 +1126,16 @@ const Router = {
         if (note) { el.textContent = note; el.style.display = 'inline-block'; }
         else { el.style.display = 'none'; el.textContent = ''; }
     },
-    // ============ FIN NOTA DE BLOQUE ============
+
+    updateReaderLeadVocal() {
+        const el = document.getElementById('reader-lead-vocal');
+        if (!el) return;
+        if (!AppState.currentSetlist || !AppState.currentSong) { el.style.display = 'none'; el.textContent = ''; return; }
+        const leadVocal = this.getSongLeadVocal(AppState.currentSong);
+        if (leadVocal) { el.textContent = `🎤 Dirige: ${leadVocal}`; el.style.display = 'inline-block'; }
+        else { el.style.display = 'none'; el.textContent = ''; }
+    },
+    // ============ FIN NOTA DE BLOQUE Y VOZ LÍDER ============
 
     viewSong(songId, push = true) {
         const song = AppState.songs.find(s => s.id === songId);
@@ -1060,7 +1175,7 @@ const Router = {
 
         AppState.cameFromSetlistId = AppState.currentSetlist.id;
         AppState.currentSong = song;
-        const baseOffset = this.computeUniformOffset(song, AppState.currentSetlist);
+        const baseOffset = this.computeEffectiveOffset(song, AppState.currentSetlist);
         AppState.currentTranspose = baseOffset;
         AppState.baseTransposeOffset = baseOffset;
         AppState.notationMode = 'chords';
@@ -1084,6 +1199,7 @@ const Router = {
         this.applyReaderFontSize();
         this.renderStructureBar();
         this.updateReaderBlockNote();
+        this.updateReaderLeadVocal();
         this.updateSetlistNavControls();
         this.navigate('song-reader', false);
         WakeLockManager.request();
@@ -1108,6 +1224,8 @@ const Router = {
         if (extraEl) { extraEl.style.display = 'none'; extraEl.innerHTML = ''; }
         const blockNoteEl = document.getElementById('reader-block-note');
         if (blockNoteEl) { blockNoteEl.style.display = 'none'; blockNoteEl.textContent = ''; }
+        const leadVocalEl = document.getElementById('reader-lead-vocal');
+        if (leadVocalEl) { leadVocalEl.style.display = 'none'; leadVocalEl.textContent = ''; }
         this.exitFullscreenMode();
     },
 
@@ -1326,7 +1444,7 @@ const Router = {
         const name = document.getElementById('modal-setlist-name').value.trim();
         if (!name) { alert('El nombre es obligatorio'); return; }
         const creatorName = document.getElementById('modal-setlist-creator').value.trim();
-        const setlist = { id: this.generateId(), name, creatorName: creatorName || '', uniformKey: null, songStructures: {}, songNotes: {}, songIds: [], createdAt: new Date().toISOString() };
+        const setlist = { id: this.generateId(), name, creatorName: creatorName || '', uniformKey: null, songStructures: {}, songNotes: {}, songLeadVocals: {}, songIds: [], createdAt: new Date().toISOString() };
         AppState.setlists.push(setlist);
         Storage.saveSetlists();
         AppState.currentSetlist = setlist;
@@ -1364,6 +1482,7 @@ const Router = {
         if (!sl) return;
         if (!sl.songStructures) sl.songStructures = {};
         if (!sl.songNotes) sl.songNotes = {};
+        if (!sl.songLeadVocals) sl.songLeadVocals = {};
         AppState.currentSetlist = sl;
         this.navigate('repertorio-detail', false);
         if (push) HistoryManager.push({ view: 'repertorio-detail', setlistId });
@@ -1399,18 +1518,21 @@ const Router = {
         list.style.display = 'block';
 
         list.innerHTML = songs.map((song, idx) => {
-            const offset = this.computeUniformOffset(song, sl);
+            const offset = this.computeEffectiveOffset(song, sl);
             const displayKey = offset !== 0 ? Transposer.cleanChord(Transposer.transpose(song.keyBase, offset)) : song.keyBase;
+            const isAutoByVoice = offset !== 0 && !sl.uniformKey;
             const note = (sl.songNotes && sl.songNotes[song.id]) || '';
+            const leadVocal = (sl.songLeadVocals && sl.songLeadVocals[song.id]) || '';
             return `
             <div class="song-item" onclick="Router.viewSetlistSong('${song.id}')">
                 <div class="song-info">
+                    ${leadVocal ? `<div class="song-lead-vocal">🎤 ${leadVocal}</div>` : ''}
                     ${note ? `<div class="song-block-note">${note}</div>` : ''}
                     <div class="song-title">${idx + 1}. ${song.title}</div>
-                    <div class="song-meta">${displayKey}${offset !== 0 ? ` (orig. ${song.keyBase})` : ''}${song.bpm ? ` • ${song.bpm} BPM` : ''}</div>
+                    <div class="song-meta">${displayKey}${isAutoByVoice ? ' 🎚️' : ''}${offset !== 0 ? ` (orig. ${song.keyBase})` : ''}${song.bpm ? ` • ${song.bpm} BPM` : ''}</div>
                 </div>
                 <div class="song-actions" onclick="event.stopPropagation()">
-                    <button class="action-btn note-btn ${note ? 'has-note' : ''}" onclick="Router.showSongNoteModal('${song.id}')" title="${note ? 'Editar nota' : 'Añadir nota de bloque'}">
+                    <button class="action-btn note-btn ${(note || leadVocal) ? 'has-note' : ''}" onclick="Router.showSongNoteModal('${song.id}')" title="${(note || leadVocal) ? 'Editar nota / voz líder' : 'Añadir nota o voz líder'}">
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path>
                         </svg>
@@ -1978,6 +2100,11 @@ document.addEventListener('DOMContentLoaded', () => {
         AppState.setlistsLoaded = true;
         SplashManager.checkReady();
         if (AppState.currentView === 'repertorio') Router.renderSetlistsList();
+        if (AppState.currentView === 'repertorio-detail') Router.renderSetlistDetail();
+    });
+    Storage.listenVocalProfiles(() => {
+        AppState.vocalProfilesLoaded = true;
+        SplashManager.checkReady();
         if (AppState.currentView === 'repertorio-detail') Router.renderSetlistDetail();
     });
 
