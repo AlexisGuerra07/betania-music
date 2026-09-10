@@ -172,16 +172,36 @@ body {
     text-overflow: ellipsis;
 }
 
-.song-lead-vocal {
-    font-size: 0.75rem;
-    font-weight: 700;
-    color: #ffffff;
-    background: #7c3aed;
-    display: inline-block;
-    padding: 0.15rem 0.6rem;
-    border-radius: 999px;
-    margin-bottom: 0.35rem;
-    margin-right: 0.4rem;
+.lead-vocal-select {
+    margin-top: 0.35rem;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    padding: 0.3rem 0.5rem;
+    font-size: 0.8rem;
+    background: white;
+    color: var(--text-primary);
+    cursor: pointer;
+    max-width: 220px;
+}
+
+.lead-vocal-controls {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: var(--bg-secondary);
+    padding: 0.75rem 1rem;
+    border-radius: 8px;
+    border: 1px solid var(--border-color);
+}
+
+.lead-vocal-reader-select {
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    padding: 0.4rem 0.6rem;
+    font-size: 0.85rem;
+    background: white;
+    color: var(--text-primary);
+    cursor: pointer;
 }
 
 .reader-lead-vocal {
@@ -576,6 +596,7 @@ body.fullscreen-active .header,
 body.fullscreen-active #btn-back-to-list,
 body.fullscreen-active #setlist-nav-controls,
 body.fullscreen-active .transpose-controls,
+body.fullscreen-active .lead-vocal-controls,
 body.fullscreen-active .font-size-controls,
 body.fullscreen-active #btn-toggle-notation,
 body.fullscreen-active #btn-voice-mode,
@@ -632,6 +653,9 @@ body.fullscreen-active .song-content { padding: 0.85rem 1.1rem; }
 
     .reader-controls { gap: 0.5rem; }
     .transpose-controls { padding: 0.4rem 0.6rem; gap: 0.35rem; }
+    .lead-vocal-controls { padding: 0.4rem 0.6rem; gap: 0.35rem; }
+    .lead-vocal-reader-select { padding: 0.3rem 0.4rem; font-size: 0.78rem; }
+    .lead-vocal-select { font-size: 0.75rem; padding: 0.25rem 0.4rem; }
     .transpose-btn { width: 1.6rem; height: 1.6rem; font-size: 0.85rem; }
     .current-key { padding: 0.3rem 0.6rem; min-width: 2.2rem; font-size: 0.85rem; }
     .reader-controls .btn-sm, .reader-controls .btn-primary { padding: 0.4rem 0.7rem; font-size: 0.78rem; }
