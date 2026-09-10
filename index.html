@@ -56,6 +56,7 @@
                     <h2 class="section-title">Canciones</h2>
                     <div style="display:flex; gap:0.75rem; flex-wrap: wrap;">
                         <button class="btn" id="btn-migrate-local" style="display:none;">☁️ Migrar datos locales</button>
+                        <button class="btn" id="btn-vocal-profiles" style="display:none;">🎚️ Perfiles de voz</button>
                         <button class="btn" id="btn-bulk-detect-keys" style="display:none;">🔍 Detectar tonalidades</button>
                         <button class="btn" id="btn-import-pdfs" style="display:none;">📄 Importar PDFs</button>
                         <button class="btn-add-song" id="btn-add-song" style="display:none;">+ Añadir canción</button>
@@ -127,6 +128,7 @@
             <div class="song-reader">
                 <div class="reader-header">
                     <button class="btn" id="btn-back-to-list">← Volver</button>
+                    <div class="reader-lead-vocal" id="reader-lead-vocal" style="display:none;"></div>
                     <div class="reader-block-note" id="reader-block-note" style="display:none;"></div>
                     <div class="reader-title" id="reader-title">Título de la canción</div>
                     <div class="reader-meta" id="reader-meta">Autor • BPM • Compás</div>
