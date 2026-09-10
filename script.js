@@ -1323,14 +1323,18 @@ const Router = {
         const song = AppState.currentSong;
         const mode = AppState.notationMode || 'chords';
 
-        content.innerHTML = song.sections.map(section => `
+        content.innerHTML = song.sections.map(section => {
+            const sectionColor = this.buildStructureChip(section.label).color;
+            return `
             <div class="section">
-                <div class="section-label">${section.label}</div>
+                <div class="section-label" style="background:${sectionColor}">${section.label}</div>
                 ${section.pairs.map(pair => {
                     const letraTrim = (pair.letra || '').trim();
                     const acordesEmpty = !pair.acordes || !pair.acordes.trim();
                     if (letraTrim && acordesEmpty && ChordParser.isSectionHeader(letraTrim)) {
-                        return `<div class="section-label inline-label">${ChordParser.normalizeSectionName(letraTrim)}</div>`;
+                        const inlineName = ChordParser.normalizeSectionName(letraTrim);
+                        const inlineColor = this.buildStructureChip(inlineName).color;
+                        return `<div class="section-label inline-label" style="background:${inlineColor}">${inlineName}</div>`;
                     }
                     let chordDisplay = '';
                     if (pair.acordes) {
@@ -1346,7 +1350,8 @@ const Router = {
                     `;
                 }).join('')}
             </div>
-        `).join('');
+        `;
+        }).join('');
         content.classList.toggle('voice-mode', !!AppState.voiceMode);
     },
 
