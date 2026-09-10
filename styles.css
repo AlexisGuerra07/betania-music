@@ -172,6 +172,30 @@ body {
     text-overflow: ellipsis;
 }
 
+.song-lead-vocal {
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: #ffffff;
+    background: #7c3aed;
+    display: inline-block;
+    padding: 0.15rem 0.6rem;
+    border-radius: 999px;
+    margin-bottom: 0.35rem;
+    margin-right: 0.4rem;
+}
+
+.reader-lead-vocal {
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: #ffffff;
+    background: #7c3aed;
+    display: inline-block;
+    padding: 0.3rem 0.8rem;
+    border-radius: 999px;
+    margin-bottom: 0.75rem;
+    margin-right: 0.5rem;
+}
+
 .song-block-note {
     font-size: 0.75rem;
     font-weight: 700;
@@ -561,6 +585,8 @@ body.fullscreen-active #btn-edit-song,
 body.fullscreen-active .reader-extra-info {
     display: none !important;
 }
+
+body.fullscreen-active .reader-lead-vocal { font-size: 0.72rem; padding: 0.2rem 0.6rem; }
 
 body.fullscreen-active #btn-fullscreen-exit { display: inline-flex; align-items: center; justify-content: center; }
 body.fullscreen-active .app-container { padding: 0.5rem; max-width: 100%; }
