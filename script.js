@@ -257,8 +257,14 @@ const Storage = {
 const Auth = {
     init() {
         firebase.auth().onAuthStateChanged(user => {
+            if (!user) {
+                // Nadie ha iniciado sesión: entra como usuario anónimo en segundo plano,
+                // sin mostrar nada, para que request.auth no sea nulo en las reglas de Firestore.
+                firebase.auth().signInAnonymously().catch(err => console.error('Error en sesión anónima:', err));
+                return;
+            }
             AppState.currentUser = user;
-            AppState.isAdmin = !!(user && user.email === ADMIN_EMAIL);
+            AppState.isAdmin = !!(user.email && user.email === ADMIN_EMAIL);
             this.updateUI();
         });
         this.bindButtons();
