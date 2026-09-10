@@ -82,6 +82,45 @@ const FullscreenUI = {
     }
 };
 
+// ============ FRANJA DE ESTRUCTURA FLOTANTE (solo en pantalla completa) ============
+// No usamos CSS "position: sticky" porque falla de forma silenciosa en algunos
+// navegadores/webviews según el contexto de overflow de los contenedores padre.
+// En su lugar, detectamos con un sensor invisible (IntersectionObserver) cuándo
+// el scroll pasa el punto donde estaba la franja, y ahí la volvemos "position: fixed".
+const StickyStructureBar = {
+    observer: null,
+    init() {
+        const sentinel = document.getElementById('structure-bar-sentinel');
+        const bar = document.getElementById('song-structure-bar');
+        const spacer = document.getElementById('structure-bar-spacer');
+        if (!sentinel || !bar || !spacer) return;
+        if (this.observer) this.observer.disconnect();
+        this.observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                const shouldPin = AppState.fullscreenMode && bar.style.display !== 'none' && !entry.isIntersecting && entry.boundingClientRect.top < 0;
+                if (shouldPin) {
+                    if (!bar.classList.contains('pinned')) {
+                        spacer.style.height = bar.offsetHeight + 'px';
+                        bar.classList.add('pinned');
+                    }
+                } else {
+                    if (bar.classList.contains('pinned')) {
+                        bar.classList.remove('pinned');
+                        spacer.style.height = '0px';
+                    }
+                }
+            });
+        }, { threshold: 0 });
+        this.observer.observe(sentinel);
+    },
+    reset() {
+        const bar = document.getElementById('song-structure-bar');
+        const spacer = document.getElementById('structure-bar-spacer');
+        if (bar) bar.classList.remove('pinned');
+        if (spacer) spacer.style.height = '0px';
+    }
+};
+
 // ============ HISTORIAL DE NAVEGACIÓN ============
 const HistoryManager = {
     init() {
@@ -743,6 +782,7 @@ const Router = {
         AppState.fullscreenMode = false;
         document.body.classList.remove('fullscreen-active');
         FullscreenUI.hide();
+        StickyStructureBar.reset();
         setTimeout(() => this.fitStructureBar(), 50);
     },
 
@@ -1002,7 +1042,7 @@ const Router = {
         const inner = document.getElementById('structure-bar-inner');
         if (!bar || !inner) return;
         const structure = this.getEffectiveStructure(AppState.currentSong);
-        if (!structure.length) { bar.style.display = 'none'; inner.innerHTML = ''; return; }
+        if (!structure.length) { bar.style.display = 'none'; inner.innerHTML = ''; StickyStructureBar.reset(); return; }
         bar.style.display = 'block';
         inner.style.removeProperty('--chip-scale');
         inner.innerHTML = structure.map(label => {
@@ -2159,6 +2199,7 @@ document.addEventListener('DOMContentLoaded', () => {
     HistoryManager.init();
     Auth.init();
     Router.init();
+    StickyStructureBar.init();
 
     document.addEventListener('keydown', (e) => {
         const isCtrlCmd = e.ctrlKey || e.metaKey;
