@@ -554,6 +554,7 @@ const Router = {
     init() {
         document.querySelectorAll('.nav-tab').forEach(tab => tab.addEventListener('click', () => this.navigate(tab.dataset.route)));
         this.setupMainButtons();
+        this.populateLeadVocalReaderSelect();
         this.setupSwipeNavigation();
         FullscreenUI.bindActivityListeners();
         window.addEventListener('resize', () => {
@@ -677,6 +678,7 @@ const Router = {
             Storage.saveSettings();
             this.renderSongsList();
         });
+        this.bindSelect('lead-vocal-reader-select', (e) => this.handleLeadVocalReaderChange(e.target.value));
 
         this.bindButton('btn-new-setlist', () => this.showNewSetlistModal());
         this.bindButton('btn-back-to-repertorios', () => { history.back(); });
@@ -690,6 +692,18 @@ const Router = {
         });
         this.bindButton('btn-prev-setlist-song', () => this.gotoSetlistSong(-1));
         this.bindButton('btn-next-setlist-song', () => this.gotoSetlistSong(1));
+    },
+
+    populateLeadVocalReaderSelect() {
+        const select = document.getElementById('lead-vocal-reader-select');
+        if (!select || select.hasAttribute('data-populated')) return;
+        this.LEAD_VOCAL_OPTIONS.forEach(name => {
+            const opt = document.createElement('option');
+            opt.value = name;
+            opt.textContent = name;
+            select.appendChild(opt);
+        });
+        select.setAttribute('data-populated', 'true');
     },
 
     bindButton(id, handler) {
@@ -903,7 +917,7 @@ const Router = {
             title: '🎚️ Perfiles de voz',
             content: `
                 <p style="margin-bottom:1rem; color:var(--text-secondary); font-size:0.9rem;">
-                    Semitonos de diferencia respecto a la tonalidad de referencia (Sarah = 0, ya que casi todo el repertorio está guardado en su tonalidad). Positivo = más agudo, negativo = más grave. Al asignar una voz líder a una canción dentro de un repertorio, se transportará automáticamente este número de semitonos — salvo que ese repertorio tenga activa una "tonalidad uniforme", que tiene prioridad.
+                    Semitonos respecto a Sarah (referencia = 0). Positivo = más agudo, negativo = más grave.
                 </p>
                 ${names.map(name => `
                     <div class="form-group" style="display:flex; align-items:center; justify-content:space-between; gap:1rem; margin-bottom:0.75rem;">
@@ -1063,20 +1077,12 @@ const Router = {
         const song = AppState.songs.find(s => s.id === songId);
         if (!song) return;
         const existingNote = (sl.songNotes && sl.songNotes[songId]) || '';
-        const existingLeadVocal = (sl.songLeadVocals && sl.songLeadVocals[songId]) || '';
 
         this.createModal({
             title: `Nota para "${song.title}"`,
             content: `
-                <div class="form-group">
-                    <label class="form-label">🎤 Voz líder (opcional)</label>
-                    <select class="form-select" id="song-lead-vocal-select">
-                        <option value="">Sin asignar</option>
-                        ${this.LEAD_VOCAL_OPTIONS.map(name => `<option value="${name}" ${name === existingLeadVocal ? 'selected' : ''}>${name}</option>`).join('')}
-                    </select>
-                </div>
                 <p style="margin-bottom:1rem; color:var(--text-secondary); font-size:0.9rem;">
-                    Escribe aquí la referencia que quieres que aparezca arriba de esta canción dentro de "${sl.name}" (por ejemplo el bloque al que pertenece o el motivo de oración). Solo se ve en este repertorio.
+                    Escribe aquí la referencia que quieres que aparezca arriba de esta canción dentro de "${sl.name}" (por ejemplo el bloque al que pertenece o el motivo de oración). Solo se ve en este repertorio. Para asignar quién dirige, usa el desplegable 🎤 junto a la canción.
                 </p>
                 <div class="form-group">
                     <textarea class="form-textarea" id="song-note-textarea" style="min-height:120px; font-size:0.9rem;">${existingNote}</textarea>
@@ -1084,37 +1090,59 @@ const Router = {
             `,
             actions: [
                 { text: 'Cancelar', action: () => this.closeModal() },
-                { text: 'Quitar todo', action: () => this.saveSongNote(songId, '', '') },
+                { text: 'Quitar nota', action: () => this.saveSongNote(songId, '') },
                 { text: 'Guardar', primary: true, action: () => {
                     const textarea = document.getElementById('song-note-textarea');
-                    const leadVocalSelect = document.getElementById('song-lead-vocal-select');
-                    this.saveSongNote(songId, textarea ? textarea.value.trim() : '', leadVocalSelect ? leadVocalSelect.value : '');
+                    this.saveSongNote(songId, textarea ? textarea.value.trim() : '');
                 } }
             ]
         });
     },
 
-    saveSongNote(songId, text, leadVocal = undefined) {
+    saveSongNote(songId, text) {
         const sl = AppState.currentSetlist;
         if (!sl) { this.closeModal(); return; }
         if (!sl.songNotes) sl.songNotes = {};
-        if (!sl.songLeadVocals) sl.songLeadVocals = {};
         if (text) sl.songNotes[songId] = text;
         else delete sl.songNotes[songId];
-        if (leadVocal !== undefined) {
-            if (leadVocal) sl.songLeadVocals[songId] = leadVocal;
-            else delete sl.songLeadVocals[songId];
-        }
         Storage.saveSetlists();
         this.closeModal();
         this.renderSetlistDetail();
         if (AppState.currentSong && AppState.currentSong.id === songId) {
-            if (AppState.currentSetlist && AppState.currentSetlist.id === sl.id) {
-                this.viewSetlistSong(songId, false);
-            } else {
-                this.updateReaderBlockNote();
-                this.updateReaderLeadVocal();
+            this.updateReaderBlockNote();
+        }
+    },
+
+    // Asigna (o quita) la voz líder de una canción dentro del repertorio actual, al instante — sin modal.
+    setSongLeadVocal(songId, name) {
+        const sl = AppState.currentSetlist;
+        if (!sl) return;
+        if (!sl.songLeadVocals) sl.songLeadVocals = {};
+        if (name) sl.songLeadVocals[songId] = name;
+        else delete sl.songLeadVocals[songId];
+        Storage.saveSetlists();
+        this.renderSetlistDetail();
+        if (AppState.currentSong && AppState.currentSong.id === songId && AppState.currentSetlist && AppState.currentSetlist.id === sl.id) {
+            this.viewSetlistSong(songId, false);
+        }
+    },
+
+    // Cambio del desplegable de voz en el LECTOR de la canción.
+    // Dentro de un repertorio: se guarda igual que setSongLeadVocal.
+    // Canción suelta (sin repertorio): solo previsualiza la tonalidad, no se guarda en ningún sitio.
+    handleLeadVocalReaderChange(name) {
+        if (!AppState.currentSong) return;
+        if (AppState.currentSetlist) {
+            this.setSongLeadVocal(AppState.currentSong.id, name);
+        } else {
+            const profiles = AppState.vocalProfiles || {};
+            const offset = (name && typeof profiles[name] === 'number') ? profiles[name] : 0;
+            AppState.currentTranspose = offset;
+            if (AppState.notationMode !== 'degrees') {
+                document.getElementById('current-key-reader').textContent =
+                    Transposer.cleanChord(Transposer.transpose(AppState.currentSong.keyBase, offset));
             }
+            this.renderSongContent();
         }
     },
 
@@ -1200,6 +1228,8 @@ const Router = {
         this.renderStructureBar();
         this.updateReaderBlockNote();
         this.updateReaderLeadVocal();
+        const leadVocalSelect = document.getElementById('lead-vocal-reader-select');
+        if (leadVocalSelect) leadVocalSelect.value = (AppState.currentSetlist.songLeadVocals && AppState.currentSetlist.songLeadVocals[song.id]) || '';
         this.updateSetlistNavControls();
         this.navigate('song-reader', false);
         WakeLockManager.request();
@@ -1226,6 +1256,8 @@ const Router = {
         if (blockNoteEl) { blockNoteEl.style.display = 'none'; blockNoteEl.textContent = ''; }
         const leadVocalEl = document.getElementById('reader-lead-vocal');
         if (leadVocalEl) { leadVocalEl.style.display = 'none'; leadVocalEl.textContent = ''; }
+        const leadVocalSelect = document.getElementById('lead-vocal-reader-select');
+        if (leadVocalSelect) leadVocalSelect.value = '';
         this.exitFullscreenMode();
     },
 
@@ -1526,13 +1558,16 @@ const Router = {
             return `
             <div class="song-item" onclick="Router.viewSetlistSong('${song.id}')">
                 <div class="song-info">
-                    ${leadVocal ? `<div class="song-lead-vocal">🎤 ${leadVocal}</div>` : ''}
                     ${note ? `<div class="song-block-note">${note}</div>` : ''}
                     <div class="song-title">${idx + 1}. ${song.title}</div>
                     <div class="song-meta">${displayKey}${isAutoByVoice ? ' 🎚️' : ''}${offset !== 0 ? ` (orig. ${song.keyBase})` : ''}${song.bpm ? ` • ${song.bpm} BPM` : ''}</div>
+                    <select class="lead-vocal-select" onclick="event.stopPropagation()" onchange="event.stopPropagation(); Router.setSongLeadVocal('${song.id}', this.value)">
+                        <option value="">🎤 Sin asignar</option>
+                        ${this.LEAD_VOCAL_OPTIONS.map(name => `<option value="${name}" ${name === leadVocal ? 'selected' : ''}>🎤 ${name}</option>`).join('')}
+                    </select>
                 </div>
                 <div class="song-actions" onclick="event.stopPropagation()">
-                    <button class="action-btn note-btn ${(note || leadVocal) ? 'has-note' : ''}" onclick="Router.showSongNoteModal('${song.id}')" title="${(note || leadVocal) ? 'Editar nota / voz líder' : 'Añadir nota o voz líder'}">
+                    <button class="action-btn note-btn ${note ? 'has-note' : ''}" onclick="Router.showSongNoteModal('${song.id}')" title="${note ? 'Editar nota' : 'Añadir nota'}">
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path>
                         </svg>
