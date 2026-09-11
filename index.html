@@ -25,6 +25,19 @@
 
     <button id="btn-fullscreen-exit">✕</button>
 
+    <div id="teleprompter-controls" class="teleprompter-controls" style="display:none;">
+        <button id="btn-tp-slower" class="tp-icon-btn" title="Más lento">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+        </button>
+        <button id="btn-tp-toggle" class="tp-icon-btn tp-icon-btn-main" title="Reproducir/Pausar">
+            <svg id="tp-icon-play" width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><polygon points="6,4 20,12 6,20"></polygon></svg>
+            <svg id="tp-icon-pause" width="20" height="20" viewBox="0 0 24 24" fill="currentColor" style="display:none;"><rect x="5" y="4" width="5" height="16"></rect><rect x="14" y="4" width="5" height="16"></rect></svg>
+        </button>
+        <button id="btn-tp-faster" class="tp-icon-btn" title="Más rápido">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="5" y1="12" x2="19" y2="12"></line><line x1="12" y1="5" x2="12" y2="19"></line></svg>
+        </button>
+    </div>
+
     <header class="header">
         <div class="header-content">
             <div class="logo-section" id="logo-home" style="cursor: pointer;">
