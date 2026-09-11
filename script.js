@@ -89,10 +89,13 @@ const FullscreenUI = {
 };
 
 // ============ TELEPROMPTER (auto-scroll en pantalla completa) ============
-// Desliza la letra sola a una velocidad calculada a partir del BPM de la canción.
+// Desliza la letra sola calculando cuánto debería durar cada bloque a partir de:
+// BPM + compás (segundos por compás) + cantidad de acordes reales en esa sección
+// (cada acorde ≈ 2 a 4 compases, usamos 3 como punto medio).
 // Si la canción tiene "orden" cargado (las burbujas de arriba), sigue ESE orden
 // real: salta de sección en sección y repite cuando corresponde (ej. "Coro x2").
-// Si no hay orden cargado, cae en un scroll lineal simple de toda la letra.
+// Si no hay orden cargado, cae en un scroll lineal de toda la letra, estimando
+// la duración total de la misma forma (con todos los acordes de la canción).
 // Si el usuario desliza manualmente mientras está en marcha, el avance automático
 // se resincroniza desde la nueva posición (no pelea ni retrocede solo).
 const Teleprompter = {
@@ -101,9 +104,11 @@ const Teleprompter = {
     rafId: null,
     lastTimestamp: null,
     autoStartTimer: null,
-    plan: null,          // array de segmentos {startY, endY} en el orden real de reproducción, o null si no hay orden
-    progressPx: 0,        // avance a lo largo del "plan" (no es scrollY directo, permite saltos/repeticiones)
-    lastAutoY: null,      // última Y que fijamos nosotros, para detectar si el usuario deslizó a mano
+    plan: null,             // array de segmentos {startY, endY, durationSec}, o null si no hay orden cargado
+    elapsedSec: 0,          // segundos transcurridos a lo largo del plan (o del scroll lineal)
+    lastAutoY: null,        // última Y que fijamos nosotros, para detectar si el usuario deslizó a mano
+    fallbackPxPerSec: 24,   // usado solo cuando no hay plan (sin orden cargado)
+    MEASURES_PER_CHORD: 3,  // punto medio de "2 a 4 compases por acorde"
 
     scheduleAutoStart(delayMs) {
         this.cancelAutoStart();
@@ -119,11 +124,20 @@ const Teleprompter = {
     start() {
         this.cancelAutoStart();
         if (this.running) return;
-        this.plan = this.buildPlan(AppState.currentSong);
+        const song = AppState.currentSong;
+        this.plan = this.buildPlan(song);
         this.running = true;
         this.lastTimestamp = null;
         this.lastAutoY = null;
-        this.progressPx = this.plan ? this.yToProgress(window.scrollY) : 0;
+        if (this.plan) {
+            this.elapsedSec = this.yToElapsed(window.scrollY);
+        } else {
+            this.elapsedSec = 0;
+            const estDuration = this.estimateWholeSongDurationSec(song);
+            const maxScroll = Math.max(1, document.documentElement.scrollHeight - window.innerHeight);
+            const bpm = (song && song.bpm) || 80;
+            this.fallbackPxPerSec = estDuration ? (maxScroll / estDuration) : ((bpm / 60) * 24);
+        }
         this.updateToggleIcon();
         this.rafId = requestAnimationFrame((t) => this.tick(t));
     },
@@ -144,7 +158,7 @@ const Teleprompter = {
         this.stop();
         this.speedFactor = 1;
         this.plan = null;
-        this.progressPx = 0;
+        this.elapsedSec = 0;
     },
 
     tick(timestamp) {
@@ -153,23 +167,19 @@ const Teleprompter = {
         const deltaSec = Math.min(0.1, (timestamp - this.lastTimestamp) / 1000);
         this.lastTimestamp = timestamp;
 
-        const bpm = (AppState.currentSong && AppState.currentSong.bpm) || 80;
-        const basePxPerSec = (bpm / 60) * 24;
-        const pxPerSec = basePxPerSec * this.speedFactor;
-
         if (this.plan && this.plan.length) {
             // ¿Deslizó manualmente desde el último frame? Resincronizamos el avance desde ahí.
             if (this.lastAutoY !== null && Math.abs(window.scrollY - this.lastAutoY) > 3) {
-                this.progressPx = this.yToProgress(window.scrollY);
+                this.elapsedSec = this.yToElapsed(window.scrollY);
             }
-            this.progressPx += pxPerSec * deltaSec;
-            const total = this.planTotalLength();
-            if (this.progressPx >= total) { this.stop(); return; }
-            const targetY = this.progressToY(this.progressPx);
+            this.elapsedSec += deltaSec * this.speedFactor;
+            const total = this.planTotalDuration();
+            if (this.elapsedSec >= total) { this.stop(); return; }
+            const targetY = this.elapsedToY(this.elapsedSec);
             window.scrollTo(0, targetY);
             this.lastAutoY = targetY;
         } else {
-            window.scrollBy(0, pxPerSec * deltaSec);
+            window.scrollBy(0, this.fallbackPxPerSec * this.speedFactor * deltaSec);
             const maxScroll = document.documentElement.scrollHeight - window.innerHeight;
             if (window.scrollY >= maxScroll - 2) { this.stop(); return; }
         }
@@ -178,6 +188,38 @@ const Teleprompter = {
 
     faster() { this.speedFactor = Math.min(3, Math.round(this.speedFactor * 1.15 * 100) / 100); },
     slower() { this.speedFactor = Math.max(0.2, Math.round(this.speedFactor * 0.87 * 100) / 100); },
+
+    // ---- Estimación de duración a partir de BPM + compás + cantidad de acordes ----
+    getBeatsPerMeasure(song) {
+        const compas = (song && song.compas) || '4/4';
+        const m = String(compas).match(/^(\d+)\s*\/\s*(\d+)/);
+        return m ? Math.max(1, parseInt(m[1], 10)) : 4;
+    },
+    countChordsInSection(sectionData) {
+        if (!sectionData || !sectionData.pairs) return 0;
+        let count = 0;
+        sectionData.pairs.forEach(pair => {
+            if (!pair.acordes) return;
+            count += [...pair.acordes.matchAll(ChordParser.chordRegex)].length;
+        });
+        return count;
+    },
+    estimateSectionDurationSec(sectionData, song) {
+        const bpm = (song && song.bpm) || 80;
+        const secPerMeasure = (this.getBeatsPerMeasure(song) / bpm) * 60;
+        const numChords = this.countChordsInSection(sectionData);
+        const estimatedMeasures = numChords > 0 ? numChords * this.MEASURES_PER_CHORD : 4;
+        return Math.max(1, estimatedMeasures * secPerMeasure);
+    },
+    estimateWholeSongDurationSec(song) {
+        if (!song || !song.sections || !song.sections.length) return null;
+        let totalChords = 0;
+        song.sections.forEach(s => { totalChords += this.countChordsInSection(s); });
+        if (!totalChords) return null;
+        const bpm = (song && song.bpm) || 80;
+        const secPerMeasure = (this.getBeatsPerMeasure(song) / bpm) * 60;
+        return totalChords * this.MEASURES_PER_CHORD * secPerMeasure;
+    },
 
     // ---- Construcción del plan a partir del "orden de la canción" ----
     parseStructureEntry(rawEntry) {
@@ -201,17 +243,20 @@ const Teleprompter = {
         return sameCategory[0];
     },
     buildPlan(song) {
-        if (!song) return null;
+        if (!song || !song.sections || !song.sections.length) return null;
         const structureRaw = Router.getEffectiveStructure(song);
         const sectionEls = Array.from(document.querySelectorAll('#song-content .section'));
-        if (!structureRaw.length || !sectionEls.length) return null;
+        if (!structureRaw.length || sectionEls.length !== song.sections.length) return null;
 
-        const sectionsInfo = sectionEls.map(el => {
+        const sectionsInfo = sectionEls.map((el, idx) => {
+            const data = song.sections[idx];
             const labelEl = el.querySelector('.section-label:not(.inline-label)');
-            const label = labelEl ? labelEl.textContent.trim() : '';
+            const label = labelEl ? labelEl.textContent.trim() : (data ? data.label : '');
             const rect = el.getBoundingClientRect();
             const top = rect.top + window.scrollY;
-            return { el, label, top, height: Math.max(el.offsetHeight, 40) };
+            const height = Math.max(el.offsetHeight, 20);
+            const durationSec = this.estimateSectionDurationSec(data, song);
+            return { el, label, top, height, durationSec };
         });
 
         const segments = [];
@@ -220,38 +265,43 @@ const Teleprompter = {
             const match = this.matchSection(baseText, sectionsInfo);
             if (!match) return;
             for (let i = 0; i < repeats; i++) {
-                segments.push({ startY: match.top, endY: match.top + match.height });
+                segments.push({ startY: match.top, endY: match.top + match.height, durationSec: match.durationSec });
             }
         });
         return segments.length ? segments : null;
     },
-    planTotalLength() {
+    planTotalDuration() {
         if (!this.plan) return 0;
-        return this.plan.reduce((sum, seg) => sum + Math.max(0, seg.endY - seg.startY), 0);
+        return this.plan.reduce((sum, seg) => sum + (seg.durationSec || 0), 0);
     },
-    progressToY(progressPx) {
-        let remaining = progressPx;
+    elapsedToY(elapsedSec) {
+        let remaining = elapsedSec;
         for (let i = 0; i < this.plan.length; i++) {
             const seg = this.plan[i];
-            const segLen = Math.max(0, seg.endY - seg.startY);
-            if (remaining <= segLen || i === this.plan.length - 1) {
-                return seg.startY + Math.min(Math.max(remaining, 0), segLen);
+            const dur = Math.max(0.01, seg.durationSec || 0.01);
+            if (remaining <= dur || i === this.plan.length - 1) {
+                const t = Math.min(Math.max(remaining / dur, 0), 1);
+                return seg.startY + t * (seg.endY - seg.startY);
             }
-            remaining -= segLen;
+            remaining -= dur;
         }
         return this.plan[this.plan.length - 1].endY;
     },
-    yToProgress(y) {
+    yToElapsed(y) {
         let cumulative = 0;
-        let best = { progress: 0, dist: Infinity };
+        let best = { elapsed: 0, dist: Infinity };
         for (const seg of this.plan) {
-            const segLen = Math.max(0, seg.endY - seg.startY);
-            if (y >= seg.startY && y <= seg.endY) return cumulative + (y - seg.startY);
+            const dur = Math.max(0.01, seg.durationSec || 0.01);
+            const lo = Math.min(seg.startY, seg.endY), hi = Math.max(seg.startY, seg.endY);
+            if (y >= lo && y <= hi) {
+                const t = (seg.endY === seg.startY) ? 0 : (y - seg.startY) / (seg.endY - seg.startY);
+                return cumulative + Math.min(Math.max(t, 0), 1) * dur;
+            }
             const dist = Math.min(Math.abs(y - seg.startY), Math.abs(y - seg.endY));
-            if (dist < best.dist) best = { progress: cumulative + (y < seg.startY ? 0 : segLen), dist };
-            cumulative += segLen;
+            if (dist < best.dist) best = { elapsed: cumulative + (y < lo ? 0 : dur), dist };
+            cumulative += dur;
         }
-        return best.progress;
+        return best.elapsed;
     },
 
     updateToggleIcon() {
