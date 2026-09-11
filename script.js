@@ -58,11 +58,15 @@ const FullscreenUI = {
     show() {
         const btn = document.getElementById('btn-fullscreen-exit');
         if (btn) btn.style.display = 'inline-flex';
+        const tpControls = document.getElementById('teleprompter-controls');
+        if (tpControls) tpControls.style.display = 'flex';
         this.scheduleHide();
     },
     hide() {
         const btn = document.getElementById('btn-fullscreen-exit');
         if (btn) btn.style.display = 'none';
+        const tpControls = document.getElementById('teleprompter-controls');
+        if (tpControls) tpControls.style.display = 'none';
         if (this.hideTimer) { clearTimeout(this.hideTimer); this.hideTimer = null; }
     },
     scheduleHide() {
@@ -70,6 +74,8 @@ const FullscreenUI = {
         this.hideTimer = setTimeout(() => {
             const btn = document.getElementById('btn-fullscreen-exit');
             if (btn) btn.style.display = 'none';
+            const tpControls = document.getElementById('teleprompter-controls');
+            if (tpControls) tpControls.style.display = 'none';
         }, 3000);
     },
     bindActivityListeners() {
@@ -79,6 +85,64 @@ const FullscreenUI = {
         document.addEventListener('touchstart', reveal, { passive: true });
         document.addEventListener('mousemove', reveal, { passive: true });
         document.addEventListener('click', reveal, { passive: true });
+    }
+};
+
+// ============ TELEPROMPTER (auto-scroll en pantalla completa) ============
+// Desliza la letra sola a una velocidad calculada a partir del BPM de la canción.
+// No sincroniza con la estructura exacta (eso requeriría cargar los compases de
+// cada sección) — es un ritmo constante ajustable en vivo con los botones +/-.
+// Si el usuario desliza manualmente mientras está en marcha, sigue avanzando
+// desde la nueva posición (no vuelve atrás ni se resetea).
+const Teleprompter = {
+    running: false,
+    speedFactor: 1,
+    rafId: null,
+    lastTimestamp: null,
+
+    start() {
+        if (this.running) return;
+        this.running = true;
+        this.lastTimestamp = null;
+        this.updateToggleIcon();
+        this.rafId = requestAnimationFrame((t) => this.tick(t));
+    },
+    stop() {
+        this.running = false;
+        if (this.rafId) cancelAnimationFrame(this.rafId);
+        this.rafId = null;
+        this.lastTimestamp = null;
+        this.updateToggleIcon();
+    },
+    toggle() {
+        if (this.running) this.stop(); else this.start();
+    },
+    tick(timestamp) {
+        if (!this.running) return;
+        if (this.lastTimestamp == null) this.lastTimestamp = timestamp;
+        const deltaSec = Math.min(0.1, (timestamp - this.lastTimestamp) / 1000);
+        this.lastTimestamp = timestamp;
+
+        const bpm = (AppState.currentSong && AppState.currentSong.bpm) || 80;
+        const basePxPerSec = (bpm / 60) * 24;
+        const pxPerSec = basePxPerSec * this.speedFactor;
+        window.scrollBy(0, pxPerSec * deltaSec);
+
+        const maxScroll = document.documentElement.scrollHeight - window.innerHeight;
+        if (window.scrollY >= maxScroll - 2) { this.stop(); return; }
+        this.rafId = requestAnimationFrame((t) => this.tick(t));
+    },
+    faster() { this.speedFactor = Math.min(3, Math.round(this.speedFactor * 1.15 * 100) / 100); },
+    slower() { this.speedFactor = Math.max(0.2, Math.round(this.speedFactor * 0.87 * 100) / 100); },
+    reset() {
+        this.stop();
+        this.speedFactor = 1;
+    },
+    updateToggleIcon() {
+        const playIcon = document.getElementById('tp-icon-play');
+        const pauseIcon = document.getElementById('tp-icon-pause');
+        if (playIcon) playIcon.style.display = this.running ? 'none' : 'block';
+        if (pauseIcon) pauseIcon.style.display = this.running ? 'block' : 'none';
     }
 };
 
@@ -97,12 +161,13 @@ const StickyStructureBar = {
         if (this.observer) this.observer.disconnect();
         this.observer = new IntersectionObserver((entries) => {
             entries.forEach(entry => {
-                const shouldPin = AppState.fullscreenMode && bar.style.display !== 'none' && !entry.isIntersecting && entry.boundingClientRect.top < 0;
+                const shouldPin = bar.style.display !== 'none' && !entry.isIntersecting && entry.boundingClientRect.top < 0;
                 if (shouldPin) {
                     if (!bar.classList.contains('pinned')) {
                         spacer.style.height = bar.offsetHeight + 'px';
                         bar.classList.add('pinned');
                     }
+                    this.updateTopOffset();
                 } else {
                     if (bar.classList.contains('pinned')) {
                         bar.classList.remove('pinned');
@@ -112,6 +177,20 @@ const StickyStructureBar = {
             });
         }, { threshold: 0 });
         this.observer.observe(sentinel);
+    },
+    // Calcula cuánto espacio libre debe dejar arriba: si hay cabecera visible (vista normal),
+    // se coloca justo debajo de ella; en pantalla completa (sin cabecera), pegada arriba del todo.
+    updateTopOffset() {
+        const bar = document.getElementById('song-structure-bar');
+        if (!bar) return;
+        let topPx;
+        if (AppState.fullscreenMode) {
+            topPx = 8;
+        } else {
+            const header = document.querySelector('.header');
+            topPx = (header ? header.getBoundingClientRect().height : 0) + 8;
+        }
+        document.documentElement.style.setProperty('--structure-bar-top', topPx + 'px');
     },
     reset() {
         const bar = document.getElementById('song-structure-bar');
@@ -637,7 +716,10 @@ const Router = {
         this.setupSwipeNavigation();
         FullscreenUI.bindActivityListeners();
         window.addEventListener('resize', () => {
-            if (AppState.currentView === 'song-reader') HorizontalStructureSync.update();
+            if (AppState.currentView === 'song-reader') {
+                HorizontalStructureSync.update();
+                StickyStructureBar.updateTopOffset();
+            }
         });
         this.navigate('canciones', false);
     },
@@ -711,6 +793,9 @@ const Router = {
         this.bindButton('btn-font-decrease', () => this.adjustReaderFontSize(-0.1));
         this.bindButton('btn-fullscreen-toggle', () => this.enterFullscreenMode());
         this.bindButton('btn-fullscreen-exit', () => this.requestExitFullscreen());
+        this.bindButton('btn-tp-toggle', () => Teleprompter.toggle());
+        this.bindButton('btn-tp-slower', () => Teleprompter.slower());
+        this.bindButton('btn-tp-faster', () => Teleprompter.faster());
         this.bindButton('btn-save-song', () => this.saveCurrentSong());
         this.bindButton('btn-add-section', () => Editor.addSection());
         this.bindButton('btn-add-pair-editor', () => Editor.addPair());
@@ -809,6 +894,7 @@ const Router = {
             setlistId: AppState.currentSetlist ? AppState.currentSetlist.id : null,
             fullscreen: true
         });
+        StickyStructureBar.updateTopOffset();
         setTimeout(() => HorizontalStructureSync.update(), 50);
     },
     requestExitFullscreen() { if (AppState.fullscreenMode) history.back(); },
@@ -816,7 +902,8 @@ const Router = {
         AppState.fullscreenMode = false;
         document.body.classList.remove('fullscreen-active');
         FullscreenUI.hide();
-        StickyStructureBar.reset();
+        Teleprompter.stop();
+        StickyStructureBar.updateTopOffset();
         setTimeout(() => HorizontalStructureSync.update(), 50);
     },
 
@@ -1095,21 +1182,21 @@ const Router = {
 
     // ============ ORDEN DE CANCIÓN — burbujas de colores en franja horizontal ============
     STRUCTURE_RULES: [
-        [/^pre[\s-]?coro/i, 'PC', '#a5f3fc', '#155e75'],
-        [/^estribillo/i, 'C', '#99f6e4', '#115e59'],
-        [/^coro/i, 'C', '#fde68a', '#92400e'],
-        [/^(estrofa|verso)/i, 'E', '#bae6fd', '#075985'],
-        [/^intro/i, 'I', '#a7f3d0', '#065f46'],
-        [/^(puente|bridge)/i, 'P', '#bfdbfe', '#1e40af'],
-        [/^interludio/i, 'INT', '#c7d2fe', '#3730a3'],
-        [/^instr(umental)?\.?/i, 'INST', '#fed7aa', '#9a3412'],
-        [/^solo/i, 'S', '#fecdd3', '#9f1239'],
-        [/^outro/i, 'O', '#e7e5e4', '#44403c'],
-        [/^final/i, 'F', '#cbd5e1', '#1e293b'],
-        [/^tag/i, 'T', '#e5e7eb', '#374151'],
-        [/^modulaci[oó]n/i, 'MOD', '#e9d5ff', '#6b21a8'],
-        [/^leyenda/i, 'LEY', '#e5e7eb', '#374151'],
-        [/^espont[aá]neo/i, 'ESP', '#bbf7d0', '#166534']
+        [/^pre[\s-]?coro/i, 'PC', '#7c3aed', '#ffffff'],
+        [/^estribillo/i, 'C', '#e11d48', '#ffffff'],
+        [/^coro/i, 'C', '#dc2626', '#ffffff'],
+        [/^(estrofa|verso)/i, 'E', '#2563eb', '#ffffff'],
+        [/^intro/i, 'I', '#0d9488', '#ffffff'],
+        [/^(puente|bridge)/i, 'P', '#16a34a', '#ffffff'],
+        [/^interludio/i, 'INT', '#0891b2', '#ffffff'],
+        [/^instr(umental)?\.?/i, 'INST', '#d97706', '#ffffff'],
+        [/^solo/i, 'S', '#db2777', '#ffffff'],
+        [/^outro/i, 'O', '#78716c', '#ffffff'],
+        [/^final/i, 'F', '#111827', '#ffffff'],
+        [/^tag/i, 'T', '#6b7280', '#ffffff'],
+        [/^modulaci[oó]n/i, 'MOD', '#9333ea', '#ffffff'],
+        [/^leyenda/i, 'LEY', '#6b7280', '#ffffff'],
+        [/^espont[aá]neo/i, 'ESP', '#059669', '#ffffff']
     ],
 
     buildStructureChip(rawLabel) {
@@ -1122,7 +1209,7 @@ const Router = {
                 return { text, color, textColor };
             }
         }
-        return { text: original, color: '#f3f4f6', textColor: '#374151' };
+        return { text: original, color: '#4b5563', textColor: '#ffffff' };
     },
 
     getEffectiveStructure(song) {
@@ -1391,6 +1478,8 @@ const Router = {
         if (leadVocalSelect) leadVocalSelect.value = '';
         const leadVocalWrap = document.getElementById('lead-vocal-controls-wrap');
         if (leadVocalWrap) leadVocalWrap.style.display = 'none';
+        StickyStructureBar.reset();
+        Teleprompter.reset();
         this.exitFullscreenMode();
     },
 
