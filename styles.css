@@ -355,6 +355,17 @@ body {
     overflow: hidden;
 }
 
+.song-structure-bar.pinned {
+    position: fixed;
+    top: var(--structure-bar-top, 0.5rem);
+    left: 0.5rem;
+    right: 0.5rem;
+    max-width: 1080px;
+    margin: 0 auto;
+    z-index: 80;
+    box-shadow: var(--shadow-md);
+}
+
 .structure-bar-inner {
     display: flex;
     flex-wrap: nowrap;
@@ -637,6 +648,42 @@ body {
     padding: 0;
 }
 
+.teleprompter-controls {
+    display: none;
+    position: fixed;
+    bottom: max(1.2rem, env(safe-area-inset-bottom));
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 900;
+    align-items: center;
+    gap: 0.6rem;
+    background: rgba(17, 24, 39, 0.85);
+    padding: 0.5rem;
+    border-radius: 999px;
+    box-shadow: var(--shadow-lg);
+}
+.tp-icon-btn {
+    background: transparent;
+    border: none;
+    color: white;
+    width: 2.2rem;
+    height: 2.2rem;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    padding: 0;
+    transition: background 0.15s;
+}
+.tp-icon-btn:hover { background: rgba(255, 255, 255, 0.15); }
+.tp-icon-btn-main {
+    background: var(--primary-color);
+    width: 2.6rem;
+    height: 2.6rem;
+}
+.tp-icon-btn-main:hover { background: var(--primary-hover); }
+
 body.fullscreen-active .header,
 body.fullscreen-active #btn-back-to-list,
 body.fullscreen-active #setlist-nav-controls,
@@ -672,15 +719,6 @@ body.fullscreen-active .song-structure-bar {
     margin-bottom: 0.5rem;
 }
 
-body.fullscreen-active .song-structure-bar.pinned {
-    position: fixed;
-    top: max(0.4rem, env(safe-area-inset-top));
-    left: 0.5rem;
-    right: 0.5rem;
-    z-index: 80;
-    margin-bottom: 0;
-    box-shadow: var(--shadow-md);
-}
 body.fullscreen-active .song-content { padding: 0.85rem 1.1rem; }
 
 @media (max-width: 768px) {
