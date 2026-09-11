@@ -2038,4 +2038,275 @@ const Editor = {
 
     loadSong(song) {
         AppState.currentSong = song;
-        document.getElementById('song-title-editor').value = song
+        document.getElementById('song-title-editor').value = song.title;
+        const artistInput = document.getElementById('song-artist-editor');
+        if (artistInput) artistInput.value = song.artist || '';
+        this.render();
+        this.renderOutline();
+        this.updateChips();
+        Storage.updateSaveStatus('saved');
+    },
+
+    updateChips() {
+        const keySelect = document.getElementById('key-editor-select');
+        if (keySelect) keySelect.value = AppState.currentSong.keyBase;
+        const bpmInput = document.getElementById('bpm-editor-input');
+        if (bpmInput) bpmInput.value = AppState.currentSong.bpm || '';
+        const compasInput = document.getElementById('compas-editor-input');
+        if (compasInput) compasInput.value = AppState.currentSong.compas || '';
+        const originalKeySelect = document.getElementById('original-key-editor-select');
+        if (originalKeySelect) originalKeySelect.value = AppState.currentSong.originalKey || '';
+        const youtubeInput = document.getElementById('youtube-link-editor-input');
+        if (youtubeInput) youtubeInput.value = AppState.currentSong.youtubeLink || '';
+    },
+
+    detectKey() {
+        if (!AppState.currentSong || !AppState.currentSong.sections) return;
+        const detected = KeyDetector.detectKey(AppState.currentSong.sections);
+        if (!detected) { alert('No se pudieron detectar suficientes acordes para calcular la tonalidad.'); return; }
+        AppState.currentSong.keyBase = detected;
+        this.updateChips();
+        Storage.updateSaveStatus('unsaved');
+        alert(`Tonalidad detectada: ${detected}`);
+    },
+
+    showStructureModal() {
+        if (!AppState.currentSong) return;
+        const existing = AppState.currentSong.structure || [];
+        const prefill = existing.length > 0
+            ? existing.join('\n')
+            : (AppState.currentSong.sections || []).map(s => s.label).join('\n');
+
+        Router.createModal({
+            title: `Orden de "${AppState.currentSong.title}"`,
+            content: `
+                <p style="margin-bottom:1rem; color:var(--text-secondary); font-size:0.9rem;">
+                    Escribe el orden en que se toca esta canción (escuchando la versión original), una parte por línea. Repite líneas, añade "x2", "x4", o texto libre como "Instrumental" o "Final" según necesites. Este es el orden por defecto de la canción; cada repertorio puede tener su propio orden que sobrescribe este.
+                </p>
+                <div class="form-group">
+                    <textarea class="form-textarea" id="structure-textarea" style="min-height:220px; font-family:var(--mono-font); font-size:0.9rem;">${prefill}</textarea>
+                </div>
+            `,
+            actions: [
+                { text: 'Cancelar', action: () => Router.closeModal() },
+                { text: 'Guardar orden', primary: true, action: () => Editor.saveStructure() }
+            ]
+        });
+    },
+
+    saveStructure() {
+        if (!AppState.currentSong) { Router.closeModal(); return; }
+        const textarea = document.getElementById('structure-textarea');
+        const lines = (textarea ? textarea.value : '').split('\n').map(l => l.trim()).filter(l => l.length > 0);
+        AppState.currentSong.structure = lines;
+        Storage.updateSaveStatus('unsaved');
+        Router.closeModal();
+    },
+
+    render() {
+        const content = document.getElementById('editor-content');
+        if (!AppState.currentSong || !AppState.currentSong.sections || AppState.currentSong.sections.length === 0) {
+            content.innerHTML = '<div class="empty-state"><h3>No hay contenido</h3><p>Usa "+ Sección" para empezar a añadir contenido.</p></div>';
+            return;
+        }
+        content.innerHTML = AppState.currentSong.sections.map((section, sIndex) => `
+            <div class="section-editor" data-section="${sIndex}">
+                <div class="section-header-editor">
+                    <input type="text" class="section-label-input" value="${section.label}" onchange="Editor.updateSectionLabel(${sIndex}, this.value)">
+                    <div class="section-actions">
+                        <button class="btn-xs" onclick="Editor.addPairToSection(${sIndex})">+ Par</button>
+                        <button class="btn-xs" onclick="Editor.moveSection(${sIndex}, -1)">↑</button>
+                        <button class="btn-xs" onclick="Editor.moveSection(${sIndex}, 1)">↓</button>
+                        <button class="btn-xs" onclick="Editor.deleteSection(${sIndex})">🗑️</button>
+                    </div>
+                </div>
+                ${section.pairs ? section.pairs.map((pair, pIndex) => this.renderPair(pair, sIndex, pIndex)).join('') : ''}
+            </div>
+        `).join('');
+        this.setupTextareaAutoResize();
+    },
+
+    renderPair(pair, sIndex, pIndex) {
+        return `
+            <div class="pair-editor">
+                <div class="pair-header">
+                    <span class="pair-label">Acordes/Letra ${pIndex + 1}</span>
+                    <div class="pair-actions">
+                        <button class="btn-xs" onclick="Editor.duplicatePair(${sIndex}, ${pIndex})">📋</button>
+                        <button class="btn-xs" onclick="Editor.movePair(${sIndex}, ${pIndex}, -1)">↑</button>
+                        <button class="btn-xs" onclick="Editor.movePair(${sIndex}, ${pIndex}, 1)">↓</button>
+                        <button class="btn-xs" onclick="Editor.deletePair(${sIndex}, ${pIndex})">🗑️</button>
+                    </div>
+                </div>
+                <textarea class="chord-input" placeholder="Acordes..." onchange="Editor.updatePair(${sIndex}, ${pIndex}, 'acordes', this.value)" style="font-size: ${AppState.settings.fontSize}px;">${pair.acordes || ''}</textarea>
+                <textarea class="lyric-input" placeholder="Letra..." onchange="Editor.updatePair(${sIndex}, ${pIndex}, 'letra', this.value)" style="font-size: ${AppState.settings.fontSize}px;">${pair.letra || ''}</textarea>
+            </div>
+        `;
+    },
+
+    renderOutline() {
+        const outline = document.getElementById('sections-outline');
+        if (!AppState.currentSong || !AppState.currentSong.sections) { outline.innerHTML = '<div class="text-center">Sin secciones</div>'; return; }
+        outline.innerHTML = AppState.currentSong.sections.map((section, index) => `
+            <div class="outline-item" onclick="Editor.scrollToSection(${index})">
+                <span>${section.label}</span>
+                <span style="font-size: 0.8rem; opacity: 0.7;">${section.pairs ? section.pairs.length : 0}</span>
+            </div>
+        `).join('');
+    },
+
+    setupTextareaAutoResize() {
+        document.querySelectorAll('.chord-input, .lyric-input').forEach(t => {
+            t.addEventListener('input', () => { t.style.height = 'auto'; t.style.height = t.scrollHeight + 'px'; });
+            t.style.height = 'auto';
+            t.style.height = t.scrollHeight + 'px';
+        });
+    },
+
+    updateSectionLabel(sIndex, value) { AppState.currentSong.sections[sIndex].label = value; this.renderOutline(); Storage.updateSaveStatus('unsaved'); },
+    updatePair(sIndex, pIndex, field, value) { AppState.currentSong.sections[sIndex].pairs[pIndex][field] = value; Storage.updateSaveStatus('unsaved'); },
+
+    addSection() {
+        const name = prompt('Nombre de la nueva sección:', 'Nueva sección');
+        if (!name) return;
+        if (!AppState.currentSong.sections) AppState.currentSong.sections = [];
+        AppState.currentSong.sections.push({ label: name, pairs: [] });
+        this.render(); this.renderOutline();
+        Storage.updateSaveStatus('unsaved');
+    },
+
+    addPair() {
+        if (!AppState.currentSong.sections || AppState.currentSong.sections.length === 0) this.addSection();
+        this.addPairToSection(AppState.currentSong.sections.length - 1);
+    },
+
+    addPairToSection(sIndex) {
+        if (!AppState.currentSong.sections[sIndex]) return;
+        if (!AppState.currentSong.sections[sIndex].pairs) AppState.currentSong.sections[sIndex].pairs = [];
+        AppState.currentSong.sections[sIndex].pairs.push({ acordes: '', letra: '' });
+        this.render(); this.renderOutline();
+        Storage.updateSaveStatus('unsaved');
+    },
+
+    duplicatePair(sIndex, pIndex) {
+        const pair = AppState.currentSong.sections[sIndex].pairs[pIndex];
+        if (!pair) return;
+        AppState.currentSong.sections[sIndex].pairs.splice(pIndex + 1, 0, { acordes: pair.acordes, letra: pair.letra });
+        this.render();
+        Storage.updateSaveStatus('unsaved');
+    },
+
+    movePair(sIndex, pIndex, direction) {
+        const section = AppState.currentSong.sections[sIndex];
+        const newIndex = pIndex + direction;
+        if (newIndex < 0 || newIndex >= section.pairs.length) return;
+        const pair = section.pairs.splice(pIndex, 1)[0];
+        section.pairs.splice(newIndex, 0, pair);
+        this.render();
+        Storage.updateSaveStatus('unsaved');
+    },
+
+    deletePair(sIndex, pIndex) {
+        if (confirm('¿Eliminar este par?')) {
+            AppState.currentSong.sections[sIndex].pairs.splice(pIndex, 1);
+            this.render();
+            Storage.updateSaveStatus('unsaved');
+        }
+    },
+
+    moveSection(sIndex, direction) {
+        const newIndex = sIndex + direction;
+        if (newIndex < 0 || newIndex >= AppState.currentSong.sections.length) return;
+        const section = AppState.currentSong.sections.splice(sIndex, 1)[0];
+        AppState.currentSong.sections.splice(newIndex, 0, section);
+        this.render(); this.renderOutline();
+        Storage.updateSaveStatus('unsaved');
+    },
+
+    deleteSection(sIndex) {
+        if (confirm('¿Eliminar esta sección y todos sus pares?')) {
+            AppState.currentSong.sections.splice(sIndex, 1);
+            this.render(); this.renderOutline();
+            Storage.updateSaveStatus('unsaved');
+        }
+    },
+
+    scrollToSection(sIndex) {
+        const el = document.querySelector(`[data-section="${sIndex}"]`);
+        if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    },
+
+    transpose(semitones) {
+        this.currentTranspose += semitones;
+        if (!AppState.currentSong.sections) return;
+        AppState.currentSong.sections.forEach(section => {
+            if (section.pairs) {
+                section.pairs.forEach(pair => {
+                    if (pair.acordes && pair.acordes.trim()) pair.acordes = Transposer.cleanChord(Transposer.transpose(pair.acordes, semitones));
+                });
+            }
+        });
+        this.render();
+        Storage.updateSaveStatus('unsaved');
+    },
+
+    resetTranspose() {
+        if (this.currentTranspose === 0) return;
+        this.transpose(-this.currentTranspose);
+        this.currentTranspose = 0;
+    }
+};
+
+// Inicialización
+document.addEventListener('DOMContentLoaded', () => {
+    Storage.loadSettings();
+
+    if (typeof pdfjsLib !== 'undefined') {
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+    }
+
+    Storage.listenSongs(() => {
+        AppState.songsLoaded = true;
+        SplashManager.checkReady();
+        if (AppState.currentView === 'canciones') Router.renderSongsList();
+        if (AppState.currentView === 'repertorio-detail') Router.renderSetlistDetail();
+    });
+    Storage.listenSetlists(() => {
+        AppState.setlistsLoaded = true;
+        SplashManager.checkReady();
+        if (AppState.currentView === 'repertorio') Router.renderSetlistsList();
+        if (AppState.currentView === 'repertorio-detail') Router.renderSetlistDetail();
+    });
+    Storage.listenVocalProfiles(() => {
+        AppState.vocalProfilesLoaded = true;
+        SplashManager.checkReady();
+        if (AppState.currentView === 'repertorio-detail') Router.renderSetlistDetail();
+    });
+
+    SplashManager.startSafetyTimeout();
+
+    HistoryManager.init();
+    Auth.init();
+    Router.init();
+    StickyStructureBar.init();
+    HorizontalStructureSync.bindOnce();
+
+    document.addEventListener('keydown', (e) => {
+        const isCtrlCmd = e.ctrlKey || e.metaKey;
+        if (isCtrlCmd && e.key === 's') {
+            e.preventDefault();
+            if (AppState.currentView === 'edicion') Router.saveCurrentSong();
+        } else if (e.key === 'Escape') {
+            if (AppState.fullscreenMode) Router.requestExitFullscreen();
+            else if (AppState.currentView === 'edicion') { Router.saveCurrentSong(); history.back(); }
+        }
+    });
+
+    // Registro del service worker: requisito de Chrome para instalación real (sin barra de direcciones).
+    // No cachea nada a propósito (ver comentarios en sw.js).
+    if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+            navigator.serviceWorker.register('./sw.js').catch(err => console.error('Error registrando el service worker:', err));
+        });
+    }
+});
