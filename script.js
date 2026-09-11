@@ -170,7 +170,16 @@ const Teleprompter = {
         if (this.plan && this.plan.length) {
             // ¿Deslizó manualmente desde el último frame? Resincronizamos el avance desde ahí.
             if (this.lastAutoY !== null && Math.abs(window.scrollY - this.lastAutoY) > 3) {
+                const before = this.elapsedSec;
                 this.elapsedSec = this.yToElapsed(window.scrollY);
+                if (Math.abs(this.elapsedSec - before) > 5) {
+                    console.warn('[Teleprompter] Resincronización grande detectada:', {
+                        scrollYReal: Math.round(window.scrollY),
+                        scrollYEsperado: Math.round(this.lastAutoY),
+                        elapsedAntes: Math.round(before),
+                        elapsedDespues: Math.round(this.elapsedSec)
+                    });
+                }
             }
             this.elapsedSec += deltaSec * this.speedFactor;
             const total = this.planTotalDuration();
@@ -248,7 +257,9 @@ const Teleprompter = {
         if (!sameCategory.length) return null;
         const numMatch = normalized.match(/(\d+)\s*$/);
         const instanceNum = numMatch ? parseInt(numMatch[1], 10) : null;
-        if (instanceNum && sameCategory[instanceNum - 1]) return sameCategory[instanceNum - 1];
+        // Si el orden pide "Estrofa 2" pero solo existe una Estrofa real, usamos esa
+        // (la última disponible), en vez de resetear siempre al índice 0.
+        if (instanceNum) return sameCategory[Math.min(instanceNum - 1, sameCategory.length - 1)];
         return sameCategory[0];
     },
     buildPlan(song) {
@@ -277,6 +288,13 @@ const Teleprompter = {
                 segments.push({ startY: match.top, endY: match.top + match.height, durationSec: match.durationSec });
             }
         });
+
+        // Diagnóstico: abre la consola del navegador (F12) para ver exactamente qué calculó.
+        console.log('[Teleprompter] Orden de la canción:', structureRaw);
+        console.log('[Teleprompter] Secciones reales detectadas:', sectionsInfo.map(s => ({ label: s.label, top: Math.round(s.top), height: s.height, durationSec: Math.round(s.durationSec) })));
+        console.log('[Teleprompter] Plan final (segmentos a recorrer):', segments.map(s => ({ startY: Math.round(s.startY), endY: Math.round(s.endY), durationSec: Math.round(s.durationSec) })));
+        console.log('[Teleprompter] Duración total estimada (seg):', Math.round(segments.reduce((sum, s) => sum + s.durationSec, 0)));
+
         return segments.length ? segments : null;
     },
     planTotalDuration() {
