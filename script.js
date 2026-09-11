@@ -2211,4 +2211,12 @@ document.addEventListener('DOMContentLoaded', () => {
             else if (AppState.currentView === 'edicion') { Router.saveCurrentSong(); history.back(); }
         }
     });
+
+    // Registro del service worker: requisito de Chrome para instalación real (sin barra de direcciones).
+    // No cachea nada a propósito (ver comentarios en sw.js).
+    if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+            navigator.serviceWorker.register('./sw.js').catch(err => console.error('Error registrando el service worker:', err));
+        });
+    }
 });
