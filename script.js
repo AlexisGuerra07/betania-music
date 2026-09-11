@@ -90,33 +90,63 @@ const FullscreenUI = {
 
 // ============ TELEPROMPTER (auto-scroll en pantalla completa) ============
 // Desliza la letra sola a una velocidad calculada a partir del BPM de la canción.
-// No sincroniza con la estructura exacta (eso requeriría cargar los compases de
-// cada sección) — es un ritmo constante ajustable en vivo con los botones +/-.
-// Si el usuario desliza manualmente mientras está en marcha, sigue avanzando
-// desde la nueva posición (no vuelve atrás ni se resetea).
+// Si la canción tiene "orden" cargado (las burbujas de arriba), sigue ESE orden
+// real: salta de sección en sección y repite cuando corresponde (ej. "Coro x2").
+// Si no hay orden cargado, cae en un scroll lineal simple de toda la letra.
+// Si el usuario desliza manualmente mientras está en marcha, el avance automático
+// se resincroniza desde la nueva posición (no pelea ni retrocede solo).
 const Teleprompter = {
     running: false,
     speedFactor: 1,
     rafId: null,
     lastTimestamp: null,
+    autoStartTimer: null,
+    plan: null,          // array de segmentos {startY, endY} en el orden real de reproducción, o null si no hay orden
+    progressPx: 0,        // avance a lo largo del "plan" (no es scrollY directo, permite saltos/repeticiones)
+    lastAutoY: null,      // última Y que fijamos nosotros, para detectar si el usuario deslizó a mano
+
+    scheduleAutoStart(delayMs) {
+        this.cancelAutoStart();
+        this.autoStartTimer = setTimeout(() => {
+            this.autoStartTimer = null;
+            this.start();
+        }, delayMs);
+    },
+    cancelAutoStart() {
+        if (this.autoStartTimer) { clearTimeout(this.autoStartTimer); this.autoStartTimer = null; }
+    },
 
     start() {
+        this.cancelAutoStart();
         if (this.running) return;
+        this.plan = this.buildPlan(AppState.currentSong);
         this.running = true;
         this.lastTimestamp = null;
+        this.lastAutoY = null;
+        this.progressPx = this.plan ? this.yToProgress(window.scrollY) : 0;
         this.updateToggleIcon();
         this.rafId = requestAnimationFrame((t) => this.tick(t));
     },
     stop() {
+        this.cancelAutoStart();
         this.running = false;
         if (this.rafId) cancelAnimationFrame(this.rafId);
         this.rafId = null;
         this.lastTimestamp = null;
+        this.lastAutoY = null;
         this.updateToggleIcon();
     },
     toggle() {
+        this.cancelAutoStart();
         if (this.running) this.stop(); else this.start();
     },
+    reset() {
+        this.stop();
+        this.speedFactor = 1;
+        this.plan = null;
+        this.progressPx = 0;
+    },
+
     tick(timestamp) {
         if (!this.running) return;
         if (this.lastTimestamp == null) this.lastTimestamp = timestamp;
@@ -126,18 +156,104 @@ const Teleprompter = {
         const bpm = (AppState.currentSong && AppState.currentSong.bpm) || 80;
         const basePxPerSec = (bpm / 60) * 24;
         const pxPerSec = basePxPerSec * this.speedFactor;
-        window.scrollBy(0, pxPerSec * deltaSec);
 
-        const maxScroll = document.documentElement.scrollHeight - window.innerHeight;
-        if (window.scrollY >= maxScroll - 2) { this.stop(); return; }
+        if (this.plan && this.plan.length) {
+            // ¿Deslizó manualmente desde el último frame? Resincronizamos el avance desde ahí.
+            if (this.lastAutoY !== null && Math.abs(window.scrollY - this.lastAutoY) > 3) {
+                this.progressPx = this.yToProgress(window.scrollY);
+            }
+            this.progressPx += pxPerSec * deltaSec;
+            const total = this.planTotalLength();
+            if (this.progressPx >= total) { this.stop(); return; }
+            const targetY = this.progressToY(this.progressPx);
+            window.scrollTo(0, targetY);
+            this.lastAutoY = targetY;
+        } else {
+            window.scrollBy(0, pxPerSec * deltaSec);
+            const maxScroll = document.documentElement.scrollHeight - window.innerHeight;
+            if (window.scrollY >= maxScroll - 2) { this.stop(); return; }
+        }
         this.rafId = requestAnimationFrame((t) => this.tick(t));
     },
+
     faster() { this.speedFactor = Math.min(3, Math.round(this.speedFactor * 1.15 * 100) / 100); },
     slower() { this.speedFactor = Math.max(0.2, Math.round(this.speedFactor * 0.87 * 100) / 100); },
-    reset() {
-        this.stop();
-        this.speedFactor = 1;
+
+    // ---- Construcción del plan a partir del "orden de la canción" ----
+    parseStructureEntry(rawEntry) {
+        const text = (rawEntry || '').trim();
+        const repeatMatch = text.match(/x\s*(\d+)\s*$/i);
+        const repeats = repeatMatch ? Math.max(1, parseInt(repeatMatch[1], 10)) : 1;
+        const baseText = repeatMatch ? text.slice(0, repeatMatch.index).trim() : text;
+        return { baseText, repeats };
     },
+    matchSection(baseText, sectionsInfo) {
+        const normalized = baseText.toLowerCase();
+        let match = sectionsInfo.find(s => s.label.toLowerCase() === normalized);
+        if (match) return match;
+        const category = Router.getStructureCategoryKey(baseText);
+        if (!category) return null;
+        const sameCategory = sectionsInfo.filter(s => Router.getStructureCategoryKey(s.label) === category);
+        if (!sameCategory.length) return null;
+        const numMatch = normalized.match(/(\d+)\s*$/);
+        const instanceNum = numMatch ? parseInt(numMatch[1], 10) : null;
+        if (instanceNum && sameCategory[instanceNum - 1]) return sameCategory[instanceNum - 1];
+        return sameCategory[0];
+    },
+    buildPlan(song) {
+        if (!song) return null;
+        const structureRaw = Router.getEffectiveStructure(song);
+        const sectionEls = Array.from(document.querySelectorAll('#song-content .section'));
+        if (!structureRaw.length || !sectionEls.length) return null;
+
+        const sectionsInfo = sectionEls.map(el => {
+            const labelEl = el.querySelector('.section-label:not(.inline-label)');
+            const label = labelEl ? labelEl.textContent.trim() : '';
+            const rect = el.getBoundingClientRect();
+            const top = rect.top + window.scrollY;
+            return { el, label, top, height: Math.max(el.offsetHeight, 40) };
+        });
+
+        const segments = [];
+        structureRaw.forEach(rawEntry => {
+            const { baseText, repeats } = this.parseStructureEntry(rawEntry);
+            const match = this.matchSection(baseText, sectionsInfo);
+            if (!match) return;
+            for (let i = 0; i < repeats; i++) {
+                segments.push({ startY: match.top, endY: match.top + match.height });
+            }
+        });
+        return segments.length ? segments : null;
+    },
+    planTotalLength() {
+        if (!this.plan) return 0;
+        return this.plan.reduce((sum, seg) => sum + Math.max(0, seg.endY - seg.startY), 0);
+    },
+    progressToY(progressPx) {
+        let remaining = progressPx;
+        for (let i = 0; i < this.plan.length; i++) {
+            const seg = this.plan[i];
+            const segLen = Math.max(0, seg.endY - seg.startY);
+            if (remaining <= segLen || i === this.plan.length - 1) {
+                return seg.startY + Math.min(Math.max(remaining, 0), segLen);
+            }
+            remaining -= segLen;
+        }
+        return this.plan[this.plan.length - 1].endY;
+    },
+    yToProgress(y) {
+        let cumulative = 0;
+        let best = { progress: 0, dist: Infinity };
+        for (const seg of this.plan) {
+            const segLen = Math.max(0, seg.endY - seg.startY);
+            if (y >= seg.startY && y <= seg.endY) return cumulative + (y - seg.startY);
+            const dist = Math.min(Math.abs(y - seg.startY), Math.abs(y - seg.endY));
+            if (dist < best.dist) best = { progress: cumulative + (y < seg.startY ? 0 : segLen), dist };
+            cumulative += segLen;
+        }
+        return best.progress;
+    },
+
     updateToggleIcon() {
         const playIcon = document.getElementById('tp-icon-play');
         const pauseIcon = document.getElementById('tp-icon-pause');
@@ -896,6 +1012,7 @@ const Router = {
         });
         StickyStructureBar.updateTopOffset();
         setTimeout(() => HorizontalStructureSync.update(), 50);
+        Teleprompter.scheduleAutoStart(5000);
     },
     requestExitFullscreen() { if (AppState.fullscreenMode) history.back(); },
     exitFullscreenMode() {
@@ -1210,6 +1327,16 @@ const Router = {
             }
         }
         return { text: original, color: '#4b5563', textColor: '#ffffff' };
+    },
+
+    // Igual que buildStructureChip pero solo devuelve la clave de categoría (para emparejar
+    // entradas del "orden de la canción" con las secciones reales, sin formatear nada).
+    getStructureCategoryKey(rawLabel) {
+        const original = (rawLabel || '').trim();
+        for (const [regex, short] of this.STRUCTURE_RULES) {
+            if (original.match(regex)) return short;
+        }
+        return null;
     },
 
     getEffectiveStructure(song) {
