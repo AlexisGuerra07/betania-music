@@ -1,12 +1,17 @@
-// Service Worker "kill switch" — se autodestruye y limpia cualquier caché vieja
-self.addEventListener('install', () => self.skipWaiting());
+// Service Worker mínimo para Betania Music.
+// Su único propósito es cumplir el requisito de Chrome para que la app sea
+// instalable de verdad (icono propio, sin barra de direcciones al abrirla).
+// A PROPÓSITO no cachea nada: cada petición va siempre a la red tal cual,
+// para evitar el problema de versiones viejas atascadas en caché que tuvimos antes.
 
-self.addEventListener('activate', async () => {
-  const keys = await caches.keys();
-  await Promise.all(keys.map(key => caches.delete(key)));
+self.addEventListener('install', () => {
+    self.skipWaiting();
+});
 
-  const clientsList = await self.clients.matchAll({ type: 'window' });
-  clientsList.forEach(client => client.navigate(client.url));
+self.addEventListener('activate', (event) => {
+    event.waitUntil(self.clients.claim());
+});
 
-  await self.registration.unregister();
+self.addEventListener('fetch', (event) => {
+    event.respondWith(fetch(event.request));
 });
