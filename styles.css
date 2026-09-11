@@ -277,7 +277,19 @@ body {
 .reader-title { font-size: 2rem; font-weight: 700; margin-bottom: 0.5rem; color: var(--text-primary); }
 .reader-meta { color: var(--text-secondary); font-size: 1rem; margin-bottom: 0.5rem; }
 .reader-extra-info { font-size: 0.9rem; color: var(--text-secondary); margin-bottom: 1rem; }
-.reader-controls { display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; }
+.reader-controls { display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap; }
+
+.control-group { display: flex; align-items: center; gap: 0.4rem; }
+
+.control-divider {
+    width: 1px;
+    align-self: stretch;
+    min-height: 1.75rem;
+    background: var(--border-color);
+    margin: 0 0.15rem;
+}
+
+.control-icon { font-size: 0.95rem; opacity: 0.75; }
 
 .transpose-controls {
     display: flex;
@@ -347,17 +359,19 @@ body {
     display: flex;
     flex-wrap: nowrap;
     align-items: center;
-    gap: 5px;
-    overflow: hidden;
+    gap: 6px;
+    overflow-x: auto;
+    scrollbar-width: none;
 }
+.structure-bar-inner::-webkit-scrollbar { display: none; }
 
 .structure-chip {
     flex-shrink: 0;
     color: white;
     font-weight: 700;
     border-radius: 999px;
-    padding: calc(3px * var(--chip-scale, 1)) calc(9px * var(--chip-scale, 1));
-    font-size: calc(0.75rem * var(--chip-scale, 1));
+    padding: 3px 10px;
+    font-size: 0.75rem;
     white-space: nowrap;
     line-height: 1.3;
     border: 1px solid rgba(0, 0, 0, 0.06);
@@ -561,6 +575,34 @@ body {
 .modal-content { padding: 1.5rem; }
 .modal-footer { display: flex; justify-content: flex-end; gap: 0.75rem; padding: 1.5rem; border-top: 1px solid var(--border-color); }
 
+.youtube-inline-btn {
+    background: none;
+    border: none;
+    padding: 0;
+    color: var(--primary-color);
+    font-weight: 600;
+    font-size: inherit;
+    font-family: inherit;
+    cursor: pointer;
+    text-decoration: none;
+}
+.youtube-inline-btn:hover { text-decoration: underline; }
+
+.youtube-embed-wrap {
+    position: relative;
+    width: 100%;
+    padding-top: 56.25%; /* proporción 16:9 */
+    border-radius: 8px;
+    overflow: hidden;
+    background: #000;
+}
+.youtube-embed-wrap iframe {
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    border: none;
+}
+
 .import-preview-item {
     display: flex;
     align-items: center;
@@ -650,6 +692,7 @@ body.fullscreen-active .song-content { padding: 0.85rem 1.1rem; }
     .nav-tab { padding: 0.4rem 0.7rem; font-size: 0.8rem; }
     .auth-section { font-size: 0.75rem; }
     #user-email-label { display: none !important; }
+    .control-divider { display: none; }
 
     .song-item { padding: 0.7rem 1rem; min-height: auto; }
     .song-title { font-size: 1rem; }
