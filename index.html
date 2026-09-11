@@ -141,28 +141,39 @@
                     </div>
                     
                     <div class="reader-controls">
-                        <div class="transpose-controls" id="transpose-controls-wrap">
-                            <span style="font-size: 0.8rem; color: var(--text-muted);">Tonalidad:</span>
+                        <div class="control-group transpose-controls" id="transpose-controls-wrap">
                             <button class="transpose-btn" id="btn-transpose-down-reader">♭</button>
                             <div class="current-key" id="current-key-reader">C</div>
                             <button class="transpose-btn" id="btn-transpose-up-reader">♯</button>
                             <button class="btn btn-sm" id="btn-reset-key-reader">Base</button>
                         </div>
-                        <div class="lead-vocal-controls" id="lead-vocal-controls-wrap">
-                            <span style="font-size: 0.8rem; color: var(--text-muted);">🎤 Voz:</span>
+
+                        <div class="control-group lead-vocal-controls" id="lead-vocal-controls-wrap" style="display:none;">
+                            <span class="control-icon" title="Voz líder (referencia)">🎤</span>
                             <select id="lead-vocal-reader-select" class="lead-vocal-reader-select">
                                 <option value="">Sin asignar</option>
                             </select>
                         </div>
-                        <div class="font-size-controls">
+
+                        <div class="control-divider"></div>
+
+                        <div class="control-group font-size-controls">
                             <button class="btn btn-sm" id="btn-font-decrease" title="Achicar letra">A-</button>
                             <button class="btn btn-sm" id="btn-font-increase" title="Agrandar letra">A+</button>
                         </div>
-                        <button class="btn btn-sm" id="btn-toggle-notation">🎼 Ver en grados</button>
-                        <button class="btn btn-sm" id="btn-voice-mode">🎤 Modo Voz</button>
-                        <button class="btn btn-sm" id="btn-song-structure-setlist" style="display:none;">🗂️ Orden en este repertorio</button>
-                        <button class="btn btn-sm" id="btn-fullscreen-toggle">⛶ Pantalla completa</button>
-                        <button class="btn btn-primary" id="btn-edit-song" style="display:none;">Editar</button>
+
+                        <div class="control-group view-controls">
+                            <button class="btn btn-sm" id="btn-toggle-notation">🎼 Ver en grados</button>
+                            <button class="btn btn-sm" id="btn-voice-mode">🎤 Modo Voz</button>
+                        </div>
+
+                        <div class="control-divider"></div>
+
+                        <div class="control-group utility-controls">
+                            <button class="btn btn-sm" id="btn-song-structure-setlist" style="display:none;">🗂️ Orden en este repertorio</button>
+                            <button class="btn btn-sm" id="btn-fullscreen-toggle">⛶ Pantalla completa</button>
+                            <button class="btn btn-primary" id="btn-edit-song" style="display:none;">Editar</button>
+                        </div>
                     </div>
                 </div>
 
