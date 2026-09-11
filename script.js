@@ -998,34 +998,34 @@ const Router = {
 
     // ============ ORDEN DE CANCIÓN — burbujas de colores en franja horizontal ============
     STRUCTURE_RULES: [
-        [/^pre[\s-]?coro/i, 'PC', '#7c3aed'],
-        [/^estribillo/i, 'C', '#e11d48'],
-        [/^coro/i, 'C', '#dc2626'],
-        [/^(estrofa|verso)/i, 'E', '#2563eb'],
-        [/^intro/i, 'I', '#0d9488'],
-        [/^(puente|bridge)/i, 'P', '#16a34a'],
-        [/^interludio/i, 'INT', '#0891b2'],
-        [/^instr(umental)?\.?/i, 'INST', '#d97706'],
-        [/^solo/i, 'S', '#db2777'],
-        [/^outro/i, 'O', '#78716c'],
-        [/^final/i, 'F', '#111827'],
-        [/^tag/i, 'T', '#6b7280'],
-        [/^modulaci[oó]n/i, 'MOD', '#9333ea'],
-        [/^leyenda/i, 'LEY', '#6b7280'],
-        [/^espont[aá]neo/i, 'ESP', '#059669']
+        [/^pre[\s-]?coro/i, 'PC', '#ede9fe', '#6d28d9'],
+        [/^estribillo/i, 'C', '#ffe4e6', '#be123c'],
+        [/^coro/i, 'C', '#fee2e2', '#b91c1c'],
+        [/^(estrofa|verso)/i, 'E', '#dbeafe', '#1d4ed8'],
+        [/^intro/i, 'I', '#ccfbf1', '#0f766e'],
+        [/^(puente|bridge)/i, 'P', '#dcfce7', '#15803d'],
+        [/^interludio/i, 'INT', '#cffafe', '#0e7490'],
+        [/^instr(umental)?\.?/i, 'INST', '#fef3c7', '#b45309'],
+        [/^solo/i, 'S', '#fce7f3', '#be185d'],
+        [/^outro/i, 'O', '#f5f5f4', '#57534e'],
+        [/^final/i, 'F', '#e2e8f0', '#1e293b'],
+        [/^tag/i, 'T', '#f3f4f6', '#4b5563'],
+        [/^modulaci[oó]n/i, 'MOD', '#f3e8ff', '#7e22ce'],
+        [/^leyenda/i, 'LEY', '#f3f4f6', '#4b5563'],
+        [/^espont[aá]neo/i, 'ESP', '#d1fae5', '#047857']
     ],
 
     buildStructureChip(rawLabel) {
         const original = (rawLabel || '').trim();
-        for (const [regex, short, color] of this.STRUCTURE_RULES) {
+        for (const [regex, short, color, textColor] of this.STRUCTURE_RULES) {
             const m = original.match(regex);
             if (m) {
                 const rest = original.slice(m[0].length).trim();
                 const text = rest ? `${short}${rest}` : short;
-                return { text, color };
+                return { text, color, textColor };
             }
         }
-        return { text: original, color: '#4b5563' };
+        return { text: original, color: '#f3f4f6', textColor: '#374151' };
     },
 
     getEffectiveStructure(song) {
@@ -1046,8 +1046,8 @@ const Router = {
         bar.style.display = 'block';
         inner.style.removeProperty('--chip-scale');
         inner.innerHTML = structure.map(label => {
-            const { text, color } = this.buildStructureChip(label);
-            return `<span class="structure-chip" style="background:${color}">${text}</span>`;
+            const { text, color, textColor } = this.buildStructureChip(label);
+            return `<span class="structure-chip" style="background:${color};color:${textColor}">${text}</span>`;
         }).join('');
         requestAnimationFrame(() => this.fitStructureBar());
     },
@@ -1364,17 +1364,17 @@ const Router = {
         const mode = AppState.notationMode || 'chords';
 
         content.innerHTML = song.sections.map(section => {
-            const sectionColor = this.buildStructureChip(section.label).color;
+            const sectionChip = this.buildStructureChip(section.label);
             return `
             <div class="section">
-                <div class="section-label" style="background:${sectionColor}">${section.label}</div>
+                <div class="section-label" style="background:${sectionChip.color};color:${sectionChip.textColor}">${section.label}</div>
                 ${section.pairs.map(pair => {
                     const letraTrim = (pair.letra || '').trim();
                     const acordesEmpty = !pair.acordes || !pair.acordes.trim();
                     if (letraTrim && acordesEmpty && ChordParser.isSectionHeader(letraTrim)) {
                         const inlineName = ChordParser.normalizeSectionName(letraTrim);
-                        const inlineColor = this.buildStructureChip(inlineName).color;
-                        return `<div class="section-label inline-label" style="background:${inlineColor}">${inlineName}</div>`;
+                        const inlineChip = this.buildStructureChip(inlineName);
+                        return `<div class="section-label inline-label" style="background:${inlineChip.color};color:${inlineChip.textColor}">${inlineName}</div>`;
                     }
                     let chordDisplay = '';
                     if (pair.acordes) {
