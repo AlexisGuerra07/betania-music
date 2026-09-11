@@ -195,12 +195,21 @@ const Teleprompter = {
         const m = String(compas).match(/^(\d+)\s*\/\s*(\d+)/);
         return m ? Math.max(1, parseInt(m[1], 10)) : 4;
     },
+    // Detecta repeticiones escritas dentro de la propia letra, ej. "Oh oh oh oh x3" -> 3.
+    // Muy común en intros/vamps ("la la la x2", "oh oh x4"...). Sin esto, esas frases
+    // solo se contaban una vez y la duración estimada salía muy corta.
+    detectPairRepeats(pair) {
+        const text = `${pair.letra || ''} ${pair.acordes || ''}`;
+        const m = text.match(/\b[xX]\s?(\d+)\b/);
+        return m ? Math.max(1, parseInt(m[1], 10)) : 1;
+    },
     countChordsInSection(sectionData) {
         if (!sectionData || !sectionData.pairs) return 0;
         let count = 0;
         sectionData.pairs.forEach(pair => {
             if (!pair.acordes) return;
-            count += [...pair.acordes.matchAll(ChordParser.chordRegex)].length;
+            const chordsInPair = [...pair.acordes.matchAll(ChordParser.chordRegex)].length;
+            count += chordsInPair * this.detectPairRepeats(pair);
         });
         return count;
     },
