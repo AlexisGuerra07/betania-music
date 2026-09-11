@@ -121,6 +121,40 @@ const StickyStructureBar = {
     }
 };
 
+// ============ DESLIZAMIENTO HORIZONTAL DE LA FRANJA DE ESTRUCTURA ============
+// A medida que el usuario baja por la letra, la franja de burbujas se desplaza
+// de izquierda a derecha en proporción, para que las partes ya pasadas queden
+// fuera de vista y se vea la parte actual y las siguientes como referencia.
+const HorizontalStructureSync = {
+    ticking: false,
+    bound: false,
+    bindOnce() {
+        if (this.bound) return;
+        this.bound = true;
+        window.addEventListener('scroll', () => this.onScroll(), { passive: true });
+    },
+    onScroll() {
+        if (this.ticking) return;
+        this.ticking = true;
+        requestAnimationFrame(() => {
+            this.update();
+            this.ticking = false;
+        });
+    },
+    update() {
+        if (AppState.currentView !== 'song-reader') return;
+        const bar = document.getElementById('song-structure-bar');
+        const inner = document.getElementById('structure-bar-inner');
+        if (!bar || !inner || bar.style.display === 'none') return;
+        const scrollableWidth = inner.scrollWidth - inner.clientWidth;
+        if (scrollableWidth <= 0) return;
+        const docHeight = document.documentElement.scrollHeight - window.innerHeight;
+        if (docHeight <= 0) { inner.scrollLeft = 0; return; }
+        const progress = Math.min(1, Math.max(0, window.scrollY / docHeight));
+        inner.scrollLeft = progress * scrollableWidth;
+    }
+};
+
 // ============ HISTORIAL DE NAVEGACIÓN ============
 const HistoryManager = {
     init() {
@@ -603,7 +637,7 @@ const Router = {
         this.setupSwipeNavigation();
         FullscreenUI.bindActivityListeners();
         window.addEventListener('resize', () => {
-            if (AppState.currentView === 'song-reader') this.fitStructureBar();
+            if (AppState.currentView === 'song-reader') HorizontalStructureSync.update();
         });
         this.navigate('canciones', false);
     },
@@ -775,7 +809,7 @@ const Router = {
             setlistId: AppState.currentSetlist ? AppState.currentSetlist.id : null,
             fullscreen: true
         });
-        setTimeout(() => this.fitStructureBar(), 50);
+        setTimeout(() => HorizontalStructureSync.update(), 50);
     },
     requestExitFullscreen() { if (AppState.fullscreenMode) history.back(); },
     exitFullscreenMode() {
@@ -783,7 +817,7 @@ const Router = {
         document.body.classList.remove('fullscreen-active');
         FullscreenUI.hide();
         StickyStructureBar.reset();
-        setTimeout(() => this.fitStructureBar(), 50);
+        setTimeout(() => HorizontalStructureSync.update(), 50);
     },
 
     bulkDetectKeys() {
@@ -906,9 +940,45 @@ const Router = {
         if (song.originalKey) html += `<span>Tonalidad original: <strong>${song.originalKey}</strong></span>`;
         if (song.youtubeLink) {
             if (html) html += ' &nbsp;•&nbsp; ';
-            html += `<a href="${song.youtubeLink}" target="_blank" rel="noopener" style="color: var(--primary-color); font-weight:600; text-decoration:none;">▶ Ver en YouTube</a>`;
+            const safeUrl = song.youtubeLink.replace(/'/g, '&#39;');
+            html += `<button type="button" class="youtube-inline-btn" onclick="Router.showYoutubeModal('${safeUrl}')">▶ Ver video</button>`;
         }
         return html;
+    },
+
+    // Extrae el ID del video de distintos formatos de URL de YouTube (watch, youtu.be, embed, shorts).
+    extractYoutubeId(url) {
+        if (!url) return null;
+        try {
+            const u = new URL(url);
+            if (u.hostname.includes('youtu.be')) {
+                return u.pathname.slice(1).split('/')[0] || null;
+            }
+            if (u.hostname.includes('youtube.com')) {
+                if (u.pathname === '/watch') return u.searchParams.get('v');
+                const embedMatch = u.pathname.match(/^\/embed\/([^/?]+)/);
+                if (embedMatch) return embedMatch[1];
+                const shortsMatch = u.pathname.match(/^\/shorts\/([^/?]+)/);
+                if (shortsMatch) return shortsMatch[1];
+            }
+        } catch (e) { /* URL inválida, se maneja abajo */ }
+        return null;
+    },
+
+    // Abre el video de YouTube en una ventana dentro de la app, sin salir a la app de YouTube ni al navegador.
+    showYoutubeModal(url) {
+        const videoId = this.extractYoutubeId(url);
+        if (!videoId) { window.open(url, '_blank', 'noopener'); return; }
+        this.createModal({
+            title: '▶ Video de referencia',
+            content: `
+                <div class="youtube-embed-wrap">
+                    <iframe src="https://www.youtube.com/embed/${videoId}?autoplay=1" title="Video de YouTube" frameborder="0"
+                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+                </div>
+            `,
+            actions: [{ text: 'Cerrar', action: () => this.closeModal() }]
+        });
     },
 
     applyReaderFontSize() {
@@ -939,7 +1009,8 @@ const Router = {
 
     // Offset automático según la voz líder asignada a esta canción en este repertorio.
     // Se calcula en semitonos respecto a la tonalidad guardada de la canción (referencia: Sarah = 0).
-    // No se aplica si el repertorio tiene una tonalidad uniforme activa (esa manda sobre todo).
+    // PAUSADO A PETICIÓN: por ahora esta función queda lista pero no se usa (ver computeEffectiveOffset).
+    // Se retomará cuando haya registro vocal de todas las voces del equipo.
     computeLeadVocalOffset(song, setlist) {
         if (!setlist || setlist.uniformKey) return 0;
         const leadVocal = (setlist.songLeadVocals && setlist.songLeadVocals[song.id]) || '';
@@ -949,11 +1020,11 @@ const Router = {
         return (typeof offset === 'number' && !isNaN(offset)) ? offset : 0;
     },
 
-    // Offset efectivo a aplicar: la tonalidad uniforme del repertorio tiene prioridad;
-    // si no hay, se usa el offset automático de la voz líder asignada.
+    // Offset efectivo a aplicar: por ahora, solo la tonalidad uniforme del repertorio (si está activa).
+    // La voz líder asignada es solo una referencia visual — no transpone la canción todavía.
     computeEffectiveOffset(song, setlist) {
         if (setlist && setlist.uniformKey) return this.computeUniformOffset(song, setlist);
-        return this.computeLeadVocalOffset(song, setlist);
+        return 0;
     },
 
     showVocalProfilesModal() {
@@ -1044,25 +1115,11 @@ const Router = {
         const structure = this.getEffectiveStructure(AppState.currentSong);
         if (!structure.length) { bar.style.display = 'none'; inner.innerHTML = ''; StickyStructureBar.reset(); return; }
         bar.style.display = 'block';
-        inner.style.removeProperty('--chip-scale');
         inner.innerHTML = structure.map(label => {
             const { text, color, textColor } = this.buildStructureChip(label);
             return `<span class="structure-chip" style="background:${color};color:${textColor}">${text}</span>`;
         }).join('');
-        requestAnimationFrame(() => this.fitStructureBar());
-    },
-
-    fitStructureBar() {
-        const inner = document.getElementById('structure-bar-inner');
-        if (!inner || !inner.children.length) return;
-        let scale = 1;
-        inner.style.setProperty('--chip-scale', scale.toFixed(2));
-        let guard = 0;
-        while (inner.scrollWidth > inner.clientWidth && scale > 0.45 && guard < 20) {
-            scale -= 0.05;
-            inner.style.setProperty('--chip-scale', scale.toFixed(2));
-            guard++;
-        }
+        requestAnimationFrame(() => HorizontalStructureSync.update());
     },
 
     // Editar el orden PROPIO DE ESTE REPERTORIO (cualquiera puede) — solo disponible viendo desde un repertorio
@@ -1214,6 +1271,7 @@ const Router = {
     viewSong(songId, push = true) {
         const song = AppState.songs.find(s => s.id === songId);
         if (!song) return;
+        window.scrollTo(0, 0);
         AppState.cameFromSetlistId = null;
         AppState.currentSong = song;
         AppState.currentTranspose = 0;
@@ -1246,6 +1304,7 @@ const Router = {
         if (!AppState.currentSetlist) return;
         const song = AppState.songs.find(s => s.id === songId);
         if (!song) return;
+        window.scrollTo(0, 0);
 
         AppState.cameFromSetlistId = AppState.currentSetlist.id;
         AppState.currentSong = song;
@@ -1258,6 +1317,8 @@ const Router = {
 
         const structureSetlistBtn = document.getElementById('btn-song-structure-setlist');
         if (structureSetlistBtn) structureSetlistBtn.style.display = 'inline-flex';
+        const leadVocalWrap = document.getElementById('lead-vocal-controls-wrap');
+        if (leadVocalWrap) leadVocalWrap.style.display = 'flex';
 
         document.getElementById('reader-title').textContent = song.title;
         const metaText = this.formatReaderMeta(song);
@@ -1304,6 +1365,8 @@ const Router = {
         if (leadVocalEl) { leadVocalEl.style.display = 'none'; leadVocalEl.textContent = ''; }
         const leadVocalSelect = document.getElementById('lead-vocal-reader-select');
         if (leadVocalSelect) leadVocalSelect.value = '';
+        const leadVocalWrap = document.getElementById('lead-vocal-controls-wrap');
+        if (leadVocalWrap) leadVocalWrap.style.display = 'none';
         this.exitFullscreenMode();
     },
 
@@ -1603,7 +1666,6 @@ const Router = {
         list.innerHTML = songs.map((song, idx) => {
             const offset = this.computeEffectiveOffset(song, sl);
             const displayKey = offset !== 0 ? Transposer.cleanChord(Transposer.transpose(song.keyBase, offset)) : song.keyBase;
-            const isAutoByVoice = offset !== 0 && !sl.uniformKey;
             const note = (sl.songNotes && sl.songNotes[song.id]) || '';
             const leadVocal = (sl.songLeadVocals && sl.songLeadVocals[song.id]) || '';
             return `
@@ -1611,7 +1673,7 @@ const Router = {
                 <div class="song-info">
                     ${note ? `<div class="song-block-note">${note}</div>` : ''}
                     <div class="song-title">${idx + 1}. ${song.title}</div>
-                    <div class="song-meta">${displayKey}${isAutoByVoice ? ' 🎚️' : ''}${offset !== 0 ? ` (orig. ${song.keyBase})` : ''}${song.bpm ? ` • ${song.bpm} BPM` : ''}</div>
+                    <div class="song-meta">${displayKey}${offset !== 0 ? ` (orig. ${song.keyBase})` : ''}${song.bpm ? ` • ${song.bpm} BPM` : ''}</div>
                     <select class="lead-vocal-select" onclick="event.stopPropagation()" onchange="event.stopPropagation(); Router.setSongLeadVocal('${song.id}', this.value)">
                         <option value="">🎤 Sin asignar</option>
                         ${this.LEAD_VOCAL_OPTIONS.map(name => `<option value="${name}" ${name === leadVocal ? 'selected' : ''}>🎤 ${name}</option>`).join('')}
@@ -2200,6 +2262,7 @@ document.addEventListener('DOMContentLoaded', () => {
     Auth.init();
     Router.init();
     StickyStructureBar.init();
+    HorizontalStructureSync.bindOnce();
 
     document.addEventListener('keydown', (e) => {
         const isCtrlCmd = e.ctrlKey || e.metaKey;
