@@ -268,30 +268,56 @@ const Teleprompter = {
         const sectionEls = Array.from(document.querySelectorAll('#song-content .section'));
         if (!structureRaw.length || sectionEls.length !== song.sections.length) return null;
 
-        const sectionsInfo = sectionEls.map((el, idx) => {
-            const data = song.sections[idx];
-            const labelEl = el.querySelector('.section-label:not(.inline-label)');
-            const label = labelEl ? labelEl.textContent.trim() : (data ? data.label : '');
-            const rect = el.getBoundingClientRect();
-            const top = rect.top + window.scrollY;
-            const height = Math.max(el.offsetHeight, 20);
-            const durationSec = this.estimateSectionDurationSec(data, song);
-            return { el, label, top, height, durationSec };
+        // "Anclas": un punto de referencia por cada etiqueta visible, ya sea el título
+        // principal de una sección o una etiqueta interna (cuando varias partes quedaron
+        // fusionadas dentro de un mismo bloque al crear la canción).
+        const anchors = [];
+        sectionEls.forEach((sectionEl, sIdx) => {
+            const sectionData = song.sections[sIdx] || { pairs: [] };
+            const children = Array.from(sectionEl.children); // [0] = etiqueta principal, resto = pares en orden
+            const topRect = sectionEl.getBoundingClientRect();
+            let current = { label: sectionData.label || '', topY: topRect.top + window.scrollY, pairs: [] };
+            anchors.push(current);
+
+            (sectionData.pairs || []).forEach((pair, pIdx) => {
+                const childEl = children[pIdx + 1];
+                const letraTrim = (pair.letra || '').trim();
+                const acordesEmpty = !pair.acordes || !pair.acordes.trim();
+                const isInline = letraTrim && acordesEmpty && ChordParser.isSectionHeader(letraTrim);
+                if (isInline && childEl) {
+                    const inlineName = ChordParser.normalizeSectionName(letraTrim);
+                    const rect = childEl.getBoundingClientRect();
+                    current = { label: inlineName, topY: rect.top + window.scrollY, pairs: [] };
+                    anchors.push(current);
+                } else {
+                    current.pairs.push(pair);
+                }
+            });
+        });
+
+        // A cada ancla le calculamos su alto real (hasta la siguiente ancla) y su duración
+        // estimada (solo con los acordes que quedan DENTRO de ese tramo, no de todo el bloque grande).
+        const contentEl = document.getElementById('song-content');
+        const contentBottom = contentEl ? (contentEl.getBoundingClientRect().bottom + window.scrollY) : null;
+        anchors.forEach((a, i) => {
+            const nextTopY = (i + 1 < anchors.length) ? anchors[i + 1].topY : (contentBottom !== null ? contentBottom : a.topY + 100);
+            a.height = Math.max(20, nextTopY - a.topY);
+            a.durationSec = this.estimateSectionDurationSec({ pairs: a.pairs }, song);
         });
 
         const segments = [];
         structureRaw.forEach(rawEntry => {
             const { baseText, repeats } = this.parseStructureEntry(rawEntry);
-            const match = this.matchSection(baseText, sectionsInfo);
+            const match = this.matchSection(baseText, anchors);
             if (!match) return;
             for (let i = 0; i < repeats; i++) {
-                segments.push({ startY: match.top, endY: match.top + match.height, durationSec: match.durationSec });
+                segments.push({ startY: match.topY, endY: match.topY + match.height, durationSec: match.durationSec });
             }
         });
 
         // Diagnóstico: abre la consola del navegador (F12) para ver exactamente qué calculó.
         console.log('[Teleprompter] Orden de la canción:', structureRaw);
-        console.log('[Teleprompter] Secciones reales detectadas:', sectionsInfo.map(s => ({ label: s.label, top: Math.round(s.top), height: s.height, durationSec: Math.round(s.durationSec) })));
+        console.log('[Teleprompter] Anclas detectadas (secciones + etiquetas internas):', anchors.map(a => ({ label: a.label, top: Math.round(a.topY), height: Math.round(a.height), durationSec: Math.round(a.durationSec) })));
         console.log('[Teleprompter] Plan final (segmentos a recorrer):', segments.map(s => ({ startY: Math.round(s.startY), endY: Math.round(s.endY), durationSec: Math.round(s.durationSec) })));
         console.log('[Teleprompter] Duración total estimada (seg):', Math.round(segments.reduce((sum, s) => sum + s.durationSec, 0)));
 
