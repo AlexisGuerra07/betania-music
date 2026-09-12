@@ -483,6 +483,7 @@ const HorizontalStructureSync = {
     },
     update() {
         if (AppState.currentView !== 'song-reader') return;
+        if (!AppState.fullscreenMode) return; // fuera de pantalla completa no se desliza sola
         const bar = document.getElementById('song-structure-bar');
         const inner = document.getElementById('structure-bar-inner');
         if (!bar || !inner || bar.style.display === 'none') return;
