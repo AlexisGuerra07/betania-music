@@ -143,14 +143,16 @@ const Teleprompter = {
         this.cancelAutoStart();
         this.autoStartTimer = setTimeout(() => {
             this.autoStartTimer = null;
-            this.start();
+            // Arranque en frío: siempre desde arriba del todo, sin depender de ningún cálculo previo.
+            window.scrollTo(0, 0);
+            this.start({ fromStart: true });
         }, delayMs);
     },
     cancelAutoStart() {
         if (this.autoStartTimer) { clearTimeout(this.autoStartTimer); this.autoStartTimer = null; }
     },
 
-    start() {
+    start(options = {}) {
         this.cancelAutoStart();
         if (this.running) return;
         const song = AppState.currentSong;
@@ -161,7 +163,7 @@ const Teleprompter = {
         this.userInteracting = false;
         if (this.interactionTimer) { clearTimeout(this.interactionTimer); this.interactionTimer = null; }
         if (this.plan) {
-            this.elapsedSec = this.yToElapsed(window.scrollY);
+            this.elapsedSec = options.fromStart ? 0 : this.yToElapsed(window.scrollY);
         } else {
             this.elapsedSec = 0;
             const estDuration = this.estimateWholeSongDurationSec(song);
@@ -1054,6 +1056,7 @@ const Router = {
         this.bindButton('btn-tp-toggle', () => Teleprompter.toggle());
         this.bindButton('btn-tp-slower', () => Teleprompter.slower());
         this.bindButton('btn-tp-faster', () => Teleprompter.faster());
+        this.bindButton('btn-close-youtube-mini', () => this.closeYoutubeMiniPlayer());
         this.bindButton('btn-save-song', () => this.saveCurrentSong());
         this.bindButton('btn-add-section', () => Editor.addSection());
         this.bindButton('btn-add-pair-editor', () => Editor.addPair());
@@ -1311,20 +1314,23 @@ const Router = {
         return null;
     },
 
-    // Abre el video de YouTube en una ventana dentro de la app, sin salir a la app de YouTube ni al navegador.
+    // Abre el video de YouTube como mini-reproductor flotante (esquina de la pantalla),
+    // sin bloquear el resto de la app — se puede seguir leyendo y deslizando la canción.
     showYoutubeModal(url) {
         const videoId = this.extractYoutubeId(url);
         if (!videoId) { window.open(url, '_blank', 'noopener'); return; }
-        this.createModal({
-            title: '▶ Video de referencia',
-            content: `
-                <div class="youtube-embed-wrap">
-                    <iframe src="https://www.youtube.com/embed/${videoId}?autoplay=1" title="Video de YouTube" frameborder="0"
-                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
-                </div>
-            `,
-            actions: [{ text: 'Cerrar', action: () => this.closeModal() }]
-        });
+        const wrap = document.getElementById('youtube-mini-iframe-wrap');
+        const player = document.getElementById('youtube-mini-player');
+        if (!wrap || !player) { window.open(url, '_blank', 'noopener'); return; }
+        wrap.innerHTML = `<iframe src="https://www.youtube.com/embed/${videoId}?autoplay=1" title="Video de YouTube" frameborder="0"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>`;
+        player.style.display = 'block';
+    },
+    closeYoutubeMiniPlayer() {
+        const wrap = document.getElementById('youtube-mini-iframe-wrap');
+        const player = document.getElementById('youtube-mini-player');
+        if (wrap) wrap.innerHTML = ''; // quita el iframe -> detiene la reproducción
+        if (player) player.style.display = 'none';
     },
 
     applyReaderFontSize() {
@@ -1749,6 +1755,7 @@ const Router = {
         if (leadVocalWrap) leadVocalWrap.style.display = 'none';
         StickyStructureBar.reset();
         Teleprompter.reset();
+        this.closeYoutubeMiniPlayer();
         this.exitFullscreenMode();
     },
 
