@@ -614,6 +614,52 @@ body {
     border: none;
 }
 
+.youtube-mini-player {
+    position: fixed;
+    top: max(0.6rem, env(safe-area-inset-top));
+    left: 0.6rem;
+    width: 46vw;
+    max-width: 220px;
+    min-width: 150px;
+    z-index: 950;
+    box-shadow: var(--shadow-lg);
+    border-radius: 8px;
+    overflow: visible;
+}
+.youtube-mini-iframe-wrap {
+    position: relative;
+    width: 100%;
+    padding-top: 56.25%; /* 16:9 */
+    border-radius: 8px;
+    overflow: hidden;
+    background: #000;
+}
+.youtube-mini-iframe-wrap iframe {
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    border: none;
+}
+.yt-mini-close {
+    position: absolute;
+    top: -0.5rem;
+    right: -0.5rem;
+    z-index: 951;
+    width: 1.6rem;
+    height: 1.6rem;
+    border-radius: 50%;
+    background: var(--primary-color);
+    color: white;
+    border: 2px solid white;
+    font-size: 0.75rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    padding: 0;
+    box-shadow: var(--shadow-md);
+}
+
 .import-preview-item {
     display: flex;
     align-items: center;
