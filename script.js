@@ -163,7 +163,8 @@ const Teleprompter = {
         this.userInteracting = false;
         if (this.interactionTimer) { clearTimeout(this.interactionTimer); this.interactionTimer = null; }
         if (this.plan) {
-            this.elapsedSec = options.fromStart ? 0 : this.yToElapsed(window.scrollY);
+            const forceFromStart = options.fromStart || window.scrollY < 50;
+            this.elapsedSec = forceFromStart ? 0 : this.yToElapsed(window.scrollY);
         } else {
             this.elapsedSec = 0;
             const estDuration = this.estimateWholeSongDurationSec(song);
@@ -1157,7 +1158,6 @@ const Router = {
         });
         StickyStructureBar.updateTopOffset();
         setTimeout(() => HorizontalStructureSync.update(), 50);
-        Teleprompter.scheduleAutoStart(5000);
     },
     requestExitFullscreen() { if (AppState.fullscreenMode) history.back(); },
     exitFullscreenMode() {
