@@ -368,13 +368,18 @@ body {
 
 .structure-bar-inner {
     display: flex;
-    flex-wrap: nowrap;
+    flex-wrap: wrap;
     align-items: center;
     gap: 6px;
+    overflow: visible;
+}
+
+body.fullscreen-active .structure-bar-inner {
+    flex-wrap: nowrap;
     overflow-x: auto;
     scrollbar-width: none;
 }
-.structure-bar-inner::-webkit-scrollbar { display: none; }
+body.fullscreen-active .structure-bar-inner::-webkit-scrollbar { display: none; }
 
 .structure-chip {
     flex-shrink: 0;
