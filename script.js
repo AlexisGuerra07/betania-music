@@ -136,7 +136,7 @@ const Teleprompter = {
             }
             this.lastAutoY = window.scrollY;
             this.lastTimestamp = null;
-        }, 400);
+        }, 1200);
     },
 
     scheduleAutoStart(delayMs) {
@@ -347,7 +347,27 @@ const Teleprompter = {
             a.durationSec = this.estimateSectionDurationSec({ pairs: a.pairs }, song);
         });
 
+        // Qué anclas se usan en algún momento del orden (sea cual sea su posición en la lista).
+        const usedAnchors = new Set();
+        structureRaw.forEach(rawEntry => {
+            const { baseText } = this.parseStructureEntry(rawEntry);
+            const match = this.matchSection(baseText, anchors);
+            if (match) usedAnchors.add(match);
+        });
+
+        // Si al principio del documento hay anclas (típicamente el Intro) que el orden
+        // nunca menciona, las anteponemos igual — así el recorrido siempre arranca desde
+        // arriba del todo en vez de saltar directo a la primera parte que sí está listada.
+        const leadingUnused = [];
+        for (const a of anchors) {
+            if (usedAnchors.has(a)) break;
+            leadingUnused.push(a);
+        }
+
         const segments = [];
+        leadingUnused.forEach(a => {
+            segments.push({ startY: a.topY, endY: a.topY + a.height, durationSec: a.durationSec });
+        });
         structureRaw.forEach(rawEntry => {
             const { baseText, repeats } = this.parseStructureEntry(rawEntry);
             const match = this.matchSection(baseText, anchors);
@@ -359,6 +379,7 @@ const Teleprompter = {
 
         // Diagnóstico: abre la consola del navegador (F12) para ver exactamente qué calculó.
         console.log('[Teleprompter] Orden de la canción:', structureRaw);
+        console.log('[Teleprompter] Anclas iniciales no mencionadas en el orden (se anteponen igual):', leadingUnused.map(a => a.label));
         console.log('[Teleprompter] Anclas detectadas (secciones + etiquetas internas):', anchors.map(a => ({ label: a.label, top: Math.round(a.topY), height: Math.round(a.height), durationSec: Math.round(a.durationSec) })));
         console.log('[Teleprompter] Plan final (segmentos a recorrer):', segments.map(s => ({ startY: Math.round(s.startY), endY: Math.round(s.endY), durationSec: Math.round(s.durationSec) })));
         console.log('[Teleprompter] Duración total estimada (seg):', Math.round(segments.reduce((sum, s) => sum + s.durationSec, 0)));
