@@ -109,6 +109,35 @@ const Teleprompter = {
     lastAutoY: null,        // última Y que fijamos nosotros, para detectar si el usuario deslizó a mano
     fallbackPxPerSec: 24,   // usado solo cuando no hay plan (sin orden cargado)
     MEASURES_PER_CHORD: 3,  // punto medio de "2 a 4 compases por acorde"
+    userInteracting: false, // true mientras el usuario toca/desliza/usa la rueda — no tocamos el scroll
+    interactionTimer: null,
+    interactionBound: false,
+
+    // Mientras el usuario esté tocando o usando la rueda, el auto-scroll se aparta por
+    // completo (no llama a scrollTo ni scrollBy). Al soltar, retoma desde donde quedó.
+    bindInteractionListeners() {
+        if (this.interactionBound) return;
+        this.interactionBound = true;
+        const handler = () => this.markUserInteraction();
+        window.addEventListener('touchstart', handler, { passive: true });
+        window.addEventListener('touchmove', handler, { passive: true });
+        window.addEventListener('wheel', handler, { passive: true });
+    },
+    markUserInteraction() {
+        if (!this.running) return;
+        this.userInteracting = true;
+        if (this.interactionTimer) clearTimeout(this.interactionTimer);
+        this.interactionTimer = setTimeout(() => {
+            this.userInteracting = false;
+            this.interactionTimer = null;
+            // Al soltar, retomamos el avance automático desde donde haya quedado la página.
+            if (this.plan && this.plan.length) {
+                this.elapsedSec = this.yToElapsed(window.scrollY);
+            }
+            this.lastAutoY = window.scrollY;
+            this.lastTimestamp = null;
+        }, 400);
+    },
 
     scheduleAutoStart(delayMs) {
         this.cancelAutoStart();
@@ -129,6 +158,8 @@ const Teleprompter = {
         this.running = true;
         this.lastTimestamp = null;
         this.lastAutoY = null;
+        this.userInteracting = false;
+        if (this.interactionTimer) { clearTimeout(this.interactionTimer); this.interactionTimer = null; }
         if (this.plan) {
             this.elapsedSec = this.yToElapsed(window.scrollY);
         } else {
@@ -148,6 +179,8 @@ const Teleprompter = {
         this.rafId = null;
         this.lastTimestamp = null;
         this.lastAutoY = null;
+        this.userInteracting = false;
+        if (this.interactionTimer) { clearTimeout(this.interactionTimer); this.interactionTimer = null; }
         this.updateToggleIcon();
     },
     toggle() {
@@ -167,8 +200,14 @@ const Teleprompter = {
         const deltaSec = Math.min(0.1, (timestamp - this.lastTimestamp) / 1000);
         this.lastTimestamp = timestamp;
 
+        if (this.userInteracting) {
+            // El usuario tiene el control (dedo o rueda activos): no tocamos el scroll para nada.
+            this.rafId = requestAnimationFrame((t) => this.tick(t));
+            return;
+        }
+
         if (this.plan && this.plan.length) {
-            // ¿Deslizó manualmente desde el último frame? Resincronizamos el avance desde ahí.
+            // ¿Deslizó manualmente desde el último frame (ej. justo al soltar)? Resincronizamos.
             if (this.lastAutoY !== null && Math.abs(window.scrollY - this.lastAutoY) > 3) {
                 const before = this.elapsedSec;
                 this.elapsedSec = this.yToElapsed(window.scrollY);
@@ -2609,6 +2648,7 @@ document.addEventListener('DOMContentLoaded', () => {
     Router.init();
     StickyStructureBar.init();
     HorizontalStructureSync.bindOnce();
+    Teleprompter.bindInteractionListeners();
 
     document.addEventListener('keydown', (e) => {
         const isCtrlCmd = e.ctrlKey || e.metaKey;
