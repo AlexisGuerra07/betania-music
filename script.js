@@ -422,7 +422,7 @@ const StickyStructureBar = {
         if (this.observer) this.observer.disconnect();
         this.observer = new IntersectionObserver((entries) => {
             entries.forEach(entry => {
-                const shouldPin = bar.style.display !== 'none' && !entry.isIntersecting && entry.boundingClientRect.top < 0;
+                const shouldPin = AppState.fullscreenMode && bar.style.display !== 'none' && !entry.isIntersecting && entry.boundingClientRect.top < 0;
                 if (shouldPin) {
                     if (!bar.classList.contains('pinned')) {
                         spacer.style.height = bar.offsetHeight + 'px';
@@ -1165,7 +1165,7 @@ const Router = {
         document.body.classList.remove('fullscreen-active');
         FullscreenUI.hide();
         Teleprompter.stop();
-        StickyStructureBar.updateTopOffset();
+        StickyStructureBar.reset();
         setTimeout(() => HorizontalStructureSync.update(), 50);
     },
 
@@ -1523,9 +1523,6 @@ const Router = {
         this.createModal({
             title: `Orden en "${sl.name}"`,
             content: `
-                <p style="margin-bottom:1rem; color:var(--text-secondary); font-size:0.9rem;">
-                    Este orden aplica solo para "${song.title}" dentro de este repertorio. Cualquiera puede editarlo. Si lo dejas vacío, se usará el orden por defecto de la canción.
-                </p>
                 <div class="form-group">
                     <textarea class="form-textarea" id="setlist-structure-textarea" style="min-height:220px; font-family:var(--mono-font); font-size:0.9rem;">${prefill}</textarea>
                 </div>
