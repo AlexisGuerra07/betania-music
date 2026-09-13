@@ -203,8 +203,6 @@ const Teleprompter = {
         this.plan = null;
         this.elapsedSec = 0;
         this.hasPlayedOnce = false;
-        const slider = document.getElementById('tp-speed-slider');
-        if (slider) slider.value = 0;
     },
 
     tick(timestamp) {
@@ -233,11 +231,8 @@ const Teleprompter = {
         this.rafId = requestAnimationFrame((t) => this.tick(t));
     },
 
-    SPEED_LEVELS: { '-3': 0.4, '-2': 0.55, '-1': 0.75, '0': 1, '1': 1.3, '2': 1.6, '3': 2 },
-    setSpeedLevel(level) {
-        const factor = this.SPEED_LEVELS[String(level)];
-        if (factor) this.speedFactor = factor;
-    },
+    faster() { this.speedFactor = Math.min(3, Math.round(this.speedFactor * 1.15 * 100) / 100); },
+    slower() { this.speedFactor = Math.max(0.2, Math.round(this.speedFactor * 0.87 * 100) / 100); },
 
     // ---- Estimación de duración a partir de BPM + compás + cantidad de acordes ----
     getBeatsPerMeasure(song) {
@@ -1083,7 +1078,8 @@ const Router = {
         this.bindButton('btn-fullscreen-toggle', () => this.enterFullscreenMode());
         this.bindButton('btn-fullscreen-exit', () => this.requestExitFullscreen());
         this.bindButton('btn-tp-toggle', () => Teleprompter.toggle());
-        this.bindInput('tp-speed-slider', (e) => Teleprompter.setSpeedLevel(e.target.value));
+        this.bindButton('btn-tp-slower', () => Teleprompter.slower());
+        this.bindButton('btn-tp-faster', () => Teleprompter.faster());
         this.bindButton('btn-close-youtube-mini', () => this.closeYoutubeMiniPlayer());
         this.bindButton('btn-save-song', () => this.saveCurrentSong());
         this.bindButton('btn-add-section', () => Editor.addSection());
@@ -2058,4 +2054,5 @@ const Router = {
         }
     },
 
-    r
+    renderSetlistDetail() {
+        if (!AppState.currentSetlist) { this.navigate('repertorio
