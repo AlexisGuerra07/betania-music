@@ -584,12 +584,14 @@ body.fullscreen-active .structure-bar-inner::-webkit-scrollbar { display: none; 
     max-width: 500px;
     width: 100%;
     max-height: 80vh;
-    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
 }
-.modal-header { display: flex; justify-content: space-between; align-items: center; padding: 1.5rem; border-bottom: 1px solid var(--border-color); }
+.modal-header { display: flex; justify-content: space-between; align-items: center; padding: 1.5rem; border-bottom: 1px solid var(--border-color); flex-shrink: 0; }
 .modal-title { font-size: 1.25rem; font-weight: 600; color: var(--text-primary); }
-.modal-content { padding: 1.5rem; }
-.modal-footer { display: flex; justify-content: flex-end; gap: 0.75rem; padding: 1.5rem; border-top: 1px solid var(--border-color); }
+.modal-content { padding: 1.5rem; overflow-y: auto; flex: 1; min-height: 0; }
+.modal-footer { display: flex; justify-content: flex-end; gap: 0.75rem; padding: 1.5rem; border-top: 1px solid var(--border-color); flex-shrink: 0; }
 
 .youtube-inline-btn {
     background: none;
