@@ -2194,7 +2194,6 @@ const Router = {
         this.createModal({
             title: 'Tonalidad uniforme del repertorio',
             content: `
-                <p style="margin-bottom:1rem; color:var(--text-secondary); font-size:0.9rem;">Elige una tonalidad y todas las canciones de este repertorio se transportarán automáticamente a ella al abrirlas, sin modificar los datos originales de cada canción.</p>
                 <div class="form-group">
                     <label class="form-label">Tonalidad</label>
                     <select class="form-select" id="modal-uniform-key">
