@@ -521,12 +521,12 @@ const HorizontalStructureSync = {
 // ============ HISTORIAL DE NAVEGACIÓN ============
 const HistoryManager = {
     init() {
-        history.replaceState({ view: 'repertorio' }, '', location.href);
+        history.replaceState({ view: 'canciones' }, '', location.href);
         window.addEventListener('popstate', (e) => this.handlePopState(e));
     },
     push(state) { history.pushState(state, '', location.href); },
     handlePopState(e) {
-        const state = e.state || { view: 'repertorio' };
+        const state = e.state || { view: 'canciones' };
         if (AppState.fullscreenMode && !state.fullscreen) { Router.exitFullscreenMode(); return; }
         if (AppState.currentView === 'edicion' && AppState.currentSong) { Router.saveCurrentSong(); }
 
@@ -548,7 +548,7 @@ const HistoryManager = {
             if (sl) { AppState.currentSetlist = sl; Router.navigate('repertorio-detail', false); }
             else { Router.navigate('repertorio', false); }
         } else {
-            Router.navigate(state.view || 'repertorio', false);
+            Router.navigate(state.view || 'canciones', false);
         }
     }
 };
@@ -1005,7 +1005,7 @@ const Router = {
                 StickyStructureBar.updateTopOffset();
             }
         });
-        this.navigate('repertorio', false);
+        this.navigate('canciones', false);
     },
 
     setupSwipeNavigation() {
@@ -2055,4 +2055,4 @@ const Router = {
     },
 
     renderSetlistDetail() {
-        if (!AppState.currentSetlist) { this.navigate('repertorio
+        if (!AppState.currentSetlist) { this.navigate('repertorio'); 
