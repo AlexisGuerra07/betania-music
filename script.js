@@ -195,6 +195,8 @@ const Teleprompter = {
         this.speedFactor = 1;
         this.plan = null;
         this.elapsedSec = 0;
+        const slider = document.getElementById('tp-speed-slider');
+        if (slider) slider.value = 0;
     },
 
     tick(timestamp) {
@@ -237,8 +239,11 @@ const Teleprompter = {
         this.rafId = requestAnimationFrame((t) => this.tick(t));
     },
 
-    faster() { this.speedFactor = Math.min(3, Math.round(this.speedFactor * 1.15 * 100) / 100); },
-    slower() { this.speedFactor = Math.max(0.2, Math.round(this.speedFactor * 0.87 * 100) / 100); },
+    SPEED_LEVELS: { '-3': 0.4, '-2': 0.55, '-1': 0.75, '0': 1, '1': 1.3, '2': 1.6, '3': 2 },
+    setSpeedLevel(level) {
+        const factor = this.SPEED_LEVELS[String(level)];
+        if (factor) this.speedFactor = factor;
+    },
 
     // ---- Estimación de duración a partir de BPM + compás + cantidad de acordes ----
     getBeatsPerMeasure(song) {
@@ -264,21 +269,28 @@ const Teleprompter = {
         });
         return count;
     },
-    estimateSectionDurationSec(sectionData, song) {
+    estimateSectionDurationSec(sectionData, song, label) {
         const bpm = (song && song.bpm) || 80;
         const secPerMeasure = (this.getBeatsPerMeasure(song) / bpm) * 60;
         const numChords = this.countChordsInSection(sectionData);
-        const estimatedMeasures = numChords > 0 ? numChords * this.MEASURES_PER_CHORD : 4;
+        const isIntro = label ? Router.getStructureCategoryKey(label) === 'I' : false;
+        const measuresPerChord = isIntro ? 4 : this.MEASURES_PER_CHORD;
+        const estimatedMeasures = numChords > 0 ? numChords * measuresPerChord : (isIntro ? 8 : 4);
         return Math.max(1, estimatedMeasures * secPerMeasure);
     },
     estimateWholeSongDurationSec(song) {
         if (!song || !song.sections || !song.sections.length) return null;
-        let totalChords = 0;
-        song.sections.forEach(s => { totalChords += this.countChordsInSection(s); });
-        if (!totalChords) return null;
         const bpm = (song && song.bpm) || 80;
         const secPerMeasure = (this.getBeatsPerMeasure(song) / bpm) * 60;
-        return totalChords * this.MEASURES_PER_CHORD * secPerMeasure;
+        let totalMeasures = 0;
+        song.sections.forEach(s => {
+            const numChords = this.countChordsInSection(s);
+            const isIntro = s.label ? Router.getStructureCategoryKey(s.label) === 'I' : false;
+            const measuresPerChord = isIntro ? 4 : this.MEASURES_PER_CHORD;
+            totalMeasures += numChords > 0 ? numChords * measuresPerChord : (isIntro ? 8 : 4);
+        });
+        if (!totalMeasures) return null;
+        return totalMeasures * secPerMeasure;
     },
 
     // ---- Construcción del plan a partir del "orden de la canción" ----
@@ -344,7 +356,7 @@ const Teleprompter = {
         anchors.forEach((a, i) => {
             const nextTopY = (i + 1 < anchors.length) ? anchors[i + 1].topY : (contentBottom !== null ? contentBottom : a.topY + 100);
             a.height = Math.max(20, nextTopY - a.topY);
-            a.durationSec = this.estimateSectionDurationSec({ pairs: a.pairs }, song);
+            a.durationSec = this.estimateSectionDurationSec({ pairs: a.pairs }, song, a.label);
         });
 
         // Qué anclas se usan en algún momento del orden (sea cual sea su posición en la lista).
@@ -1077,8 +1089,7 @@ const Router = {
         this.bindButton('btn-fullscreen-toggle', () => this.enterFullscreenMode());
         this.bindButton('btn-fullscreen-exit', () => this.requestExitFullscreen());
         this.bindButton('btn-tp-toggle', () => Teleprompter.toggle());
-        this.bindButton('btn-tp-slower', () => Teleprompter.slower());
-        this.bindButton('btn-tp-faster', () => Teleprompter.faster());
+        this.bindInput('tp-speed-slider', (e) => Teleprompter.setSpeedLevel(e.target.value));
         this.bindButton('btn-close-youtube-mini', () => this.closeYoutubeMiniPlayer());
         this.bindButton('btn-save-song', () => this.saveCurrentSong());
         this.bindButton('btn-add-section', () => Editor.addSection());
