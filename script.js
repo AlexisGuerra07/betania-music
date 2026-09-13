@@ -106,12 +106,12 @@ const Teleprompter = {
     autoStartTimer: null,
     plan: null,             // array de segmentos {startY, endY, durationSec}, o null si no hay orden cargado
     elapsedSec: 0,          // segundos transcurridos a lo largo del plan (o del scroll lineal)
-    lastAutoY: null,        // última Y que fijamos nosotros, para detectar si el usuario deslizó a mano
     fallbackPxPerSec: 24,   // usado solo cuando no hay plan (sin orden cargado)
     MEASURES_PER_CHORD: 3,  // punto medio de "2 a 4 compases por acorde"
     userInteracting: false, // true mientras el usuario toca/desliza/usa la rueda — no tocamos el scroll
     interactionTimer: null,
     interactionBound: false,
+    hasPlayedOnce: false, // true tras la primera vez que se le da play en la canción actual
 
     // Mientras el usuario esté tocando o usando la rueda, el auto-scroll se aparta por
     // completo (no llama a scrollTo ni scrollBy). Al soltar, retoma desde donde quedó.
@@ -134,7 +134,6 @@ const Teleprompter = {
             if (this.plan && this.plan.length) {
                 this.elapsedSec = this.yToElapsed(window.scrollY);
             }
-            this.lastAutoY = window.scrollY;
             this.lastTimestamp = null;
         }, 1200);
     },
@@ -159,7 +158,6 @@ const Teleprompter = {
         this.plan = this.buildPlan(song);
         this.running = true;
         this.lastTimestamp = null;
-        this.lastAutoY = null;
         this.userInteracting = false;
         if (this.interactionTimer) { clearTimeout(this.interactionTimer); this.interactionTimer = null; }
         if (this.plan) {
@@ -181,20 +179,30 @@ const Teleprompter = {
         if (this.rafId) cancelAnimationFrame(this.rafId);
         this.rafId = null;
         this.lastTimestamp = null;
-        this.lastAutoY = null;
         this.userInteracting = false;
         if (this.interactionTimer) { clearTimeout(this.interactionTimer); this.interactionTimer = null; }
         this.updateToggleIcon();
     },
     toggle() {
         this.cancelAutoStart();
-        if (this.running) this.stop(); else this.start();
+        if (this.running) {
+            this.stop();
+        } else if (!this.hasPlayedOnce) {
+            // Primera vez que se le da play en esta canción: siempre desde el principio,
+            // sin importar hasta dónde hayas bajado leyendo antes de tocar play.
+            this.hasPlayedOnce = true;
+            window.scrollTo(0, 0);
+            this.start({ fromStart: true });
+        } else {
+            this.start();
+        }
     },
     reset() {
         this.stop();
         this.speedFactor = 1;
         this.plan = null;
         this.elapsedSec = 0;
+        this.hasPlayedOnce = false;
         const slider = document.getElementById('tp-speed-slider');
         if (slider) slider.value = 0;
     },
@@ -212,25 +220,11 @@ const Teleprompter = {
         }
 
         if (this.plan && this.plan.length) {
-            // ¿Deslizó manualmente desde el último frame (ej. justo al soltar)? Resincronizamos.
-            if (this.lastAutoY !== null && Math.abs(window.scrollY - this.lastAutoY) > 3) {
-                const before = this.elapsedSec;
-                this.elapsedSec = this.yToElapsed(window.scrollY);
-                if (Math.abs(this.elapsedSec - before) > 5) {
-                    console.warn('[Teleprompter] Resincronización grande detectada:', {
-                        scrollYReal: Math.round(window.scrollY),
-                        scrollYEsperado: Math.round(this.lastAutoY),
-                        elapsedAntes: Math.round(before),
-                        elapsedDespues: Math.round(this.elapsedSec)
-                    });
-                }
-            }
             this.elapsedSec += deltaSec * this.speedFactor;
             const total = this.planTotalDuration();
             if (this.elapsedSec >= total) { this.stop(); return; }
             const targetY = this.elapsedToY(this.elapsedSec);
             window.scrollTo(0, targetY);
-            this.lastAutoY = targetY;
         } else {
             window.scrollBy(0, this.fallbackPxPerSec * this.speedFactor * deltaSec);
             const maxScroll = document.documentElement.scrollHeight - window.innerHeight;
