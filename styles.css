@@ -707,11 +707,12 @@ body.fullscreen-active .structure-bar-inner::-webkit-scrollbar { display: none; 
     transform: translateX(-50%);
     z-index: 900;
     align-items: center;
-    gap: 0.6rem;
-    background: rgba(17, 24, 39, 0.85);
-    padding: 0.5rem;
-    border-radius: 999px;
+    gap: 0.9rem;
+    background: rgba(17, 24, 39, 0.88);
+    padding: 0.6rem 1rem;
+    border-radius: 18px;
     box-shadow: var(--shadow-lg);
+    width: min(320px, 82vw);
 }
 .tp-icon-btn {
     background: transparent;
@@ -730,10 +731,31 @@ body.fullscreen-active .structure-bar-inner::-webkit-scrollbar { display: none; 
 .tp-icon-btn:hover { background: rgba(255, 255, 255, 0.15); }
 .tp-icon-btn-main {
     background: var(--primary-color);
-    width: 2.6rem;
-    height: 2.6rem;
+    width: 3.4rem;
+    height: 3.4rem;
+    flex-shrink: 0;
 }
 .tp-icon-btn-main:hover { background: var(--primary-hover); }
+
+.tp-speed-control {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+    min-width: 0;
+}
+.tp-speed-slider {
+    width: 100%;
+    accent-color: var(--primary-color);
+    cursor: pointer;
+}
+.tp-speed-labels {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.65rem;
+    color: rgba(255, 255, 255, 0.7);
+    padding: 0 0.1rem;
+}
 
 body.fullscreen-active .header,
 body.fullscreen-active #btn-back-to-list,
