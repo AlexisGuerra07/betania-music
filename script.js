@@ -188,6 +188,13 @@ const Teleprompter = {
         if (this.interactionTimer) { clearTimeout(this.interactionTimer); this.interactionTimer = null; }
         if (this.plan) {
             const forceFromStart = options.fromStart || window.scrollY < 50;
+            if (forceFromStart && this.plan.length) {
+                // Que el primer tramo arranque desde donde ya estamos (arriba del todo),
+                // no desde la posición exacta del Intro — si el Intro mide poco (ej. un
+                // solo acorde suelto), saltar directo a su posición lo empuja al borde
+                // superior de golpe, dando la sensación de que "se lo comió".
+                this.plan[0] = { ...this.plan[0], startY: Math.min(this.plan[0].startY, window.scrollY) };
+            }
             this.elapsedSec = forceFromStart ? 0 : this.yToElapsed(window.scrollY);
         } else {
             this.elapsedSec = 0;
