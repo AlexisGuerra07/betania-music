@@ -2247,10 +2247,10 @@ const Router = {
     // ============ IMPORTACIÓN MASIVA DE PDFs ============
     showBulkPDFImport() {
         this.createModal({
-            title: '📄 Importar PDFs en lote',
+            title: '📄 Importar canciones en lote',
             content: `
-                <p style="margin-bottom: 1rem; color: var(--text-secondary); font-size: 0.9rem;">Selecciona varios PDFs a la vez (en tono original, no en grados). Tonalidad, BPM y compás se detectan automáticamente. Podrás editar cada una después.</p>
-                <div class="form-group"><input type="file" class="form-input" id="pdf-bulk-input" accept=".pdf" multiple></div>
+                <p style="margin-bottom: 1rem; color: var(--text-secondary); font-size: 0.9rem;">Selecciona varios archivos PDF o Word (.docx) a la vez (en tono original, no en grados). Tonalidad, BPM y compás se detectan automáticamente. Podrás editar cada una después.</p>
+                <div class="form-group"><input type="file" class="form-input" id="pdf-bulk-input" accept=".pdf,.docx" multiple></div>
                 <div id="pdf-bulk-status" style="font-size: 0.9rem; color: var(--text-secondary);"></div>
             `,
             actions: [{ text: 'Cancelar', action: () => this.closeModal() }]
@@ -2266,7 +2266,8 @@ const Router = {
             const file = files[i];
             if (statusEl) statusEl.innerHTML = `🔄 Procesando ${i + 1} de ${files.length}: ${file.name}...`;
             try {
-                let text = await this.extractPDFText(file);
+                const isDocx = /\.docx$/i.test(file.name);
+                let text = isDocx ? await this.extractDocxText(file) : await this.extractPDFText(file);
                 let explicitKey = null;
                 const keyMatch = text.match(/(?:KEY|TONALIDAD)\s*:?\s*([A-G][#b]?m?)\b/i);
                 if (keyMatch) explicitKey = keyMatch[1].charAt(0).toUpperCase() + keyMatch[1].slice(1);
@@ -2293,7 +2294,7 @@ const Router = {
                 let finalKey = autoDetectedKey || explicitKey || 'C';
                 if (explicitKey && !explicitKey.includes('m')) finalKey = explicitKey;
 
-                const title = file.name.replace(/\.pdf$/i, '').trim();
+                const title = file.name.replace(/\.(pdf|docx)$/i, '').trim();
 
                 AppState.pendingImports.push({
                     id: this.generateId(),
@@ -2313,6 +2314,22 @@ const Router = {
             } catch (error) { console.error(`Error procesando ${file.name}:`, error); }
         }
         this.showBulkImportPreview();
+    },
+
+    // Extrae el texto de un archivo Word (.docx) usando mammoth.js.
+    // A diferencia del PDF, Word no tiene posiciones fijas de caracteres —
+    // se conserva el texto tal cual esté escrito (con sus espacios), pero si
+    // el documento usaba tabulaciones en vez de espacios para alinear los
+    // acordes sobre la letra, esa alineación puede no quedar perfecta.
+    extractDocxText(file) {
+        return new Promise(async (resolve, reject) => {
+            try {
+                if (typeof mammoth === 'undefined') { reject(new Error('mammoth.js no está cargado')); return; }
+                const arrayBuffer = await file.arrayBuffer();
+                const result = await mammoth.extractRawText({ arrayBuffer });
+                resolve(result.value || '');
+            } catch (error) { reject(error); }
+        });
     },
 
     extractPDFText(file) {
