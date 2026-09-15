@@ -785,7 +785,7 @@ const Auth = {
 // Parser de acordes
 const ChordParser = {
     chordRegex: /\b([A-G])([#b]*)(maj7|maj9|m7|m9|m|dim|aug|add\d+|sus4|sus2|sus|7|9|11|13|°|ø)?(?:\/([A-G])([#b]*))?(?![a-zA-Z])/g,
-    sectionHeaderRegex: /^\s*(?:[A-Za-z]{1,3}\s+)?(intro|estrofa|verso|pre[\s\-]?coro|coro|refrain|puente|bridge|interludio|solo|instrumental|outro|final|tag|estribillo|modulaci[oó]n|leyenda|espontaneo|espontáneo)\s*(?:[:\-]|\b)?\s*(\d+|i{1,3}|[ivx]{1,4}|[1-9]ª|x\d+|\(.*?\)|-\s*[A-Z]\d?)?\s*$/i,
+    sectionHeaderRegex: /^\s*(?:[A-Za-z]{1,3}\s*)?(intro|estrofa|verso|pre[\s\-]?coro|coro|refrain|puente|bridge|interludio|solo|instrumental|outro|final|tag|estribillo|modulaci[oó]n|leyenda|espontaneo|espontáneo)\s*(?:[:\-]|\b)?\s*(\d+|i{1,3}|[ivx]{1,4}|[1-9]ª|x\d+|\(.*?\)|-\s*[A-Z]\d?)?\s*$/i,
 
     normalizeTildes(text) {
         const map = { 'á':'a','é':'e','í':'i','ó':'o','ú':'u','Á':'A','É':'E','Í':'I','Ó':'O','Ú':'U' };
@@ -2269,6 +2269,24 @@ const Router = {
             try {
                 const isDocx = /\.docx$/i.test(file.name);
                 let text = isDocx ? await this.extractDocxText(file) : await this.extractPDFText(file);
+
+                // Red de seguridad adicional: si un sufijo de acorde (add4, sus2, 7...) quedó
+                // solo en su propia línea (el superíndice no se pudo pegar a su acorde base al
+                // extraer el PDF), lo volvemos a unir buscando la línea no vacía más cercana arriba.
+                const chordSuffixOnly = /^(maj7|maj9|m7|m9|dim|aug|add\d+|sus4|sus2|sus|6|7|9|11|13|°|ø)$/i;
+                const mergeLines = text.split('\n');
+                for (let li = 0; li < mergeLines.length; li++) {
+                    const t = mergeLines[li].trim();
+                    if (!t || !chordSuffixOnly.test(t)) continue;
+                    for (let pj = li - 1; pj >= 0; pj--) {
+                        if (!mergeLines[pj].trim()) continue;
+                        mergeLines[pj] = mergeLines[pj].replace(/\s+$/, '') + t;
+                        mergeLines[li] = '';
+                        break;
+                    }
+                }
+                text = mergeLines.join('\n');
+
                 let explicitKey = null;
                 const keyMatch = text.match(/(?:KEY|TONALIDAD|TONO)\s*:?\s*([A-G][#b]?m?)\b/i);
                 if (keyMatch) explicitKey = keyMatch[1].charAt(0).toUpperCase() + keyMatch[1].slice(1);
@@ -2291,6 +2309,8 @@ const Router = {
                 if (nameSegments.length >= 3 && nameSegments[2].toLowerCase().startsWith(nameSegments[0].toLowerCase())) {
                     title = nameSegments[0].replace(/_/g, ' ').trim();
                     detectedArtist = nameSegments[1].replace(/_/g, ' ').trim();
+                } else {
+                    title = title.replace(/_/g, ' ').trim();
                 }
 
                 // Si el nombre de archivo no siguió ese patrón (u otra fuente distinta a
@@ -2320,6 +2340,7 @@ const Router = {
                     if (detectedArtist && t === detectedArtist) return false;
                     if (/^un producto de/i.test(t)) return false;
                     if (/^compositores?\s*:/i.test(t)) return false;
+                    if (/^seg[uú]n lo registrado por/i.test(t)) return false;
                     if (/derechos reservados/i.test(t)) return false;
                     if (/^©/.test(t)) return false;
                     if (/^mtid\s*:/i.test(t)) return false;
@@ -2328,7 +2349,7 @@ const Router = {
                     // (ej: "Pad & Guitarra Acústica", "Entra Piano", "Ritmo completo",
                     // "Acentos", "Subir Intensidad") — no son letra, se descartan.
                     if (t.length < 50 && !ChordParser.isChordLine(t) &&
-                        /^(pad\b|entra\b|ritmo\b|subir\b|acentos?\b|din[aá]mica?s?\b|suave\b|bajar\b|contin[uú]a\b|pausa\b)/i.test(t)) return false;
+                        /^(pad\b|entra\b|ritmo\b|subir\b|acentos?\b|din[aá]mica?s?\b|suave\b|bajar\b|contin[uú]a\b|pausa\b|toda la banda\b|crece\b)/i.test(t)) return false;
                     return true;
                 });
                 text = cleanedLines.join('\n');
@@ -2452,7 +2473,7 @@ const Router = {
                             if (gap > 12) lineText += ' ';
                         } else {
                             const fontSize = it.fontSize || 10;
-                            const spaces = gap > fontSize * 0.2 ? Math.max(1, Math.round(gap / (fontSize * 0.55))) : 0;
+                            const spaces = Math.max(1, Math.round(gap / (fontSize * 0.55)));
                             lineText += ' '.repeat(Math.min(spaces, 20));
                         }
                     }
