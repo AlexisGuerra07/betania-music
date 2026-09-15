@@ -2393,26 +2393,68 @@ const Router = {
     },
 
     reconstructPageText(textContent, pageWidth) {
-        const items = textContent.items.filter(it => it.str && it.str.trim());
+        let items = textContent.items
+            .filter(it => it.str && it.str.trim())
+            .map(it => ({
+                str: it.str,
+                width: it.width || 0,
+                x: it.transform[4],
+                y: it.transform[5],
+                // Tamaño de letra aproximado, para distinguir texto normal de un superíndice
+                // (el "sus2" o "7" chiquito pegado arriba del nombre del acorde, ej. "Gsus2").
+                fontSize: Math.abs(it.transform[3]) || it.height || 10
+            }));
         if (!items.length) return '';
+
+        // Paso 1: pegar los superíndices de acordes a su acorde base en vez de dejarlos
+        // sueltos en su propia línea (ej. "G" + superíndice "sus2" -> un solo "Gsus2").
+        const sizes = items.map(it => it.fontSize).sort((a, b) => a - b);
+        const medianSize = sizes[Math.floor(sizes.length / 2)] || 10;
+        const consumed = new Set();
+        items.forEach((it, i) => {
+            if (consumed.has(i) || it.fontSize >= medianSize * 0.75) return;
+            let best = null, bestDist = Infinity;
+            items.forEach((other, j) => {
+                if (i === j || consumed.has(j) || other.fontSize < medianSize * 0.75) return;
+                const dx = it.x - (other.x + other.width);
+                const dy = it.y - other.y;
+                if (dx < -1 || dx > 4) return;              // debe empezar justo después del acorde base
+                if (dy < 0 || dy > other.fontSize) return;  // debe estar un poco más arriba (superíndice)
+                const dist = Math.abs(dx) + dy;
+                if (dist < bestDist) { bestDist = dist; best = other; }
+            });
+            if (best) { best.str += it.str; best.width = (it.x + it.width) - best.x; consumed.add(i); }
+        });
+        items = items.filter((_, i) => !consumed.has(i));
+
         const buildLines = (its) => {
             const lineGroups = [];
             const tolerance = 2;
             its.forEach(item => {
-                const y = item.transform[5], x = item.transform[4];
-                let group = lineGroups.find(g => Math.abs(g.y - y) <= tolerance);
-                if (!group) { group = { y, items: [] }; lineGroups.push(group); }
-                group.items.push({ x, str: item.str, width: item.width || 0 });
+                let group = lineGroups.find(g => Math.abs(g.y - item.y) <= tolerance);
+                if (!group) { group = { y: item.y, items: [] }; lineGroups.push(group); }
+                group.items.push(item);
             });
             lineGroups.sort((a, b) => b.y - a.y);
-            return lineGroups.map(group => {
-                group.items.sort((a, b) => a.x - b.x);
+            lineGroups.forEach(g => g.items.sort((a, b) => a.x - b.x));
+
+            return lineGroups.map((group, gIdx) => {
+                // Los acordes suelen ir flotando ARRIBA de la letra, justo sobre la sílaba
+                // correspondiente. Eso deja un hueco horizontal en la línea de la letra que
+                // no es un espacio real — es solo para hacerle lugar visualmente al acorde.
+                const aboveItems = gIdx > 0 ? lineGroups[gIdx - 1].items : [];
                 let lineText = '', lastEndX = null;
                 group.items.forEach(it => {
                     if (lastEndX !== null) {
                         const gap = it.x - lastEndX;
-                        const spaces = Math.max(1, Math.round(gap / 5));
-                        lineText += ' '.repeat(Math.min(spaces, 20));
+                        const shadowedByAbove = aboveItems.some(a => a.x < it.x && (a.x + a.width) > lastEndX);
+                        if (shadowedByAbove) {
+                            if (gap > 12) lineText += ' ';
+                        } else {
+                            const fontSize = it.fontSize || 10;
+                            const spaces = gap > fontSize * 0.2 ? Math.max(1, Math.round(gap / (fontSize * 0.55))) : 0;
+                            lineText += ' '.repeat(Math.min(spaces, 20));
+                        }
                     }
                     lineText += it.str;
                     lastEndX = it.x + it.width;
@@ -2423,8 +2465,8 @@ const Router = {
         let leftItems = items, rightItems = [];
         if (pageWidth) {
             const boundary = pageWidth * 0.5;
-            const potentialLeft = items.filter(it => it.transform[4] < boundary);
-            const potentialRight = items.filter(it => it.transform[4] >= boundary);
+            const potentialLeft = items.filter(it => it.x < boundary);
+            const potentialRight = items.filter(it => it.x >= boundary);
             if (potentialLeft.length >= 8 && potentialRight.length >= 8) { leftItems = potentialLeft; rightItems = potentialRight; }
         }
         if (rightItems.length > 0) {
