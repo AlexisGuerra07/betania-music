@@ -785,7 +785,7 @@ const Auth = {
 // Parser de acordes
 const ChordParser = {
     chordRegex: /\b([A-G])([#b]*)(maj7|maj9|m7|m9|m|dim|aug|add\d+|sus4|sus2|sus|7|9|11|13|°|ø)?(?:\/([A-G])([#b]*))?(?![a-zA-Z])/g,
-    sectionHeaderRegex: /^\s*(intro|estrofa|verso|pre[\s\-]?coro|coro|puente|bridge|interludio|solo|instrumental|outro|final|tag|estribillo|modulaci[oó]n|leyenda|espontaneo|espontáneo)\s*(?:[:\-]|\b)?\s*(\d+|i{1,3}|[ivx]{1,4}|[1-9]ª|x\d+|\(.*?\)|-\s*[A-Z]\d?)?\s*$/i,
+    sectionHeaderRegex: /^\s*(?:[A-Za-z]{1,3}\s+)?(intro|estrofa|verso|pre[\s\-]?coro|coro|refrain|puente|bridge|interludio|solo|instrumental|outro|final|tag|estribillo|modulaci[oó]n|leyenda|espontaneo|espontáneo)\s*(?:[:\-]|\b)?\s*(\d+|i{1,3}|[ivx]{1,4}|[1-9]ª|x\d+|\(.*?\)|-\s*[A-Z]\d?)?\s*$/i,
 
     normalizeTildes(text) {
         const map = { 'á':'a','é':'e','í':'i','ó':'o','ú':'u','Á':'A','É':'E','Í':'I','Ó':'O','Ú':'U' };
@@ -808,7 +808,7 @@ const ChordParser = {
         const translations = {
             'intro':'Intro','estrofa':'Estrofa','verso':'Estrofa','verse':'Estrofa',
             'pre coro':'Pre-Coro','precoro':'Pre-Coro','pre-coro':'Pre-Coro',
-            'coro':'Coro','chorus':'Coro','estribillo':'Estribillo','puente':'Puente','bridge':'Puente',
+            'coro':'Coro','chorus':'Coro','estribillo':'Estribillo','refrain':'Refrán','puente':'Puente','bridge':'Puente',
             'interludio':'Interludio','solo':'Solo','instrumental':'Instrumental','outro':'Outro','final':'Final','tag':'Tag',
             'modulacion':'Modulación','leyenda':'Leyenda','espontaneo':'Espontáneo'
         };
@@ -1498,6 +1498,7 @@ const Router = {
     STRUCTURE_RULES: [
         [/^pre[\s-]?coro/i, 'PC', '#7c3aed', '#ffffff'],
         [/^estribillo/i, 'C', '#e11d48', '#ffffff'],
+        [/^refr[aá]n/i, 'R', '#ea580c', '#ffffff'],
         [/^coro/i, 'C', '#dc2626', '#ffffff'],
         [/^(estrofa|verso)/i, 'E', '#2563eb', '#ffffff'],
         [/^intro/i, 'I', '#0d9488', '#ffffff'],
@@ -2269,22 +2270,65 @@ const Router = {
                 const isDocx = /\.docx$/i.test(file.name);
                 let text = isDocx ? await this.extractDocxText(file) : await this.extractPDFText(file);
                 let explicitKey = null;
-                const keyMatch = text.match(/(?:KEY|TONALIDAD)\s*:?\s*([A-G][#b]?m?)\b/i);
+                const keyMatch = text.match(/(?:KEY|TONALIDAD|TONO)\s*:?\s*([A-G][#b]?m?)\b/i);
                 if (keyMatch) explicitKey = keyMatch[1].charAt(0).toUpperCase() + keyMatch[1].slice(1);
                 let bpm = null;
                 const bpmMatch = text.match(/TEMPO\s*:?\s*(\d+)/i);
                 if (bpmMatch) bpm = parseInt(bpmMatch[1]);
                 let compas = '';
-                const compasMatch = text.match(/Comp[aá]s\s*:?\s*(\d+\s*\/\s*\d+)/i);
+                const compasMatch = text.match(/(?:Comp[aá]s|Time)\s*:?\s*(\d+\s*\/\s*\d+)/i);
                 if (compasMatch) compas = compasMatch[1].replace(/\s/g, '');
+
+                let title = file.name.replace(/\.(pdf|docx)$/i, '').trim();
+                let detectedArtist = '';
+
+                // Los archivos descargados de Secuencias.com siguen el patrón
+                // "Titulo-Autor-Titulo_Tono_N.pdf" (guiones bajos en vez de espacios,
+                // el título se repite al final junto con la tonalidad). Si el nombre
+                // calza con eso, es más confiable sacar título y autor de ahí que
+                // adivinar dentro del contenido del PDF.
+                const nameSegments = title.split('-');
+                if (nameSegments.length >= 3 && nameSegments[2].toLowerCase().startsWith(nameSegments[0].toLowerCase())) {
+                    title = nameSegments[0].replace(/_/g, ' ').trim();
+                    detectedArtist = nameSegments[1].replace(/_/g, ' ').trim();
+                }
+
+                // Si el nombre de archivo no siguió ese patrón (u otra fuente distinta a
+                // Secuencias.com), intentamos detectar el autor dentro del propio documento:
+                // primera línea = título, segunda línea = autor, luego "Página: 1/N".
+                if (!detectedArtist) {
+                    const rawLines = text.split('\n').map(l => l.trim());
+                    const titleLineIdx = rawLines.findIndex(l => l && l.toLowerCase() === title.toLowerCase());
+                    if (titleLineIdx !== -1 && titleLineIdx + 1 < rawLines.length) {
+                        const candidate = rawLines[titleLineIdx + 1];
+                        const looksLikeMeta = !candidate || /^p[aá]gina\s*:?\s*\d+\s*\/\s*\d+$/i.test(candidate) ||
+                            /tonalidad\s*:|key\s*:|tono\s*:|comp[aá]s\s*:|time\s*:|tempo\s*:/i.test(candidate);
+                        if (!looksLikeMeta && candidate.length < 60) detectedArtist = candidate;
+                    }
+                }
 
                 const lines = text.split('\n');
                 const cleanedLines = lines.filter(line => {
                     const t = line.trim();
                     if (!t) return true;
-                    if (/tonalidad\s*:|key\s*:|comp[aá]s\s*:|tempo\s*:/i.test(t)) return false;
+                    if (/tonalidad\s*:|key\s*:|tono\s*:|comp[aá]s\s*:|time\s*:|tempo\s*:/i.test(t)) return false;
                     if (/^estructura$/i.test(t)) return false;
+                    // Ruido típico de PDFs de Secuencias.com: encabezado de página repetido,
+                    // número de página, y créditos/derechos de autor al final del documento.
+                    if (/^p[aá]gina\s*:?\s*\d+\s*\/\s*\d+$/i.test(t)) return false;
+                    if (t.toLowerCase() === title.toLowerCase()) return false;
+                    if (detectedArtist && t === detectedArtist) return false;
+                    if (/^un producto de/i.test(t)) return false;
+                    if (/^compositores?\s*:/i.test(t)) return false;
+                    if (/derechos reservados/i.test(t)) return false;
+                    if (/^©/.test(t)) return false;
+                    if (/^mtid\s*:/i.test(t)) return false;
                     if (/^([A-Za-z0-9]{1,3}\s+){2,}[A-Za-z0-9]{1,3}$/.test(t) && !ChordParser.isChordLine(t)) return false;
+                    // Notas de instrumentación/dinámica típicas de Secuencias.com
+                    // (ej: "Pad & Guitarra Acústica", "Entra Piano", "Ritmo completo",
+                    // "Acentos", "Subir Intensidad") — no son letra, se descartan.
+                    if (t.length < 50 && !ChordParser.isChordLine(t) &&
+                        /^(pad\b|entra\b|ritmo\b|subir\b|acentos?\b|din[aá]mica?s?\b|suave\b|bajar\b|contin[uú]a\b|pausa\b)/i.test(t)) return false;
                     return true;
                 });
                 text = cleanedLines.join('\n');
@@ -2294,12 +2338,10 @@ const Router = {
                 let finalKey = autoDetectedKey || explicitKey || 'C';
                 if (explicitKey && !explicitKey.includes('m')) finalKey = explicitKey;
 
-                const title = file.name.replace(/\.(pdf|docx)$/i, '').trim();
-
                 AppState.pendingImports.push({
                     id: this.generateId(),
                     title: title || 'Sin título',
-                    artist: '',
+                    artist: detectedArtist,
                     keyBase: finalKey,
                     bpm: bpm,
                     compas: compas,
