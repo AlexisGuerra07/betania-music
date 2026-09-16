@@ -2047,4 +2047,807 @@ const Router = {
     renderSetlistsList() {
         const grid = document.getElementById('repertorio-grid');
         const emptyState = document.getElementById('repertorio-empty-state');
-        if (AppState.setlists.length === 0) { grid.style.display = 'none'; emptyState.style.display = 'block'; 
+        if (AppState.setlists.length === 0) { grid.style.display = 'none'; emptyState.style.display = 'block'; return; }
+        emptyState.style.display = 'none';
+        grid.style.display = 'block';
+        const sorted = [...AppState.setlists].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+        grid.innerHTML = sorted.map(sl => `
+            <div class="song-item" onclick="Router.openSetlist('${sl.id}')">
+                <div class="song-info">
+                    <div class="song-title">${sl.name}</div>
+                    <div class="song-meta">${(sl.songIds || []).length} canción(es)${sl.creatorName ? ' • por ' + sl.creatorName : ''}${sl.uniformKey ? ' • 🎯 ' + sl.uniformKey : ''}</div>
+                </div>
+                <div class="song-actions" onclick="event.stopPropagation()">
+                    <button class="action-btn delete-btn" onclick="Router.deleteSetlist('${sl.id}')" title="Eliminar">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="3,6 5,6 21,6"></polyline>
+                            <path d="m19,6v14a2,2 0 0,1 -2,2H7a2,2 0 0,1 -2,-2V6m3,0V4a2,2 0 0,1 2,-2h4a2,2 0 0,1 2,2v2"></path>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+        `).join('');
+    },
+
+    openSetlist(setlistId, push = true) {
+        const sl = AppState.setlists.find(s => s.id === setlistId);
+        if (!sl) return;
+        if (!sl.songStructures) sl.songStructures = {};
+        if (!sl.songNotes) sl.songNotes = {};
+        if (!sl.songLeadVocals) sl.songLeadVocals = {};
+        if (!sl.songTransposeOverrides) sl.songTransposeOverrides = {};
+        AppState.currentSetlist = sl;
+        this.navigate('repertorio-detail', false);
+        if (push) HistoryManager.push({ view: 'repertorio-detail', setlistId });
+    },
+
+    deleteSetlist(setlistId) {
+        if (confirm('¿Eliminar este repertorio?')) {
+            AppState.setlists = AppState.setlists.filter(s => s.id !== setlistId);
+            Storage.saveSetlists();
+            this.renderSetlistsList();
+        }
+    },
+
+    renderSetlistDetail() {
+        if (!AppState.currentSetlist) { this.navigate('repertorio'); return; }
+        const sl = AppState.currentSetlist;
+        const nameInput = document.getElementById('setlist-name-input');
+        if (nameInput) nameInput.value = sl.name;
+
+        const badge = document.getElementById('uniform-key-badge');
+        const clearBtn = document.getElementById('btn-clear-uniform-key');
+        if (badge) {
+            if (sl.uniformKey) { badge.style.display = 'inline'; badge.textContent = `Tonalidad uniforme: ${sl.uniformKey}`; if (clearBtn) clearBtn.style.display = 'inline-flex'; }
+            else { badge.style.display = 'none'; if (clearBtn) clearBtn.style.display = 'none'; }
+        }
+
+        const list = document.getElementById('setlist-songs-list');
+        const empty = document.getElementById('setlist-empty-state');
+        const songs = (sl.songIds || []).map(id => AppState.songs.find(s => s.id === id)).filter(Boolean);
+
+        if (songs.length === 0) { list.style.display = 'none'; empty.style.display = 'block'; return; }
+        empty.style.display = 'none';
+        list.style.display = 'block';
+
+        list.innerHTML = songs.map((song, idx) => {
+            const offset = this.computeEffectiveOffset(song, sl);
+            const displayKey = offset !== 0 ? Transposer.cleanChord(Transposer.transpose(song.keyBase, offset)) : song.keyBase;
+            const note = (sl.songNotes && sl.songNotes[song.id]) || '';
+            const leadVocal = (sl.songLeadVocals && sl.songLeadVocals[song.id]) || '';
+            return `
+            <div class="song-item" onclick="Router.viewSetlistSong('${song.id}')">
+                <div class="song-info">
+                    ${note ? `<div class="song-block-note">${note}</div>` : ''}
+                    <div class="song-title">${idx + 1}. ${song.title}</div>
+                    <div class="song-meta">${displayKey}${offset !== 0 ? ` (orig. ${song.keyBase})` : ''}${song.bpm ? ` • ${song.bpm} BPM` : ''}</div>
+                    <select class="lead-vocal-select" onclick="event.stopPropagation()" onchange="event.stopPropagation(); Router.setSongLeadVocal('${song.id}', this.value)">
+                        <option value="">🎤 Sin asignar</option>
+                        ${this.LEAD_VOCAL_OPTIONS.map(name => `<option value="${name}" ${name === leadVocal ? 'selected' : ''}>🎤 ${name}</option>`).join('')}
+                    </select>
+                </div>
+                <div class="song-actions" onclick="event.stopPropagation()">
+                    <button class="action-btn note-btn ${note ? 'has-note' : ''}" onclick="Router.showSongNoteModal('${song.id}')" title="${note ? 'Editar nota' : 'Añadir nota'}">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path>
+                        </svg>
+                    </button>
+                    <button class="action-btn" onclick="Router.moveSetlistSong(${idx}, -1)" title="Subir" ${idx === 0 ? 'style="opacity:0.3;pointer-events:none;"' : ''}>
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 19V5M5 12l7-7 7 7"/></svg>
+                    </button>
+                    <button class="action-btn" onclick="Router.moveSetlistSong(${idx}, 1)" title="Bajar" ${idx === songs.length - 1 ? 'style="opacity:0.3;pointer-events:none;"' : ''}>
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12l7 7 7-7"/></svg>
+                    </button>
+                    <button class="action-btn delete-btn" onclick="Router.removeSetlistSong('${song.id}')" title="Quitar">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="3,6 5,6 21,6"></polyline>
+                            <path d="m19,6v14a2,2 0 0,1 -2,2H7a2,2 0 0,1 -2,-2V6m3,0V4a2,2 0 0,1 2,-2h4a2,2 0 0,1 2,2v2"></path>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+        `;
+        }).join('');
+    },
+
+    moveSetlistSong(index, direction) {
+        const sl = AppState.currentSetlist;
+        if (!sl) return;
+        const newIndex = index + direction;
+        if (newIndex < 0 || newIndex >= sl.songIds.length) return;
+        const id = sl.songIds.splice(index, 1)[0];
+        sl.songIds.splice(newIndex, 0, id);
+        Storage.saveSetlists();
+        this.renderSetlistDetail();
+    },
+
+    removeSetlistSong(songId) {
+        const sl = AppState.currentSetlist;
+        if (!sl) return;
+        sl.songIds = sl.songIds.filter(id => id !== songId);
+        Storage.saveSetlists();
+        this.renderSetlistDetail();
+    },
+
+    showAddSongsToSetlistModal() {
+        if (!AppState.currentSetlist) return;
+        const currentIds = AppState.currentSetlist.songIds || [];
+        const available = AppState.songs.filter(s => !currentIds.includes(s.id));
+        if (available.length === 0) { alert('Todas las canciones ya están en este repertorio.'); return; }
+        const sorted = [...available].sort((a, b) => a.title.localeCompare(b.title, 'es'));
+        this.createModal({
+            title: 'Añadir canciones al repertorio',
+            content: `
+                <div class="form-group"><input type="text" class="form-input" id="setlist-add-search" placeholder="Buscar..."></div>
+                <div id="setlist-add-list">
+                    ${sorted.map(song => `
+                        <div class="import-preview-item" data-title="${song.title.toLowerCase()}">
+                            <input type="checkbox" data-song-id="${song.id}" class="setlist-add-checkbox">
+                            <div class="import-preview-info">
+                                <div class="import-preview-title">${song.title}</div>
+                                <div class="import-preview-meta">${song.keyBase}</div>
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+            `,
+            actions: [
+                { text: 'Cancelar', action: () => this.closeModal() },
+                { text: 'Añadir seleccionadas', primary: true, action: () => this.confirmAddSongsToSetlist() }
+            ]
+        });
+        document.getElementById('setlist-add-search').addEventListener('input', (e) => {
+            const q = e.target.value.toLowerCase();
+            document.querySelectorAll('#setlist-add-list .import-preview-item').forEach(el => { el.style.display = el.dataset.title.includes(q) ? 'flex' : 'none'; });
+        });
+    },
+
+    confirmAddSongsToSetlist() {
+        const checked = document.querySelectorAll('.setlist-add-checkbox:checked');
+        const sl = AppState.currentSetlist;
+        if (!sl) return;
+        checked.forEach(cb => { const id = cb.dataset.songId; if (!sl.songIds.includes(id)) sl.songIds.push(id); });
+        Storage.saveSetlists();
+        this.closeModal();
+        this.renderSetlistDetail();
+    },
+
+    showUniformKeyModal() {
+        if (!AppState.currentSetlist) return;
+        const currentKey = AppState.currentSetlist.uniformKey || '';
+        const keys = ['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
+        this.createModal({
+            title: 'Tonalidad uniforme del repertorio',
+            content: `
+                <div class="form-group">
+                    <label class="form-label">Tonalidad</label>
+                    <select class="form-select" id="modal-uniform-key">
+                        <option value="">Sin tonalidad uniforme (usar la de cada canción)</option>
+                        ${keys.map(k => `<option value="${k}" ${k === currentKey ? 'selected' : ''}>${k}</option>`).join('')}
+                    </select>
+                </div>
+            `,
+            actions: [
+                { text: 'Cancelar', action: () => this.closeModal() },
+                { text: 'Aplicar', primary: true, action: () => this.applyUniformKey() }
+            ]
+        });
+    },
+
+    applyUniformKey() {
+        const val = document.getElementById('modal-uniform-key').value;
+        const sl = AppState.currentSetlist;
+        if (!sl) return;
+        sl.uniformKey = val || null;
+        Storage.saveSetlists();
+        this.closeModal();
+        this.renderSetlistDetail();
+    },
+
+    clearUniformKey() {
+        const sl = AppState.currentSetlist;
+        if (!sl) return;
+        sl.uniformKey = null;
+        Storage.saveSetlists();
+        this.renderSetlistDetail();
+    },
+    // ============ FIN REPERTORIO ============
+
+    // ============ IMPORTACIÓN MASIVA DE PDFs ============
+    showBulkPDFImport() {
+        this.createModal({
+            title: '📄 Importar canciones en lote',
+            content: `
+                <p style="margin-bottom: 1rem; color: var(--text-secondary); font-size: 0.9rem;">Selecciona varios archivos PDF o Word (.docx) a la vez (en tono original, no en grados). Tonalidad, BPM y compás se detectan automáticamente. Podrás editar cada una después.</p>
+                <div class="form-group"><input type="file" class="form-input" id="pdf-bulk-input" accept=".pdf,.docx" multiple></div>
+                <div id="pdf-bulk-status" style="font-size: 0.9rem; color: var(--text-secondary);"></div>
+            `,
+            actions: [{ text: 'Cancelar', action: () => this.closeModal() }]
+        });
+        document.getElementById('pdf-bulk-input').addEventListener('change', (e) => this.handleBulkPDFFiles(Array.from(e.target.files)));
+    },
+
+    async handleBulkPDFFiles(files) {
+        if (!files.length) return;
+        const statusEl = document.getElementById('pdf-bulk-status');
+        AppState.pendingImports = [];
+        for (let i = 0; i < files.length; i++) {
+            const file = files[i];
+            if (statusEl) statusEl.innerHTML = `🔄 Procesando ${i + 1} de ${files.length}: ${file.name}...`;
+            try {
+                const isDocx = /\.docx$/i.test(file.name);
+                let text = isDocx ? await this.extractDocxText(file) : await this.extractPDFText(file);
+
+                // Red de seguridad adicional: si un sufijo de acorde (add4, sus2, 7...) quedó
+                // solo en su propia línea (el superíndice no se pudo pegar a su acorde base al
+                // extraer el PDF), lo volvemos a unir buscando la línea no vacía más cercana arriba.
+                const chordSuffixOnly = /^(maj7|maj9|m7|m9|dim|aug|add\d+|sus4|sus2|sus|6|7|9|11|13|°|ø)$/i;
+                const mergeLines = text.split('\n');
+                for (let li = 0; li < mergeLines.length; li++) {
+                    const t = mergeLines[li].trim();
+                    if (!t || !chordSuffixOnly.test(t)) continue;
+                    for (let pj = li - 1; pj >= 0; pj--) {
+                        if (!mergeLines[pj].trim()) continue;
+                        mergeLines[pj] = mergeLines[pj].replace(/\s+$/, '') + t;
+                        mergeLines[li] = '';
+                        break;
+                    }
+                }
+                text = mergeLines.join('\n');
+
+                let explicitKey = null;
+                const keyMatch = text.match(/(?:KEY|TONALIDAD|TONO)\s*:?\s*([A-G][#b]?m?)\b/i);
+                if (keyMatch) explicitKey = keyMatch[1].charAt(0).toUpperCase() + keyMatch[1].slice(1);
+                let bpm = null;
+                const bpmMatch = text.match(/TEMPO\s*:?\s*(\d+)/i);
+                if (bpmMatch) bpm = parseInt(bpmMatch[1]);
+                let compas = '';
+                const compasMatch = text.match(/(?:Comp[aá]s|Time)\s*:?\s*(\d+\s*\/\s*\d+)/i);
+                if (compasMatch) compas = compasMatch[1].replace(/\s/g, '');
+
+                let title = file.name.replace(/\.(pdf|docx)$/i, '').trim();
+                let detectedArtist = '';
+
+                // Los archivos descargados de Secuencias.com siguen el patrón
+                // "Titulo-Autor-Titulo_Tono_N.pdf" (guiones bajos en vez de espacios,
+                // el título se repite al final junto con la tonalidad). Si el nombre
+                // calza con eso, es más confiable sacar título y autor de ahí que
+                // adivinar dentro del contenido del PDF.
+                const nameSegments = title.split('-');
+                if (nameSegments.length >= 3 && nameSegments[2].toLowerCase().startsWith(nameSegments[0].toLowerCase())) {
+                    title = nameSegments[0].replace(/_/g, ' ').trim();
+                    detectedArtist = nameSegments[1].replace(/_/g, ' ').trim();
+                } else {
+                    title = title.replace(/_/g, ' ').trim();
+                }
+
+                // Si el nombre de archivo no siguió ese patrón (u otra fuente distinta a
+                // Secuencias.com), intentamos detectar el autor dentro del propio documento:
+                // primera línea = título, segunda línea = autor, luego "Página: 1/N".
+                if (!detectedArtist) {
+                    const rawLines = text.split('\n').map(l => l.trim());
+                    const titleLineIdx = rawLines.findIndex(l => l && l.toLowerCase() === title.toLowerCase());
+                    if (titleLineIdx !== -1 && titleLineIdx + 1 < rawLines.length) {
+                        const candidate = rawLines[titleLineIdx + 1];
+                        const looksLikeMeta = !candidate || /^p[aá]gina\s*:?\s*\d+\s*\/\s*\d+$/i.test(candidate) ||
+                            /tonalidad\s*:|key\s*:|tono\s*:|comp[aá]s\s*:|time\s*:|tempo\s*:/i.test(candidate);
+                        if (!looksLikeMeta && candidate.length < 60) detectedArtist = candidate;
+                    }
+                }
+
+                const lines = text.split('\n');
+                const cleanedLines = lines.filter(line => {
+                    const t = line.trim();
+                    if (!t) return true;
+                    if (/tonalidad\s*:|key\s*:|tono\s*:|comp[aá]s\s*:|time\s*:|tempo\s*:/i.test(t)) return false;
+                    if (/^estructura$/i.test(t)) return false;
+                    // Ruido típico de PDFs de Secuencias.com: encabezado de página repetido,
+                    // número de página, y créditos/derechos de autor al final del documento.
+                    if (/^p[aá]gina\s*:?\s*\d+\s*\/\s*\d+$/i.test(t)) return false;
+                    if (t.toLowerCase() === title.toLowerCase()) return false;
+                    if (detectedArtist && t === detectedArtist) return false;
+                    if (/^un producto de/i.test(t)) return false;
+                    if (/^compositores?\s*:/i.test(t)) return false;
+                    if (/^seg[uú]n lo registrado por/i.test(t)) return false;
+                    if (/derechos reservados/i.test(t)) return false;
+                    if (/^©/.test(t)) return false;
+                    if (/^mtid\s*:/i.test(t)) return false;
+                    if (/^([A-Za-z0-9]{1,3}\s+){2,}[A-Za-z0-9]{1,3}$/.test(t) && !ChordParser.isChordLine(t)) return false;
+                    // Notas de instrumentación/dinámica típicas de Secuencias.com
+                    // (ej: "Pad & Guitarra Acústica", "Entra Piano", "Ritmo completo",
+                    // "Acentos", "Subir Intensidad") — no son letra, se descartan.
+                    if (t.length < 50 && !ChordParser.isChordLine(t) &&
+                        /^(pad\b|entra\b|ritmo\b|subir\b|acentos?\b|din[aá]mica?s?\b|suave\b|bajar\b|contin[uú]a\b|pausa\b|toda la banda\b|crece\b)/i.test(t)) return false;
+                    return true;
+                });
+                text = cleanedLines.join('\n');
+
+                const sections = ChordParser.detectAndParse(text, true);
+                const autoDetectedKey = KeyDetector.detectKey(sections);
+                let finalKey = autoDetectedKey || explicitKey || 'C';
+                if (explicitKey && !explicitKey.includes('m')) finalKey = explicitKey;
+
+                AppState.pendingImports.push({
+                    id: this.generateId(),
+                    title: title || 'Sin título',
+                    artist: detectedArtist,
+                    keyBase: finalKey,
+                    bpm: bpm,
+                    compas: compas,
+                    originalKey: '',
+                    youtubeLink: '',
+                    structure: [],
+                    autoSections: true,
+                    sections: sections.length > 0 ? sections : [{ label: 'Sin sección', pairs: [{ acordes: '', letra: '(No se detectaron acordes, revisa manualmente)' }] }],
+                    createdAt: new Date().toISOString(),
+                    updatedAt: new Date().toISOString()
+                });
+            } catch (error) { console.error(`Error procesando ${file.name}:`, error); }
+        }
+        this.showBulkImportPreview();
+    },
+
+    // Extrae el texto de un archivo Word (.docx) usando mammoth.js.
+    // A diferencia del PDF, Word no tiene posiciones fijas de caracteres —
+    // se conserva el texto tal cual esté escrito (con sus espacios), pero si
+    // el documento usaba tabulaciones en vez de espacios para alinear los
+    // acordes sobre la letra, esa alineación puede no quedar perfecta.
+    extractDocxText(file) {
+        return new Promise(async (resolve, reject) => {
+            try {
+                if (typeof mammoth === 'undefined') { reject(new Error('mammoth.js no está cargado')); return; }
+                const arrayBuffer = await file.arrayBuffer();
+                const result = await mammoth.extractRawText({ arrayBuffer });
+                resolve(result.value || '');
+            } catch (error) { reject(error); }
+        });
+    },
+
+    extractPDFText(file) {
+        return new Promise(async (resolve, reject) => {
+            try {
+                if (typeof pdfjsLib === 'undefined') { reject(new Error('pdf.js no está cargado')); return; }
+                const arrayBuffer = await file.arrayBuffer();
+                const pdf = await pdfjsLib.getDocument(arrayBuffer).promise;
+                let fullText = '';
+                for (let i = 1; i <= pdf.numPages; i++) {
+                    const page = await pdf.getPage(i);
+                    const viewport = page.getViewport({ scale: 1 });
+                    const textContent = await page.getTextContent();
+                    fullText += this.reconstructPageText(textContent, viewport.width) + '\n';
+                }
+                resolve(fullText);
+            } catch (error) { reject(error); }
+        });
+    },
+
+    reconstructPageText(textContent, pageWidth) {
+        let items = textContent.items
+            .filter(it => it.str && it.str.trim())
+            .map(it => ({
+                str: it.str,
+                width: it.width || 0,
+                x: it.transform[4],
+                y: it.transform[5],
+                // Tamaño de letra aproximado, para distinguir texto normal de un superíndice
+                // (el "sus2" o "7" chiquito pegado arriba del nombre del acorde, ej. "Gsus2").
+                fontSize: Math.abs(it.transform[3]) || it.height || 10
+            }));
+        if (!items.length) return '';
+
+        // Paso 1: pegar los superíndices de acordes a su acorde base en vez de dejarlos
+        // sueltos en su propia línea (ej. "G" + superíndice "sus2" -> un solo "Gsus2").
+        const sizes = items.map(it => it.fontSize).sort((a, b) => a - b);
+        const medianSize = sizes[Math.floor(sizes.length / 2)] || 10;
+        const consumed = new Set();
+        items.forEach((it, i) => {
+            if (consumed.has(i) || it.fontSize >= medianSize * 0.75) return;
+            let best = null, bestDist = Infinity;
+            items.forEach((other, j) => {
+                if (i === j || consumed.has(j) || other.fontSize < medianSize * 0.75) return;
+                const dx = it.x - (other.x + other.width);
+                const dy = it.y - other.y;
+                if (dx < -1 || dx > 4) return;              // debe empezar justo después del acorde base
+                if (dy < 0 || dy > other.fontSize) return;  // debe estar un poco más arriba (superíndice)
+                const dist = Math.abs(dx) + dy;
+                if (dist < bestDist) { bestDist = dist; best = other; }
+            });
+            if (best) { best.str += it.str; best.width = (it.x + it.width) - best.x; consumed.add(i); }
+        });
+        items = items.filter((_, i) => !consumed.has(i));
+
+        const buildLines = (its) => {
+            const lineGroups = [];
+            const tolerance = 2;
+            its.forEach(item => {
+                let group = lineGroups.find(g => Math.abs(g.y - item.y) <= tolerance);
+                if (!group) { group = { y: item.y, items: [] }; lineGroups.push(group); }
+                group.items.push(item);
+            });
+            lineGroups.sort((a, b) => b.y - a.y);
+            lineGroups.forEach(g => g.items.sort((a, b) => a.x - b.x));
+
+            return lineGroups.map((group, gIdx) => {
+                // Los acordes suelen ir flotando ARRIBA de la letra, justo sobre la sílaba
+                // correspondiente. Eso deja un hueco horizontal en la línea de la letra que
+                // no es un espacio real — es solo para hacerle lugar visualmente al acorde.
+                const aboveItems = gIdx > 0 ? lineGroups[gIdx - 1].items : [];
+                let lineText = '', lastEndX = null;
+                group.items.forEach(it => {
+                    if (lastEndX !== null) {
+                        const gap = it.x - lastEndX;
+                        const shadowedByAbove = aboveItems.some(a => a.x < it.x && (a.x + a.width) > lastEndX);
+                        if (shadowedByAbove) {
+                            if (gap > 12) lineText += ' ';
+                        } else {
+                            const fontSize = it.fontSize || 10;
+                            const spaces = Math.max(1, Math.round(gap / (fontSize * 0.55)));
+                            lineText += ' '.repeat(Math.min(spaces, 20));
+                        }
+                    }
+                    lineText += it.str;
+                    lastEndX = it.x + it.width;
+                });
+                return lineText;
+            });
+        };
+        let leftItems = items, rightItems = [];
+        if (pageWidth) {
+            const boundary = pageWidth * 0.5;
+            const potentialLeft = items.filter(it => it.x < boundary);
+            const potentialRight = items.filter(it => it.x >= boundary);
+            if (potentialLeft.length >= 8 && potentialRight.length >= 8) { leftItems = potentialLeft; rightItems = potentialRight; }
+        }
+        if (rightItems.length > 0) {
+            const leftLines = buildLines(leftItems);
+            const rightLines = buildLines(rightItems);
+            return leftLines.join('\n') + '\n' + rightLines.join('\n');
+        }
+        return buildLines(leftItems).join('\n');
+    },
+
+    showBulkImportPreview() {
+        this.closeModal();
+        const imports = AppState.pendingImports;
+        if (imports.length === 0) { alert('No se pudo procesar ningún PDF.'); return; }
+        this.createModal({
+            title: `Revisar ${imports.length} canción(es) importada(s)`,
+            content: `
+                <p style="margin-bottom: 1rem; color: var(--text-secondary); font-size: 0.9rem;">Desmarca las que no quieras guardar. Podrás editar título, tonalidad y contenido después.</p>
+                <div id="import-preview-list">
+                    ${imports.map((song, idx) => `
+                        <div class="import-preview-item">
+                            <input type="checkbox" checked data-idx="${idx}" class="import-checkbox">
+                            <div class="import-preview-info">
+                                <div class="import-preview-title">${song.title}</div>
+                                <div class="import-preview-meta">Tonalidad: ${song.keyBase}${song.bpm ? ` • ${song.bpm} BPM` : ''}${song.compas ? ` • ${song.compas}` : ''} • ${song.sections.length} sección(es)</div>
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+            `,
+            actions: [
+                { text: 'Cancelar todo', action: () => { AppState.pendingImports = []; this.closeModal(); } },
+                { text: 'Guardar seleccionadas', primary: true, action: () => this.saveBulkImports() }
+            ]
+        });
+    },
+
+    saveBulkImports() {
+        if (!AppState.isAdmin) return;
+        const checkboxes = document.querySelectorAll('.import-checkbox');
+        let savedCount = 0;
+        checkboxes.forEach(cb => {
+            if (cb.checked) { const idx = parseInt(cb.dataset.idx); AppState.songs.push(AppState.pendingImports[idx]); savedCount++; }
+        });
+        Storage.saveSongs();
+        AppState.pendingImports = [];
+        this.closeModal();
+        this.renderSongsList();
+        alert(`✅ Se guardaron ${savedCount} canción(es).`);
+    },
+    // ============ FIN IMPORTACIÓN MASIVA ============
+
+    createModal({ title, content, actions = [] }) {
+        const overlay = document.createElement('div');
+        overlay.className = 'modal-overlay';
+        overlay.id = 'modal-overlay';
+        overlay.innerHTML = `
+            <div class="modal">
+                <div class="modal-header"><h3 class="modal-title">${title}</h3><button class="btn-xs" onclick="Router.closeModal()">✕</button></div>
+                <div class="modal-content">${content}</div>
+                <div class="modal-footer">${actions.map((a, i) => `<button class="btn ${a.primary ? 'btn-primary' : ''}" onclick="Router.executeModalAction(${i})">${a.text}</button>`).join('')}</div>
+            </div>
+        `;
+        overlay._actions = actions;
+        document.body.appendChild(overlay);
+        overlay.addEventListener('click', (e) => { if (e.target === overlay) this.closeModal(); });
+        return overlay;
+    },
+    executeModalAction(index) {
+        const overlay = document.getElementById('modal-overlay');
+        if (overlay && overlay._actions && overlay._actions[index]) overlay._actions[index].action();
+    },
+    closeModal() { const overlay = document.getElementById('modal-overlay'); if (overlay) overlay.remove(); },
+    generateId() { return Date.now().toString(36) + Math.random().toString(36).substr(2); }
+};
+
+// Editor
+const Editor = {
+    currentTranspose: 0,
+
+    loadSong(song) {
+        AppState.currentSong = song;
+        document.getElementById('song-title-editor').value = song.title;
+        const artistInput = document.getElementById('song-artist-editor');
+        if (artistInput) artistInput.value = song.artist || '';
+        this.render();
+        this.renderOutline();
+        this.updateChips();
+        Storage.updateSaveStatus('saved');
+    },
+
+    updateChips() {
+        const keySelect = document.getElementById('key-editor-select');
+        if (keySelect) keySelect.value = AppState.currentSong.keyBase;
+        const bpmInput = document.getElementById('bpm-editor-input');
+        if (bpmInput) bpmInput.value = AppState.currentSong.bpm || '';
+        const compasInput = document.getElementById('compas-editor-input');
+        if (compasInput) compasInput.value = AppState.currentSong.compas || '';
+        const originalKeySelect = document.getElementById('original-key-editor-select');
+        if (originalKeySelect) originalKeySelect.value = AppState.currentSong.originalKey || '';
+        const youtubeInput = document.getElementById('youtube-link-editor-input');
+        if (youtubeInput) youtubeInput.value = AppState.currentSong.youtubeLink || '';
+    },
+
+    detectKey() {
+        if (!AppState.currentSong || !AppState.currentSong.sections) return;
+        const detected = KeyDetector.detectKey(AppState.currentSong.sections);
+        if (!detected) { alert('No se pudieron detectar suficientes acordes para calcular la tonalidad.'); return; }
+        AppState.currentSong.keyBase = detected;
+        this.updateChips();
+        Storage.updateSaveStatus('unsaved');
+        alert(`Tonalidad detectada: ${detected}`);
+    },
+
+    showStructureModal() {
+        if (!AppState.currentSong) return;
+        const existing = AppState.currentSong.structure || [];
+        const prefill = existing.length > 0
+            ? existing.join('\n')
+            : (AppState.currentSong.sections || []).map(s => s.label).join('\n');
+
+        Router.createModal({
+            title: `Orden de "${AppState.currentSong.title}"`,
+            content: `
+                <p style="margin-bottom:1rem; color:var(--text-secondary); font-size:0.9rem;">
+                    Escribe el orden en que se toca esta canción (escuchando la versión original), una parte por línea. Repite líneas, añade "x2", "x4", o texto libre como "Instrumental" o "Final" según necesites. Este es el orden por defecto de la canción; cada repertorio puede tener su propio orden que sobrescribe este.
+                </p>
+                <div class="form-group">
+                    <textarea class="form-textarea" id="structure-textarea" style="min-height:220px; font-family:var(--mono-font); font-size:0.9rem;">${prefill}</textarea>
+                </div>
+            `,
+            actions: [
+                { text: 'Cancelar', action: () => Router.closeModal() },
+                { text: 'Guardar orden', primary: true, action: () => Editor.saveStructure() }
+            ]
+        });
+    },
+
+    saveStructure() {
+        if (!AppState.currentSong) { Router.closeModal(); return; }
+        const textarea = document.getElementById('structure-textarea');
+        const lines = (textarea ? textarea.value : '').split('\n').map(l => l.trim()).filter(l => l.length > 0);
+        AppState.currentSong.structure = lines;
+        Storage.updateSaveStatus('unsaved');
+        Router.closeModal();
+    },
+
+    render() {
+        const content = document.getElementById('editor-content');
+        if (!AppState.currentSong || !AppState.currentSong.sections || AppState.currentSong.sections.length === 0) {
+            content.innerHTML = '<div class="empty-state"><h3>No hay contenido</h3><p>Usa "+ Sección" para empezar a añadir contenido.</p></div>';
+            return;
+        }
+        content.innerHTML = AppState.currentSong.sections.map((section, sIndex) => `
+            <div class="section-editor" data-section="${sIndex}">
+                <div class="section-header-editor">
+                    <input type="text" class="section-label-input" value="${section.label}" onchange="Editor.updateSectionLabel(${sIndex}, this.value)">
+                    <div class="section-actions">
+                        <button class="btn-xs" onclick="Editor.addPairToSection(${sIndex})">+ Par</button>
+                        <button class="btn-xs" onclick="Editor.moveSection(${sIndex}, -1)">↑</button>
+                        <button class="btn-xs" onclick="Editor.moveSection(${sIndex}, 1)">↓</button>
+                        <button class="btn-xs" onclick="Editor.deleteSection(${sIndex})">🗑️</button>
+                    </div>
+                </div>
+                ${section.pairs ? section.pairs.map((pair, pIndex) => this.renderPair(pair, sIndex, pIndex)).join('') : ''}
+            </div>
+        `).join('');
+        this.setupTextareaAutoResize();
+    },
+
+    renderPair(pair, sIndex, pIndex) {
+        return `
+            <div class="pair-editor">
+                <div class="pair-header">
+                    <span class="pair-label">Acordes/Letra ${pIndex + 1}</span>
+                    <div class="pair-actions">
+                        <button class="btn-xs" onclick="Editor.duplicatePair(${sIndex}, ${pIndex})">📋</button>
+                        <button class="btn-xs" onclick="Editor.movePair(${sIndex}, ${pIndex}, -1)">↑</button>
+                        <button class="btn-xs" onclick="Editor.movePair(${sIndex}, ${pIndex}, 1)">↓</button>
+                        <button class="btn-xs" onclick="Editor.deletePair(${sIndex}, ${pIndex})">🗑️</button>
+                    </div>
+                </div>
+                <textarea class="chord-input" placeholder="Acordes..." onchange="Editor.updatePair(${sIndex}, ${pIndex}, 'acordes', this.value)" style="font-size: ${AppState.settings.fontSize}px;">${pair.acordes || ''}</textarea>
+                <textarea class="lyric-input" placeholder="Letra..." onchange="Editor.updatePair(${sIndex}, ${pIndex}, 'letra', this.value)" style="font-size: ${AppState.settings.fontSize}px;">${pair.letra || ''}</textarea>
+            </div>
+        `;
+    },
+
+    renderOutline() {
+        const outline = document.getElementById('sections-outline');
+        if (!AppState.currentSong || !AppState.currentSong.sections) { outline.innerHTML = '<div class="text-center">Sin secciones</div>'; return; }
+        outline.innerHTML = AppState.currentSong.sections.map((section, index) => `
+            <div class="outline-item" onclick="Editor.scrollToSection(${index})">
+                <span>${section.label}</span>
+                <span style="font-size: 0.8rem; opacity: 0.7;">${section.pairs ? section.pairs.length : 0}</span>
+            </div>
+        `).join('');
+    },
+
+    setupTextareaAutoResize() {
+        document.querySelectorAll('.chord-input, .lyric-input').forEach(t => {
+            t.addEventListener('input', () => { t.style.height = 'auto'; t.style.height = t.scrollHeight + 'px'; });
+            t.style.height = 'auto';
+            t.style.height = t.scrollHeight + 'px';
+        });
+    },
+
+    updateSectionLabel(sIndex, value) { AppState.currentSong.sections[sIndex].label = value; this.renderOutline(); Storage.updateSaveStatus('unsaved'); },
+    updatePair(sIndex, pIndex, field, value) { AppState.currentSong.sections[sIndex].pairs[pIndex][field] = value; Storage.updateSaveStatus('unsaved'); },
+
+    addSection() {
+        const name = prompt('Nombre de la nueva sección:', 'Nueva sección');
+        if (!name) return;
+        if (!AppState.currentSong.sections) AppState.currentSong.sections = [];
+        AppState.currentSong.sections.push({ label: name, pairs: [] });
+        this.render(); this.renderOutline();
+        Storage.updateSaveStatus('unsaved');
+    },
+
+    addPair() {
+        if (!AppState.currentSong.sections || AppState.currentSong.sections.length === 0) this.addSection();
+        this.addPairToSection(AppState.currentSong.sections.length - 1);
+    },
+
+    addPairToSection(sIndex) {
+        if (!AppState.currentSong.sections[sIndex]) return;
+        if (!AppState.currentSong.sections[sIndex].pairs) AppState.currentSong.sections[sIndex].pairs = [];
+        AppState.currentSong.sections[sIndex].pairs.push({ acordes: '', letra: '' });
+        this.render(); this.renderOutline();
+        Storage.updateSaveStatus('unsaved');
+    },
+
+    duplicatePair(sIndex, pIndex) {
+        const pair = AppState.currentSong.sections[sIndex].pairs[pIndex];
+        if (!pair) return;
+        AppState.currentSong.sections[sIndex].pairs.splice(pIndex + 1, 0, { acordes: pair.acordes, letra: pair.letra });
+        this.render();
+        Storage.updateSaveStatus('unsaved');
+    },
+
+    movePair(sIndex, pIndex, direction) {
+        const section = AppState.currentSong.sections[sIndex];
+        const newIndex = pIndex + direction;
+        if (newIndex < 0 || newIndex >= section.pairs.length) return;
+        const pair = section.pairs.splice(pIndex, 1)[0];
+        section.pairs.splice(newIndex, 0, pair);
+        this.render();
+        Storage.updateSaveStatus('unsaved');
+    },
+
+    deletePair(sIndex, pIndex) {
+        if (confirm('¿Eliminar este par?')) {
+            AppState.currentSong.sections[sIndex].pairs.splice(pIndex, 1);
+            this.render();
+            Storage.updateSaveStatus('unsaved');
+        }
+    },
+
+    moveSection(sIndex, direction) {
+        const newIndex = sIndex + direction;
+        if (newIndex < 0 || newIndex >= AppState.currentSong.sections.length) return;
+        const section = AppState.currentSong.sections.splice(sIndex, 1)[0];
+        AppState.currentSong.sections.splice(newIndex, 0, section);
+        this.render(); this.renderOutline();
+        Storage.updateSaveStatus('unsaved');
+    },
+
+    deleteSection(sIndex) {
+        if (confirm('¿Eliminar esta sección y todos sus pares?')) {
+            AppState.currentSong.sections.splice(sIndex, 1);
+            this.render(); this.renderOutline();
+            Storage.updateSaveStatus('unsaved');
+        }
+    },
+
+    scrollToSection(sIndex) {
+        const el = document.querySelector(`[data-section="${sIndex}"]`);
+        if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    },
+
+    transpose(semitones) {
+        this.currentTranspose += semitones;
+        if (!AppState.currentSong.sections) return;
+        AppState.currentSong.sections.forEach(section => {
+            if (section.pairs) {
+                section.pairs.forEach(pair => {
+                    if (pair.acordes && pair.acordes.trim()) pair.acordes = Transposer.cleanChord(Transposer.transpose(pair.acordes, semitones));
+                });
+            }
+        });
+        this.render();
+        Storage.updateSaveStatus('unsaved');
+    },
+
+    resetTranspose() {
+        if (this.currentTranspose === 0) return;
+        this.transpose(-this.currentTranspose);
+        this.currentTranspose = 0;
+    }
+};
+
+// Inicialización
+document.addEventListener('DOMContentLoaded', () => {
+    Storage.loadSettings();
+
+    if (typeof pdfjsLib !== 'undefined') {
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+    }
+
+    Storage.listenSongs(() => {
+        AppState.songsLoaded = true;
+        SplashManager.checkReady();
+        if (AppState.currentView === 'canciones') Router.renderSongsList();
+        if (AppState.currentView === 'repertorio-detail') Router.renderSetlistDetail();
+    });
+    Storage.listenSetlists(() => {
+        AppState.setlistsLoaded = true;
+        SplashManager.checkReady();
+        if (AppState.currentView === 'repertorio') Router.renderSetlistsList();
+        if (AppState.currentView === 'repertorio-detail') Router.renderSetlistDetail();
+    });
+    Storage.listenVocalProfiles(() => {
+        AppState.vocalProfilesLoaded = true;
+        SplashManager.checkReady();
+        if (AppState.currentView === 'repertorio-detail') Router.renderSetlistDetail();
+    });
+
+    SplashManager.startSafetyTimeout();
+
+    HistoryManager.init();
+    Auth.init();
+    Router.init();
+    StickyStructureBar.init();
+    HorizontalStructureSync.bindOnce();
+    Teleprompter.bindInteractionListeners();
+
+    document.addEventListener('keydown', (e) => {
+        const isCtrlCmd = e.ctrlKey || e.metaKey;
+        if (isCtrlCmd && e.key === 's') {
+            e.preventDefault();
+            if (AppState.currentView === 'edicion') Router.saveCurrentSong();
+        } else if (e.key === 'Escape') {
+            if (AppState.fullscreenMode) Router.requestExitFullscreen();
+            else if (AppState.currentView === 'edicion') { Router.saveCurrentSong(); history.back(); }
+        }
+    });
+
+    // Registro del service worker: requisito de Chrome para instalación real (sin barra de direcciones).
+    // No cachea nada a propósito (ver comentarios en sw.js).
+    if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+            navigator.serviceWorker.register('./sw.js').catch(err => console.error('Error registrando el service worker:', err));
+        });
+    }
+});
