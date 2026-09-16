@@ -1092,7 +1092,7 @@ const Router = {
     setupMainButtons() {
         this.bindButton('logo-home', () => {
             if (AppState.currentView === 'edicion' && AppState.currentSong) this.saveCurrentSong();
-            this.navigate('canciones');
+            this.navigate('repertorio');
         });
         this.bindButton('btn-add-song', () => { if (!AppState.isAdmin) return; AppState.isCreatingNew = true; this.navigate('edicion'); });
         this.bindButton('btn-import-pdfs', () => { if (AppState.isAdmin) this.showBulkPDFImport(); });
