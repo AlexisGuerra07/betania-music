@@ -1168,7 +1168,7 @@ const Router = {
         this.bindButton('btn-add-songs-to-setlist', () => this.showAddSongsToSetlistModal());
         this.bindButton('btn-uniform-key', () => this.showUniformKeyModal());
         this.bindButton('btn-clear-uniform-key', () => this.clearUniformKey());
-        this.bindButton('btn-toggle-equipo', () => this.toggleEquipoPanel());
+        this.bindButton('btn-toggle-equipo', () => this.showEquipoModal());
         this.bindInput('setlist-name-input', (e) => {
             if (!AppState.currentSetlist) return;
             AppState.currentSetlist.name = e.target.value;
@@ -2265,34 +2265,19 @@ const Router = {
         { key: 'sonido', label: 'Sonido', color: '#64748b', options: ['Felipe', 'Alexi', 'Julián', 'Leandro'] }
     ],
 
-    toggleEquipoPanel() {
-        const panel = document.getElementById('equipo-panel');
-        if (!panel) return;
-        const isHidden = !panel.style.display || panel.style.display === 'none';
-        if (isHidden) { this.renderEquipoPanel(); panel.style.display = 'block'; }
-        else { panel.style.display = 'none'; }
+    showEquipoModal() {
+        if (!AppState.currentSetlist) return;
+        this.createModal({
+            title: 'Convocatoria',
+            content: `<div id="equipo-modal-body">${this.buildEquipoRowsHTML()}</div>`,
+            actions: [{ text: 'Cerrar', primary: true, action: () => this.closeModal() }]
+        });
     },
 
-    // Tocar un nombre lo prende/apaga al instante y guarda — sin modal ni botón de Guardar aparte.
-    toggleConvocadoPerson(roleKey, name) {
-        const sl = AppState.currentSetlist;
-        if (!sl) return;
-        if (!sl.convocados) sl.convocados = {};
-        if (!sl.convocados[roleKey]) sl.convocados[roleKey] = [];
-        const idx = sl.convocados[roleKey].indexOf(name);
-        if (idx === -1) sl.convocados[roleKey].push(name);
-        else sl.convocados[roleKey].splice(idx, 1);
-        Storage.saveSetlists();
-        this.renderEquipoPanel();
-        this.renderConvocadosDisplay();
-    },
-
-    renderEquipoPanel() {
-        const el = document.getElementById('equipo-panel');
-        if (!el) return;
+    buildEquipoRowsHTML() {
         const sl = AppState.currentSetlist;
         const current = (sl && sl.convocados) || {};
-        el.innerHTML = this.CONVOCADOS_ROLES.map(role => `
+        return this.CONVOCADOS_ROLES.map(role => `
             <div class="equipo-role-row">
                 <span class="equipo-role-label" style="background:${role.color}">${role.label}</span>
                 <div class="equipo-role-options">
@@ -2306,6 +2291,22 @@ const Router = {
                 </div>
             </div>
         `).join('');
+    },
+
+    // Tocar un nombre lo prende/apaga al instante y guarda — sin botón de Guardar aparte.
+    // La página principal solo muestra el resumen; la selección vive dentro del modal.
+    toggleConvocadoPerson(roleKey, name) {
+        const sl = AppState.currentSetlist;
+        if (!sl) return;
+        if (!sl.convocados) sl.convocados = {};
+        if (!sl.convocados[roleKey]) sl.convocados[roleKey] = [];
+        const idx = sl.convocados[roleKey].indexOf(name);
+        if (idx === -1) sl.convocados[roleKey].push(name);
+        else sl.convocados[roleKey].splice(idx, 1);
+        Storage.saveSetlists();
+        const modalBody = document.getElementById('equipo-modal-body');
+        if (modalBody) modalBody.innerHTML = this.buildEquipoRowsHTML();
+        this.renderConvocadosDisplay();
     },
 
     renderConvocadosDisplay() {
