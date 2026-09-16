@@ -1168,7 +1168,7 @@ const Router = {
         this.bindButton('btn-add-songs-to-setlist', () => this.showAddSongsToSetlistModal());
         this.bindButton('btn-uniform-key', () => this.showUniformKeyModal());
         this.bindButton('btn-clear-uniform-key', () => this.clearUniformKey());
-        this.bindButton('btn-convocados', () => this.showConvocadosModal());
+        this.bindButton('btn-toggle-equipo', () => this.toggleEquipoPanel());
         this.bindInput('setlist-name-input', (e) => {
             if (!AppState.currentSetlist) return;
             AppState.currentSetlist.name = e.target.value;
@@ -2255,69 +2255,54 @@ const Router = {
         this.renderSetlistDetail();
     },
 
-    // ============ CONVOCADOS (quién toca/canta qué en este repertorio) ============
+    // ============ EQUIPO (quién toca/canta qué en este repertorio) ============
     CONVOCADOS_ROLES: [
-        { key: 'guitarra', label: 'Guitarra', options: ['Ale'] },
+        { key: 'bateria', label: 'Batería', options: ['Rubén', 'Alex'] },
         { key: 'bajo', label: 'Bajo', options: ['Pau'] },
-        { key: 'bateria', label: 'Batería', options: ['Rubén', 'Maykell'] },
+        { key: 'guitarra', label: 'Guitarra', options: ['Ale'] },
         { key: 'piano', label: 'Piano', options: ['Sarah', 'Samuel'] },
         { key: 'voces', label: 'Voces', options: ['Sarah', 'Aleja', 'Cristina', 'Lady', 'Samuel', 'Pau'] },
         { key: 'sonido', label: 'Sonido', options: ['Felipe', 'Alexi', 'Julián', 'Leandro'] }
     ],
 
-    showConvocadosModal() {
-        if (!AppState.currentSetlist) return;
-        const sl = AppState.currentSetlist;
-        const current = sl.convocados || {};
-        this.createModal({
-            title: 'Convocados',
-            content: `
-                <p style="margin-bottom:1rem; color:var(--text-secondary); font-size:0.9rem;">
-                    Marca quién sirve en este repertorio.
-                </p>
-                ${this.CONVOCADOS_ROLES.map(role => `
-                    <div class="form-group" style="margin-bottom:1.1rem;">
-                        <label class="form-label" style="margin-bottom:0.4rem;">${role.label}</label>
-                        <div style="display:flex; flex-wrap:wrap; gap:0.5rem;">
-                            ${role.options.map(name => {
-                                const checked = (current[role.key] || []).includes(name);
-                                return `
-                                    <label class="convocado-option${checked ? ' checked' : ''}">
-                                        <input type="checkbox" class="convocado-checkbox" data-role="${role.key}" value="${name}" ${checked ? 'checked' : ''}>
-                                        ${name}
-                                    </label>
-                                `;
-                            }).join('')}
-                        </div>
-                    </div>
-                `).join('')}
-            `,
-            actions: [
-                { text: 'Cancelar', action: () => this.closeModal() },
-                { text: 'Guardar', primary: true, action: () => this.saveConvocados() }
-            ]
-        });
-        document.querySelectorAll('.convocado-checkbox').forEach(cb => {
-            cb.addEventListener('change', () => {
-                cb.closest('.convocado-option').classList.toggle('checked', cb.checked);
-            });
-        });
+    toggleEquipoPanel() {
+        const panel = document.getElementById('equipo-panel');
+        if (!panel) return;
+        const isHidden = !panel.style.display || panel.style.display === 'none';
+        if (isHidden) { this.renderEquipoPanel(); panel.style.display = 'block'; }
+        else { panel.style.display = 'none'; }
     },
 
-    saveConvocados() {
+    // Tocar un nombre lo prende/apaga al instante y guarda — sin modal ni botón de Guardar aparte.
+    toggleConvocadoPerson(roleKey, name) {
         const sl = AppState.currentSetlist;
-        if (!sl) { this.closeModal(); return; }
-        const result = {};
-        this.CONVOCADOS_ROLES.forEach(role => { result[role.key] = []; });
-        document.querySelectorAll('.convocado-checkbox:checked').forEach(cb => {
-            const role = cb.dataset.role;
-            if (!result[role]) result[role] = [];
-            result[role].push(cb.value);
-        });
-        sl.convocados = result;
+        if (!sl) return;
+        if (!sl.convocados) sl.convocados = {};
+        if (!sl.convocados[roleKey]) sl.convocados[roleKey] = [];
+        const idx = sl.convocados[roleKey].indexOf(name);
+        if (idx === -1) sl.convocados[roleKey].push(name);
+        else sl.convocados[roleKey].splice(idx, 1);
         Storage.saveSetlists();
-        this.closeModal();
+        this.renderEquipoPanel();
         this.renderConvocadosDisplay();
+    },
+
+    renderEquipoPanel() {
+        const el = document.getElementById('equipo-panel');
+        if (!el) return;
+        const sl = AppState.currentSetlist;
+        const current = (sl && sl.convocados) || {};
+        el.innerHTML = this.CONVOCADOS_ROLES.map(role => `
+            <div class="equipo-role-row">
+                <span class="equipo-role-label">${role.label}</span>
+                <div class="equipo-role-options">
+                    ${role.options.map(name => {
+                        const checked = (current[role.key] || []).includes(name);
+                        return `<button type="button" class="convocado-option${checked ? ' checked' : ''}" onclick="Router.toggleConvocadoPerson('${role.key}','${name}')">${name}</button>`;
+                    }).join('')}
+                </div>
+            </div>
+        `).join('');
     },
 
     renderConvocadosDisplay() {
@@ -2337,7 +2322,7 @@ const Router = {
             </span>
         `).join('');
     },
-    // ============ FIN CONVOCADOS ============
+    // ============ FIN EQUIPO ============
     // ============ FIN REPERTORIO ============
 
     // ============ IMPORTACIÓN MASIVA DE PDFs ============
