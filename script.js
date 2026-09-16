@@ -1095,6 +1095,41 @@ const Router = {
         if (push) HistoryManager.push({ view });
     },
 
+    // Desplegables propios (no <select> nativo), para que en móvil no abran el selector
+    // de pantalla completa del sistema — solo una lista chica debajo del botón.
+    setupCustomDropdowns() {
+        document.querySelectorAll('.custom-select').forEach(wrap => {
+            if (wrap.hasAttribute('data-dropdown-bound')) return;
+            wrap.setAttribute('data-dropdown-bound', 'true');
+            const trigger = wrap.querySelector('[data-value]');
+            const menu = wrap.querySelector('.custom-select-menu');
+            if (!trigger || !menu) return;
+            trigger.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const isOpen = menu.classList.contains('open');
+                document.querySelectorAll('.custom-select-menu.open').forEach(m => m.classList.remove('open'));
+                if (!isOpen) menu.classList.add('open');
+            });
+            menu.querySelectorAll('.custom-select-option').forEach(opt => {
+                opt.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const value = opt.dataset.value;
+                    trigger.textContent = opt.textContent;
+                    trigger.dataset.value = value;
+                    menu.classList.remove('open');
+                    if (menu.id === 'key-select-menu') this.selectKeyReader(value);
+                    if (menu.id === 'uniform-key-menu') this.setUniformKey(value);
+                });
+            });
+        });
+        if (!this._customDropdownDocListener) {
+            this._customDropdownDocListener = true;
+            document.addEventListener('click', () => {
+                document.querySelectorAll('.custom-select-menu.open').forEach(m => m.classList.remove('open'));
+            });
+        }
+    },
+
     setupMainButtons() {
         this.bindButton('logo-home', () => {
             if (AppState.currentView === 'edicion' && AppState.currentSong) this.saveCurrentSong();
@@ -1108,8 +1143,6 @@ const Router = {
         this.bindButton('btn-back-to-list', () => { history.back(); });
         this.bindButton('btn-back-from-editor', () => { this.saveCurrentSong(); history.back(); });
         this.bindButton('btn-edit-song', () => { if (AppState.currentSong && AppState.isAdmin) this.editSong(AppState.currentSong.id); });
-        this.bindButton('btn-reset-key-reader', () => this.resetTransposition());
-        this.bindSelect('current-key-reader', (e) => this.selectKeyReader(e.target.value));
         this.bindButton('btn-voice-mode', () => this.toggleVoiceMode());
         this.bindButton('btn-font-increase', () => this.adjustReaderFontSize(0.1));
         this.bindButton('btn-font-decrease', () => this.adjustReaderFontSize(-0.1));
@@ -1170,7 +1203,7 @@ const Router = {
         this.bindButton('btn-new-setlist', () => this.showNewSetlistModal());
         this.bindButton('btn-back-to-repertorios', () => { history.back(); });
         this.bindButton('btn-add-songs-to-setlist', () => this.showAddSongsToSetlistModal());
-        this.bindSelect('uniform-key-select', (e) => this.setUniformKey(e.target.value));
+        this.setupCustomDropdowns();
         this.bindButton('btn-toggle-equipo', () => this.showEquipoModal());
         this.bindInput('setlist-name-input', (e) => {
             if (!AppState.currentSetlist) return;
@@ -1342,6 +1375,7 @@ const Router = {
         if (song.artist) parts.push(song.artist);
         if (song.bpm) parts.push(`${song.bpm} BPM`);
         if (song.compas) parts.push(`Compás ${song.compas}`);
+        if (song.keyBase) parts.push(`Tono: ${song.keyBase}`);
         return parts.length > 0 ? parts.join(' • ') : '';
     },
 
@@ -1904,18 +1938,20 @@ const Router = {
     // Sincroniza el valor mostrado en el desplegable de tonalidad con el estado actual
     // (tonalidad transportada, o "GRADOS" si está en modo grados).
     updateKeySelectDisplay() {
-        const select = document.getElementById('current-key-reader');
-        if (!select || !AppState.currentSong) return;
-        if (AppState.notationMode === 'degrees') { select.value = 'I'; return; }
+        const trigger = document.getElementById('current-key-reader');
+        if (!trigger || !AppState.currentSong) return;
+        if (AppState.notationMode === 'degrees') { trigger.textContent = 'I'; trigger.dataset.value = 'I'; return; }
         const baseIdx = this.keyIndex(AppState.currentSong.keyBase);
-        if (baseIdx === 99) { select.value = 'C'; return; }
+        if (baseIdx === 99) { trigger.textContent = 'C'; trigger.dataset.value = 'C'; return; }
         let idx = (baseIdx + AppState.currentTranspose) % 12;
         if (idx < 0) idx += 12;
-        select.value = Transposer.notes[idx];
+        const note = Transposer.notes[idx];
+        trigger.textContent = note;
+        trigger.dataset.value = note;
     },
 
     // Elegir directamente una tonalidad del desplegable (en vez de subir/bajar de a un semitono),
-    // o elegir "GRADOS" para ver la canción en números romanos.
+    // o elegir "I" para ver la canción en números romanos (grados).
     selectKeyReader(value) {
         if (!AppState.currentSong) return;
         if (value === 'I') {
@@ -1932,15 +1968,6 @@ const Router = {
         if (diff < -6) diff += 12;
         AppState.currentTranspose = diff;
         this.persistSetlistTransposeOverride();
-        this.renderSongContent();
-    },
-
-    resetTransposition() {
-        const target = AppState.baseTransposeOffset || 0;
-        AppState.notationMode = 'chords';
-        AppState.currentTranspose = target;
-        this.clearSetlistTransposeOverride();
-        this.updateKeySelectDisplay();
         this.renderSongContent();
     },
 
@@ -2104,8 +2131,12 @@ const Router = {
         if (nameInput) nameInput.value = sl.name;
         this.renderConvocadosDisplay();
 
-        const uniformKeySelect = document.getElementById('uniform-key-select');
-        if (uniformKeySelect) uniformKeySelect.value = sl.uniformKey || '';
+        const uniformKeyTrigger = document.getElementById('uniform-key-trigger');
+        if (uniformKeyTrigger) {
+            const val = sl.uniformKey || '';
+            uniformKeyTrigger.textContent = val || 'Tonalidad';
+            uniformKeyTrigger.dataset.value = val;
+        }
 
         const list = document.getElementById('setlist-songs-list');
         const empty = document.getElementById('setlist-empty-state');
