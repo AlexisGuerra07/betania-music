@@ -1074,6 +1074,11 @@ const Router = {
             const repTab = document.querySelector('.nav-tab[data-route="repertorio"]');
             if (repTab) repTab.classList.add('active');
         }
+        if (view === 'song-reader') {
+            const route = AppState.cameFromSetlistId ? 'repertorio' : 'canciones';
+            const tab = document.querySelector(`.nav-tab[data-route="${route}"]`);
+            if (tab) tab.classList.add('active');
+        }
         document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
         const target = document.getElementById(`view-${view}`);
         if (target) target.classList.add('active');
