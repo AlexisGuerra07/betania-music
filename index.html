@@ -151,16 +151,17 @@
                     <button class="btn" id="btn-back-to-list">← Volver</button>
                     <div class="reader-lead-vocal" id="reader-lead-vocal" style="display:none;"></div>
                     <div class="reader-block-note" id="reader-block-note" style="display:none;"></div>
-                    <div class="reader-title" id="reader-title">Título de la canción</div>
+                    <div class="reader-title-row">
+                        <div class="reader-title" id="reader-title">Título de la canción</div>
+                        <div id="setlist-nav-controls" style="display:none;">
+                            <button class="btn-icon-nav" id="btn-prev-setlist-song" title="Canción anterior">◀</button>
+                            <span id="setlist-position-label">1 / 5</span>
+                            <button class="btn-icon-nav" id="btn-next-setlist-song" title="Canción siguiente">▶</button>
+                        </div>
+                    </div>
                     <div class="reader-meta" id="reader-meta">Autor • BPM • Compás</div>
                     <div class="reader-extra-info" id="reader-extra-info" style="display:none;"></div>
 
-                    <div id="setlist-nav-controls" style="display:none; margin-bottom: 1rem; padding: 0.75rem 1rem; background: var(--bg-secondary); border-radius: 8px; border: 1px solid var(--border-color); align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap;">
-                        <button class="btn btn-sm" id="btn-prev-setlist-song">◀ Anterior</button>
-                        <span id="setlist-position-label" style="font-size: 0.85rem; color: var(--text-secondary); font-weight: 600;">1 / 5</span>
-                        <button class="btn btn-sm" id="btn-next-setlist-song">Siguiente ▶</button>
-                    </div>
-                    
                     <div class="reader-controls">
                         <div class="control-group transpose-controls" id="transpose-controls-wrap">
                             <button class="transpose-btn" id="btn-transpose-down-reader">♭</button>
