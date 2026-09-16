@@ -217,6 +217,32 @@ body {
     margin-right: 0.5rem;
 }
 
+#convocados-display {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-top: 0.25rem;
+}
+.convocado-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border-color);
+    border-radius: 999px;
+    padding: 0.35rem 0.85rem;
+    font-size: 0.85rem;
+}
+.convocado-chip .instrumento { font-weight: 700; color: var(--text-primary); }
+.convocado-chip .persona { color: var(--text-secondary); }
+.convocado-row {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+    margin-bottom: 0.6rem;
+}
+.convocado-row input { flex: 1; padding: 0.5rem 0.65rem; }
+
 .song-block-note {
     font-size: 0.75rem;
     font-weight: 700;
@@ -710,7 +736,9 @@ body.fullscreen-active .structure-bar-inner::-webkit-scrollbar { display: none; 
     z-index: 900;
     align-items: center;
     gap: 0.6rem;
-    background: rgba(17, 24, 39, 0.85);
+    background: rgba(17, 24, 39, 0.55);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
     padding: 0.5rem;
     border-radius: 999px;
     box-shadow: var(--shadow-lg);
@@ -772,7 +800,7 @@ body.fullscreen-active .song-structure-bar {
     margin-bottom: 0.5rem;
 }
 
-body.fullscreen-active .song-content { padding: 0.85rem 1.1rem; }
+body.fullscreen-active .song-content { padding: 0.85rem 1.1rem calc(5.5rem + env(safe-area-inset-bottom)) 1.1rem; }
 
 @media (max-width: 768px) {
     .app-container { padding: 0.75rem 0.5rem; }
