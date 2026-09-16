@@ -1170,8 +1170,7 @@ const Router = {
         this.bindButton('btn-new-setlist', () => this.showNewSetlistModal());
         this.bindButton('btn-back-to-repertorios', () => { history.back(); });
         this.bindButton('btn-add-songs-to-setlist', () => this.showAddSongsToSetlistModal());
-        this.bindButton('btn-uniform-key', () => this.showUniformKeyModal());
-        this.bindButton('btn-clear-uniform-key', () => this.clearUniformKey());
+        this.bindSelect('uniform-key-select', (e) => this.setUniformKey(e.target.value));
         this.bindButton('btn-toggle-equipo', () => this.showEquipoModal());
         this.bindInput('setlist-name-input', (e) => {
             if (!AppState.currentSetlist) return;
@@ -2105,12 +2104,8 @@ const Router = {
         if (nameInput) nameInput.value = sl.name;
         this.renderConvocadosDisplay();
 
-        const badge = document.getElementById('uniform-key-badge');
-        const clearBtn = document.getElementById('btn-clear-uniform-key');
-        if (badge) {
-            if (sl.uniformKey) { badge.style.display = 'inline'; badge.textContent = `Tonalidad uniforme: ${sl.uniformKey}`; if (clearBtn) clearBtn.style.display = 'inline-flex'; }
-            else { badge.style.display = 'none'; if (clearBtn) clearBtn.style.display = 'none'; }
-        }
+        const uniformKeySelect = document.getElementById('uniform-key-select');
+        if (uniformKeySelect) uniformKeySelect.value = sl.uniformKey || '';
 
         const list = document.getElementById('setlist-songs-list');
         const empty = document.getElementById('setlist-empty-state');
@@ -2222,42 +2217,10 @@ const Router = {
         this.renderSetlistDetail();
     },
 
-    showUniformKeyModal() {
-        if (!AppState.currentSetlist) return;
-        const currentKey = AppState.currentSetlist.uniformKey || '';
-        const keys = ['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
-        this.createModal({
-            title: 'Tonalidad uniforme del repertorio',
-            content: `
-                <div class="form-group">
-                    <label class="form-label">Tonalidad</label>
-                    <select class="form-select" id="modal-uniform-key">
-                        <option value="">Sin tonalidad uniforme (usar la de cada canción)</option>
-                        ${keys.map(k => `<option value="${k}" ${k === currentKey ? 'selected' : ''}>${k}</option>`).join('')}
-                    </select>
-                </div>
-            `,
-            actions: [
-                { text: 'Cancelar', action: () => this.closeModal() },
-                { text: 'Aplicar', primary: true, action: () => this.applyUniformKey() }
-            ]
-        });
-    },
-
-    applyUniformKey() {
-        const val = document.getElementById('modal-uniform-key').value;
+    setUniformKey(value) {
         const sl = AppState.currentSetlist;
         if (!sl) return;
-        sl.uniformKey = val || null;
-        Storage.saveSetlists();
-        this.closeModal();
-        this.renderSetlistDetail();
-    },
-
-    clearUniformKey() {
-        const sl = AppState.currentSetlist;
-        if (!sl) return;
-        sl.uniformKey = null;
+        sl.uniformKey = value || null;
         Storage.saveSetlists();
         this.renderSetlistDetail();
     },
