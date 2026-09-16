@@ -595,6 +595,7 @@ body.fullscreen-active .structure-bar-inner::-webkit-scrollbar { display: none; 
     align-items: center;
     justify-content: center;
     gap: 0.25rem;
+    white-space: nowrap;
 }
 .btn:hover, .btn-sm:hover, .btn-xs:hover { background: var(--bg-secondary); border-color: var(--border-hover); }
 
@@ -841,6 +842,7 @@ body.fullscreen-active .song-content { padding: 0.85rem 1.1rem calc(5.5rem + env
     .auth-section { font-size: 0.75rem; }
     #user-email-label { display: none !important; }
     .control-divider { display: none; }
+    .reader-controls > .control-group:not(.lead-vocal-controls):not(.transpose-controls) { display: contents; }
 
     .song-item { padding: 0.7rem 1rem; min-height: auto; }
     .song-title { font-size: 1rem; }
