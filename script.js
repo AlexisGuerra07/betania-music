@@ -2077,7 +2077,7 @@ const Router = {
         if (!sl.songNotes) sl.songNotes = {};
         if (!sl.songLeadVocals) sl.songLeadVocals = {};
         if (!sl.songTransposeOverrides) sl.songTransposeOverrides = {};
-        if (!sl.convocados) sl.convocados = [];
+        if (!sl.convocados) sl.convocados = {};
         AppState.currentSetlist = sl;
         this.navigate('repertorio-detail', false);
         if (push) HistoryManager.push({ view: 'repertorio-detail', setlistId });
@@ -2256,61 +2256,65 @@ const Router = {
     },
 
     // ============ CONVOCADOS (quién toca/canta qué en este repertorio) ============
-    renderConvocadoRow(c, idx) {
-        const instrumento = (c.instrumento || '').replace(/"/g, '&quot;');
-        const persona = (c.persona || '').replace(/"/g, '&quot;');
-        return `
-            <div class="convocado-row" data-idx="${idx}">
-                <input type="text" class="form-input convocado-instrumento" placeholder="Instrumento (ej: Guitarra)" value="${instrumento}">
-                <input type="text" class="form-input convocado-persona" placeholder="Nombre" value="${persona}">
-                <button class="btn-xs" type="button" onclick="this.closest('.convocado-row').remove()">🗑️</button>
-            </div>
-        `;
-    },
+    CONVOCADOS_ROLES: [
+        { key: 'guitarra', label: 'Guitarra', options: ['Ale'] },
+        { key: 'bajo', label: 'Bajo', options: ['Pau'] },
+        { key: 'bateria', label: 'Batería', options: ['Rubén', 'Maykell'] },
+        { key: 'piano', label: 'Piano', options: ['Sarah', 'Samuel'] },
+        { key: 'voces', label: 'Voces', options: ['Sarah', 'Aleja', 'Cristina', 'Lady', 'Samuel', 'Pau'] },
+        { key: 'sonido', label: 'Sonido', options: ['Felipe', 'Alexi', 'Julián', 'Leandro'] }
+    ],
 
     showConvocadosModal() {
         if (!AppState.currentSetlist) return;
         const sl = AppState.currentSetlist;
-        const list = (sl.convocados && sl.convocados.length > 0) ? sl.convocados : [
-            { instrumento: 'Guitarra', persona: '' },
-            { instrumento: 'Bajo', persona: '' },
-            { instrumento: 'Batería', persona: '' },
-            { instrumento: 'Voz principal', persona: '' }
-        ];
+        const current = sl.convocados || {};
         this.createModal({
-            title: '👥 Convocados',
+            title: 'Convocados',
             content: `
                 <p style="margin-bottom:1rem; color:var(--text-secondary); font-size:0.9rem;">
-                    Quién toca o canta qué en este repertorio. Deja el nombre vacío si no aplica todavía.
+                    Marca quién sirve en este repertorio.
                 </p>
-                <div id="convocados-rows">
-                    ${list.map((c, i) => this.renderConvocadoRow(c, i)).join('')}
-                </div>
-                <button class="btn btn-sm" id="btn-add-convocado-row" type="button" style="margin-top:0.3rem;">+ Añadir fila</button>
+                ${this.CONVOCADOS_ROLES.map(role => `
+                    <div class="form-group" style="margin-bottom:1.1rem;">
+                        <label class="form-label" style="margin-bottom:0.4rem;">${role.label}</label>
+                        <div style="display:flex; flex-wrap:wrap; gap:0.5rem;">
+                            ${role.options.map(name => {
+                                const checked = (current[role.key] || []).includes(name);
+                                return `
+                                    <label class="convocado-option${checked ? ' checked' : ''}">
+                                        <input type="checkbox" class="convocado-checkbox" data-role="${role.key}" value="${name}" ${checked ? 'checked' : ''}>
+                                        ${name}
+                                    </label>
+                                `;
+                            }).join('')}
+                        </div>
+                    </div>
+                `).join('')}
             `,
             actions: [
                 { text: 'Cancelar', action: () => this.closeModal() },
                 { text: 'Guardar', primary: true, action: () => this.saveConvocados() }
             ]
         });
-        document.getElementById('btn-add-convocado-row').addEventListener('click', () => {
-            const rows = document.getElementById('convocados-rows');
-            const idx = rows.children.length;
-            rows.insertAdjacentHTML('beforeend', this.renderConvocadoRow({ instrumento: '', persona: '' }, idx));
+        document.querySelectorAll('.convocado-checkbox').forEach(cb => {
+            cb.addEventListener('change', () => {
+                cb.closest('.convocado-option').classList.toggle('checked', cb.checked);
+            });
         });
     },
 
     saveConvocados() {
         const sl = AppState.currentSetlist;
         if (!sl) { this.closeModal(); return; }
-        const rows = document.querySelectorAll('#convocados-rows .convocado-row');
-        const list = [];
-        rows.forEach(row => {
-            const instrumento = row.querySelector('.convocado-instrumento').value.trim();
-            const persona = row.querySelector('.convocado-persona').value.trim();
-            if (instrumento || persona) list.push({ instrumento, persona });
+        const result = {};
+        this.CONVOCADOS_ROLES.forEach(role => { result[role.key] = []; });
+        document.querySelectorAll('.convocado-checkbox:checked').forEach(cb => {
+            const role = cb.dataset.role;
+            if (!result[role]) result[role] = [];
+            result[role].push(cb.value);
         });
-        sl.convocados = list;
+        sl.convocados = result;
         Storage.saveSetlists();
         this.closeModal();
         this.renderConvocadosDisplay();
@@ -2320,13 +2324,16 @@ const Router = {
         const el = document.getElementById('convocados-display');
         if (!el) return;
         const sl = AppState.currentSetlist;
-        const list = (sl && sl.convocados) ? sl.convocados.filter(c => c.persona) : [];
-        if (!list.length) { el.style.display = 'none'; el.innerHTML = ''; return; }
+        const data = (sl && sl.convocados) || {};
+        const entries = this.CONVOCADOS_ROLES
+            .map(role => ({ label: role.label, names: (data[role.key] || []) }))
+            .filter(e => e.names.length > 0);
+        if (!entries.length) { el.style.display = 'none'; el.innerHTML = ''; return; }
         el.style.display = 'flex';
-        el.innerHTML = list.map(c => `
+        el.innerHTML = entries.map(e => `
             <span class="convocado-chip">
-                ${c.instrumento ? `<span class="instrumento">${c.instrumento}:</span>` : ''}
-                <span class="persona">${c.persona}</span>
+                <span class="instrumento">${e.label}:</span>
+                <span class="persona">${e.names.join(', ')}</span>
             </span>
         `).join('');
     },
