@@ -1824,9 +1824,7 @@ const Router = {
         const idx = ids.indexOf(AppState.currentSong.id);
         if (idx === -1) { setlistNav.style.display = 'none'; return; }
         setlistNav.style.display = 'flex';
-        let label = `${idx + 1} / ${ids.length}`;
-        if (AppState.currentSetlist.uniformKey) label += ` • Tono: ${AppState.currentSetlist.uniformKey}`;
-        posLabel.textContent = label;
+        posLabel.textContent = `${idx + 1} / ${ids.length}`;
         const prevBtn = document.getElementById('btn-prev-setlist-song');
         const nextBtn = document.getElementById('btn-next-setlist-song');
         if (prevBtn) prevBtn.disabled = idx <= 0;
