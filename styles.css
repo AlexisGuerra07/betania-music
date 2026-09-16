@@ -220,60 +220,64 @@ body {
 #convocados-display {
     display: flex;
     flex-wrap: wrap;
-    gap: 0.5rem;
+    gap: 0.4rem;
     margin-top: 0.25rem;
 }
 .convocado-chip {
     display: inline-flex;
     align-items: center;
-    gap: 0.35rem;
-    background: var(--bg-tertiary);
-    border: 1px solid var(--border-color);
+    gap: 0.3rem;
+    background: white;
+    border: 1.5px solid var(--border-color);
     border-radius: 999px;
-    padding: 0.35rem 0.85rem;
-    font-size: 0.85rem;
+    padding: 0.25rem 0.7rem;
+    font-size: 0.8rem;
 }
-.convocado-chip .instrumento { font-weight: 700; color: var(--text-primary); }
+.convocado-chip .instrumento { font-weight: 700; }
 .convocado-chip .persona { color: var(--text-secondary); }
 #equipo-panel {
-    background: var(--bg-secondary);
+    background: white;
     border: 1px solid var(--border-color);
     border-radius: 10px;
-    padding: 1rem 1.1rem;
+    padding: 0.6rem 0.85rem;
     margin-top: 0.5rem;
 }
 .equipo-role-row {
     display: flex;
     align-items: center;
-    gap: 0.75rem;
+    gap: 0.6rem;
     flex-wrap: wrap;
-    padding: 0.45rem 0;
-    border-bottom: 1px solid var(--border-color);
+    padding: 0.35rem 0;
+    border-bottom: 1px solid var(--bg-tertiary);
 }
 .equipo-role-row:last-child { border-bottom: none; }
 .equipo-role-label {
     font-weight: 700;
-    font-size: 0.85rem;
-    color: var(--text-primary);
-    min-width: 5.5rem;
+    font-size: 0.72rem;
+    color: white;
+    min-width: 4.4rem;
+    text-align: center;
     flex-shrink: 0;
+    border-radius: 999px;
+    padding: 0.22rem 0.5rem;
 }
-.equipo-role-options { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+.equipo-role-options { display: flex; flex-wrap: wrap; gap: 0.3rem; }
 .convocado-option {
     display: inline-flex;
     align-items: center;
     background: white;
-    border: 1px solid var(--border-color);
+    border: 1.5px solid var(--border-color);
     border-radius: 999px;
-    padding: 0.35rem 0.85rem;
-    font-size: 0.82rem;
+    padding: 0.2rem 0.65rem;
+    font-size: 0.78rem;
     font-family: inherit;
+    font-weight: 600;
     cursor: pointer;
-    transition: all 0.15s;
+    transition: all 0.12s;
     user-select: none;
 }
-.convocado-option:hover { background: var(--bg-tertiary); }
-.convocado-option.checked { background: var(--primary-color); color: white; border-color: var(--primary-color); }
+.convocado-option:hover { filter: brightness(0.95); }
+.convocado-option.checked { font-weight: 700; }
 
 .song-block-note {
     font-size: 0.75rem;
