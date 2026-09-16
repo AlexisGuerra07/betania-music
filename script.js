@@ -2257,12 +2257,12 @@ const Router = {
 
     // ============ EQUIPO (quién toca/canta qué en este repertorio) ============
     CONVOCADOS_ROLES: [
-        { key: 'bateria', label: 'Batería', options: ['Rubén', 'Alex'] },
-        { key: 'bajo', label: 'Bajo', options: ['Pau'] },
-        { key: 'guitarra', label: 'Guitarra', options: ['Ale'] },
-        { key: 'piano', label: 'Piano', options: ['Sarah', 'Samuel'] },
-        { key: 'voces', label: 'Voces', options: ['Sarah', 'Aleja', 'Cristina', 'Lady', 'Samuel', 'Pau'] },
-        { key: 'sonido', label: 'Sonido', options: ['Felipe', 'Alexi', 'Julián', 'Leandro'] }
+        { key: 'bateria', label: 'Batería', color: '#dc2626', options: ['Rubén', 'Alex'] },
+        { key: 'bajo', label: 'Bajo', color: '#1e3a8a', options: ['Pau'] },
+        { key: 'guitarra', label: 'Guitarra', color: '#d97706', options: ['Ale'] },
+        { key: 'piano', label: 'Piano', color: '#7c3aed', options: ['Sarah', 'Samuel'] },
+        { key: 'voces', label: 'Voces', color: '#0d9488', options: ['Sarah', 'Aleja', 'Cristina', 'Lady', 'Samuel', 'Pau'] },
+        { key: 'sonido', label: 'Sonido', color: '#64748b', options: ['Felipe', 'Alexi', 'Julián', 'Leandro'] }
     ],
 
     toggleEquipoPanel() {
@@ -2294,11 +2294,14 @@ const Router = {
         const current = (sl && sl.convocados) || {};
         el.innerHTML = this.CONVOCADOS_ROLES.map(role => `
             <div class="equipo-role-row">
-                <span class="equipo-role-label">${role.label}</span>
+                <span class="equipo-role-label" style="background:${role.color}">${role.label}</span>
                 <div class="equipo-role-options">
                     ${role.options.map(name => {
                         const checked = (current[role.key] || []).includes(name);
-                        return `<button type="button" class="convocado-option${checked ? ' checked' : ''}" onclick="Router.toggleConvocadoPerson('${role.key}','${name}')">${name}</button>`;
+                        const style = checked
+                            ? `background:${role.color};border-color:${role.color};color:#fff;`
+                            : `border-color:${role.color};color:${role.color};`;
+                        return `<button type="button" class="convocado-option${checked ? ' checked' : ''}" style="${style}" onclick="Router.toggleConvocadoPerson('${role.key}','${name}')">${name}</button>`;
                     }).join('')}
                 </div>
             </div>
@@ -2311,13 +2314,13 @@ const Router = {
         const sl = AppState.currentSetlist;
         const data = (sl && sl.convocados) || {};
         const entries = this.CONVOCADOS_ROLES
-            .map(role => ({ label: role.label, names: (data[role.key] || []) }))
+            .map(role => ({ label: role.label, color: role.color, names: (data[role.key] || []) }))
             .filter(e => e.names.length > 0);
         if (!entries.length) { el.style.display = 'none'; el.innerHTML = ''; return; }
         el.style.display = 'flex';
         el.innerHTML = entries.map(e => `
-            <span class="convocado-chip">
-                <span class="instrumento">${e.label}:</span>
+            <span class="convocado-chip" style="border-color:${e.color};">
+                <span class="instrumento" style="color:${e.color};">${e.label}:</span>
                 <span class="persona">${e.names.join(', ')}</span>
             </span>
         `).join('');
