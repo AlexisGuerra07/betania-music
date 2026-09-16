@@ -329,7 +329,33 @@ body {
     line-height: 1.4;
 }
 
-.reader-title { font-size: 2rem; font-weight: 700; margin-bottom: 0.5rem; color: var(--text-primary); }
+.reader-title-row { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; flex-wrap: wrap; }
+.reader-title-row .reader-title { margin-bottom: 0; }
+.reader-title { font-size: 2rem; font-weight: 700; color: var(--text-primary); }
+#setlist-nav-controls {
+    display: none;
+    align-items: center;
+    gap: 0.5rem;
+    flex-shrink: 0;
+}
+.btn-icon-nav {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: 50%;
+    width: 2.1rem;
+    height: 2.1rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 0.9rem;
+    padding: 0;
+    color: var(--text-primary);
+    transition: background 0.15s;
+}
+.btn-icon-nav:hover:not(:disabled) { background: var(--bg-tertiary); }
+.btn-icon-nav:disabled { opacity: 0.3; cursor: not-allowed; }
+#setlist-position-label { font-size: 0.8rem; color: var(--text-secondary); font-weight: 600; white-space: nowrap; }
 .reader-meta { color: var(--text-secondary); font-size: 1rem; margin-bottom: 0.5rem; }
 .reader-extra-info { font-size: 0.9rem; color: var(--text-secondary); margin-bottom: 1rem; }
 .reader-controls { display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap; }
