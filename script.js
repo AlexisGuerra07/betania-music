@@ -1168,6 +1168,7 @@ const Router = {
         this.bindButton('btn-add-songs-to-setlist', () => this.showAddSongsToSetlistModal());
         this.bindButton('btn-uniform-key', () => this.showUniformKeyModal());
         this.bindButton('btn-clear-uniform-key', () => this.clearUniformKey());
+        this.bindButton('btn-convocados', () => this.showConvocadosModal());
         this.bindInput('setlist-name-input', (e) => {
             if (!AppState.currentSetlist) return;
             AppState.currentSetlist.name = e.target.value;
@@ -2076,6 +2077,7 @@ const Router = {
         if (!sl.songNotes) sl.songNotes = {};
         if (!sl.songLeadVocals) sl.songLeadVocals = {};
         if (!sl.songTransposeOverrides) sl.songTransposeOverrides = {};
+        if (!sl.convocados) sl.convocados = [];
         AppState.currentSetlist = sl;
         this.navigate('repertorio-detail', false);
         if (push) HistoryManager.push({ view: 'repertorio-detail', setlistId });
@@ -2094,6 +2096,7 @@ const Router = {
         const sl = AppState.currentSetlist;
         const nameInput = document.getElementById('setlist-name-input');
         if (nameInput) nameInput.value = sl.name;
+        this.renderConvocadosDisplay();
 
         const badge = document.getElementById('uniform-key-badge');
         const clearBtn = document.getElementById('btn-clear-uniform-key');
@@ -2251,6 +2254,83 @@ const Router = {
         Storage.saveSetlists();
         this.renderSetlistDetail();
     },
+
+    // ============ CONVOCADOS (quién toca/canta qué en este repertorio) ============
+    renderConvocadoRow(c, idx) {
+        const instrumento = (c.instrumento || '').replace(/"/g, '&quot;');
+        const persona = (c.persona || '').replace(/"/g, '&quot;');
+        return `
+            <div class="convocado-row" data-idx="${idx}">
+                <input type="text" class="form-input convocado-instrumento" placeholder="Instrumento (ej: Guitarra)" value="${instrumento}">
+                <input type="text" class="form-input convocado-persona" placeholder="Nombre" value="${persona}">
+                <button class="btn-xs" type="button" onclick="this.closest('.convocado-row').remove()">🗑️</button>
+            </div>
+        `;
+    },
+
+    showConvocadosModal() {
+        if (!AppState.currentSetlist) return;
+        const sl = AppState.currentSetlist;
+        const list = (sl.convocados && sl.convocados.length > 0) ? sl.convocados : [
+            { instrumento: 'Guitarra', persona: '' },
+            { instrumento: 'Bajo', persona: '' },
+            { instrumento: 'Batería', persona: '' },
+            { instrumento: 'Voz principal', persona: '' }
+        ];
+        this.createModal({
+            title: '👥 Convocados',
+            content: `
+                <p style="margin-bottom:1rem; color:var(--text-secondary); font-size:0.9rem;">
+                    Quién toca o canta qué en este repertorio. Deja el nombre vacío si no aplica todavía.
+                </p>
+                <div id="convocados-rows">
+                    ${list.map((c, i) => this.renderConvocadoRow(c, i)).join('')}
+                </div>
+                <button class="btn btn-sm" id="btn-add-convocado-row" type="button" style="margin-top:0.3rem;">+ Añadir fila</button>
+            `,
+            actions: [
+                { text: 'Cancelar', action: () => this.closeModal() },
+                { text: 'Guardar', primary: true, action: () => this.saveConvocados() }
+            ]
+        });
+        document.getElementById('btn-add-convocado-row').addEventListener('click', () => {
+            const rows = document.getElementById('convocados-rows');
+            const idx = rows.children.length;
+            rows.insertAdjacentHTML('beforeend', this.renderConvocadoRow({ instrumento: '', persona: '' }, idx));
+        });
+    },
+
+    saveConvocados() {
+        const sl = AppState.currentSetlist;
+        if (!sl) { this.closeModal(); return; }
+        const rows = document.querySelectorAll('#convocados-rows .convocado-row');
+        const list = [];
+        rows.forEach(row => {
+            const instrumento = row.querySelector('.convocado-instrumento').value.trim();
+            const persona = row.querySelector('.convocado-persona').value.trim();
+            if (instrumento || persona) list.push({ instrumento, persona });
+        });
+        sl.convocados = list;
+        Storage.saveSetlists();
+        this.closeModal();
+        this.renderConvocadosDisplay();
+    },
+
+    renderConvocadosDisplay() {
+        const el = document.getElementById('convocados-display');
+        if (!el) return;
+        const sl = AppState.currentSetlist;
+        const list = (sl && sl.convocados) ? sl.convocados.filter(c => c.persona) : [];
+        if (!list.length) { el.style.display = 'none'; el.innerHTML = ''; return; }
+        el.style.display = 'flex';
+        el.innerHTML = list.map(c => `
+            <span class="convocado-chip">
+                ${c.instrumento ? `<span class="instrumento">${c.instrumento}:</span>` : ''}
+                <span class="persona">${c.persona}</span>
+            </span>
+        `).join('');
+    },
+    // ============ FIN CONVOCADOS ============
     // ============ FIN REPERTORIO ============
 
     // ============ IMPORTACIÓN MASIVA DE PDFs ============
