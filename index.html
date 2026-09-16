@@ -164,9 +164,21 @@
 
                     <div class="reader-controls">
                         <div class="control-group transpose-controls" id="transpose-controls-wrap">
-                            <button class="transpose-btn" id="btn-transpose-down-reader">♭</button>
-                            <div class="current-key" id="current-key-reader">C</div>
-                            <button class="transpose-btn" id="btn-transpose-up-reader">♯</button>
+                            <select id="current-key-reader" class="key-select-reader">
+                                <option value="GRADOS">GRADOS</option>
+                                <option value="C">C</option>
+                                <option value="C#">C#</option>
+                                <option value="D">D</option>
+                                <option value="D#">D#</option>
+                                <option value="E">E</option>
+                                <option value="F">F</option>
+                                <option value="F#">F#</option>
+                                <option value="G">G</option>
+                                <option value="G#">G#</option>
+                                <option value="A">A</option>
+                                <option value="A#">A#</option>
+                                <option value="B">B</option>
+                            </select>
                             <button class="btn btn-sm" id="btn-reset-key-reader">Base</button>
                         </div>
 
@@ -186,7 +198,6 @@
                         </div>
 
                         <div class="control-group view-controls">
-                            <button class="btn btn-sm" id="btn-toggle-notation">Ver en grados</button>
                             <button class="btn btn-sm" id="btn-voice-mode">🎤 Modo Voz</button>
                         </div>
 
