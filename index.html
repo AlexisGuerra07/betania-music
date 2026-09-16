@@ -127,21 +127,24 @@
                            style="font-size: 1.5rem; font-weight: 700; border: none; background: transparent; outline: none; padding: 0.25rem 0;">
                     <div style="display:flex; gap:0.5rem; flex-wrap:wrap; align-items:center;">
                         <button class="btn" id="btn-add-songs-to-setlist">+ Añadir canciones</button>
-                        <select id="uniform-key-select" class="uniform-key-select">
-                            <option value="">Tonalidad</option>
-                            <option value="C">C</option>
-                            <option value="C#">C#</option>
-                            <option value="D">D</option>
-                            <option value="D#">D#</option>
-                            <option value="E">E</option>
-                            <option value="F">F</option>
-                            <option value="F#">F#</option>
-                            <option value="G">G</option>
-                            <option value="G#">G#</option>
-                            <option value="A">A</option>
-                            <option value="A#">A#</option>
-                            <option value="B">B</option>
-                        </select>
+                        <div class="custom-select">
+                            <button type="button" class="uniform-key-select" id="uniform-key-trigger" data-value="">Tonalidad</button>
+                            <div class="custom-select-menu" id="uniform-key-menu">
+                                <button type="button" class="custom-select-option" data-value="">Tonalidad</button>
+                                <button type="button" class="custom-select-option" data-value="C">C</button>
+                                <button type="button" class="custom-select-option" data-value="C#">C#</button>
+                                <button type="button" class="custom-select-option" data-value="D">D</button>
+                                <button type="button" class="custom-select-option" data-value="D#">D#</button>
+                                <button type="button" class="custom-select-option" data-value="E">E</button>
+                                <button type="button" class="custom-select-option" data-value="F">F</button>
+                                <button type="button" class="custom-select-option" data-value="F#">F#</button>
+                                <button type="button" class="custom-select-option" data-value="G">G</button>
+                                <button type="button" class="custom-select-option" data-value="G#">G#</button>
+                                <button type="button" class="custom-select-option" data-value="A">A</button>
+                                <button type="button" class="custom-select-option" data-value="A#">A#</button>
+                                <button type="button" class="custom-select-option" data-value="B">B</button>
+                            </div>
+                        </div>
                         <button class="btn" id="btn-toggle-equipo">Convocatoria</button>
                     </div>
                     <div id="convocados-display" style="display:none;"></div>
@@ -176,22 +179,24 @@
 
                     <div class="reader-controls">
                         <div class="control-group transpose-controls" id="transpose-controls-wrap">
-                            <select id="current-key-reader" class="key-select-reader">
-                                <option value="I">I</option>
-                                <option value="C">C</option>
-                                <option value="C#">C#</option>
-                                <option value="D">D</option>
-                                <option value="D#">D#</option>
-                                <option value="E">E</option>
-                                <option value="F">F</option>
-                                <option value="F#">F#</option>
-                                <option value="G">G</option>
-                                <option value="G#">G#</option>
-                                <option value="A">A</option>
-                                <option value="A#">A#</option>
-                                <option value="B">B</option>
-                            </select>
-                            <button class="btn btn-sm" id="btn-reset-key-reader">Base</button>
+                            <div class="custom-select">
+                                <button type="button" class="key-select-reader" id="current-key-reader" data-value="C">C</button>
+                                <div class="custom-select-menu" id="key-select-menu">
+                                    <button type="button" class="custom-select-option" data-value="I">I</button>
+                                    <button type="button" class="custom-select-option" data-value="C">C</button>
+                                    <button type="button" class="custom-select-option" data-value="C#">C#</button>
+                                    <button type="button" class="custom-select-option" data-value="D">D</button>
+                                    <button type="button" class="custom-select-option" data-value="D#">D#</button>
+                                    <button type="button" class="custom-select-option" data-value="E">E</button>
+                                    <button type="button" class="custom-select-option" data-value="F">F</button>
+                                    <button type="button" class="custom-select-option" data-value="F#">F#</button>
+                                    <button type="button" class="custom-select-option" data-value="G">G</button>
+                                    <button type="button" class="custom-select-option" data-value="G#">G#</button>
+                                    <button type="button" class="custom-select-option" data-value="A">A</button>
+                                    <button type="button" class="custom-select-option" data-value="A#">A#</button>
+                                    <button type="button" class="custom-select-option" data-value="B">B</button>
+                                </div>
+                            </div>
                         </div>
 
                         <div class="control-group lead-vocal-controls lv-hidden" id="lead-vocal-controls-wrap">
