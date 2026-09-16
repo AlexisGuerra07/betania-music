@@ -194,6 +194,7 @@ body {
     border-radius: 8px;
     border: 1px solid var(--border-color);
 }
+.lv-hidden { display: none !important; }
 
 .lead-vocal-reader-select {
     border: 1px solid var(--border-color);
@@ -403,10 +404,10 @@ body {
 .key-select-reader {
     background: white;
     border: 1px solid var(--border-color);
-    padding: 0.5rem 0.75rem;
+    padding: 0.5rem 0.35rem;
     border-radius: 6px;
     font-weight: 600;
-    min-width: 3.2rem;
+    width: 3.4rem;
     text-align: center;
     text-align-last: center;
     font-family: var(--mono-font);
@@ -870,7 +871,7 @@ body.fullscreen-active .song-content { padding: 0.85rem 1.1rem calc(5.5rem + env
     .auth-section { font-size: 0.75rem; }
     #user-email-label { display: none !important; }
     .control-divider { display: none; }
-    .reader-controls > .control-group:not(.lead-vocal-controls):not(.transpose-controls) { display: contents; }
+    .reader-controls > .control-group { display: contents; }
 
     .song-item { padding: 0.7rem 1rem; min-height: auto; }
     .song-title { font-size: 1rem; }
