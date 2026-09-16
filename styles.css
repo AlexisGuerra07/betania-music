@@ -400,15 +400,17 @@ body {
 }
 .transpose-btn:hover { background: var(--primary-hover); }
 
-.current-key {
+.key-select-reader {
     background: white;
     border: 1px solid var(--border-color);
-    padding: 0.5rem 1rem;
+    padding: 0.5rem 0.75rem;
     border-radius: 6px;
     font-weight: 600;
-    min-width: 3rem;
+    min-width: 3.2rem;
     text-align: center;
+    text-align-last: center;
     font-family: var(--mono-font);
+    cursor: pointer;
 }
 
 .song-body-layout { display: flex; gap: 0.85rem; align-items: flex-start; }
