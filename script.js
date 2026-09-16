@@ -1761,7 +1761,7 @@ const Router = {
         const structureSetlistBtn = document.getElementById('btn-song-structure-setlist');
         if (structureSetlistBtn) structureSetlistBtn.style.display = 'inline-flex';
         const leadVocalWrap = document.getElementById('lead-vocal-controls-wrap');
-        if (leadVocalWrap) leadVocalWrap.style.display = 'flex';
+        if (leadVocalWrap) leadVocalWrap.classList.remove('lv-hidden');
 
         document.getElementById('reader-title').textContent = song.title;
         const metaText = this.formatReaderMeta(song);
@@ -1791,7 +1791,7 @@ const Router = {
         const toggleBtn = document.getElementById('btn-toggle-notation');
         if (toggleBtn) toggleBtn.textContent = 'Ver en grados';
         const voiceBtn = document.getElementById('btn-voice-mode');
-        if (voiceBtn) voiceBtn.classList.remove('active-mode');
+        if (voiceBtn) { voiceBtn.classList.remove('active-mode'); voiceBtn.textContent = 'Letra'; }
         const songContent = document.getElementById('song-content');
         if (songContent) songContent.classList.remove('voice-mode');
         const setlistNav = document.getElementById('setlist-nav-controls');
@@ -1809,7 +1809,7 @@ const Router = {
         const leadVocalSelect = document.getElementById('lead-vocal-reader-select');
         if (leadVocalSelect) leadVocalSelect.value = '';
         const leadVocalWrap = document.getElementById('lead-vocal-controls-wrap');
-        if (leadVocalWrap) leadVocalWrap.style.display = 'none';
+        if (leadVocalWrap) leadVocalWrap.classList.add('lv-hidden');
         StickyStructureBar.reset();
         Teleprompter.reset();
         this.closeYoutubeMiniPlayer();
@@ -1907,7 +1907,7 @@ const Router = {
     updateKeySelectDisplay() {
         const select = document.getElementById('current-key-reader');
         if (!select || !AppState.currentSong) return;
-        if (AppState.notationMode === 'degrees') { select.value = 'GRADOS'; return; }
+        if (AppState.notationMode === 'degrees') { select.value = 'I'; return; }
         const baseIdx = this.keyIndex(AppState.currentSong.keyBase);
         if (baseIdx === 99) { select.value = 'C'; return; }
         let idx = (baseIdx + AppState.currentTranspose) % 12;
@@ -1919,7 +1919,7 @@ const Router = {
     // o elegir "GRADOS" para ver la canción en números romanos.
     selectKeyReader(value) {
         if (!AppState.currentSong) return;
-        if (value === 'GRADOS') {
+        if (value === 'I') {
             AppState.notationMode = 'degrees';
             this.renderSongContent();
             return;
@@ -1949,7 +1949,7 @@ const Router = {
         if (!AppState.currentSong) return;
         AppState.voiceMode = !AppState.voiceMode;
         const btn = document.getElementById('btn-voice-mode');
-        if (btn) { btn.textContent = AppState.voiceMode ? '🎹 Ver acordes' : '🎤 Modo Voz'; btn.classList.toggle('active-mode', AppState.voiceMode); }
+        if (btn) { btn.textContent = AppState.voiceMode ? 'Acordes' : 'Letra'; btn.classList.toggle('active-mode', AppState.voiceMode); }
         this.renderSongContent();
     },
 
