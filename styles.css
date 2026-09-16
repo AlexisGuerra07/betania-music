@@ -235,13 +235,22 @@ body {
 }
 .convocado-chip .instrumento { font-weight: 700; color: var(--text-primary); }
 .convocado-chip .persona { color: var(--text-secondary); }
-.convocado-row {
-    display: flex;
-    gap: 0.5rem;
+.convocado-option {
+    display: inline-flex;
     align-items: center;
-    margin-bottom: 0.6rem;
+    gap: 0.4rem;
+    background: white;
+    border: 1px solid var(--border-color);
+    border-radius: 999px;
+    padding: 0.4rem 0.9rem;
+    font-size: 0.85rem;
+    cursor: pointer;
+    transition: all 0.15s;
+    user-select: none;
 }
-.convocado-row input { flex: 1; padding: 0.5rem 0.65rem; }
+.convocado-option:hover { background: var(--bg-secondary); }
+.convocado-option.checked { background: var(--primary-color); color: white; border-color: var(--primary-color); }
+.convocado-option input[type="checkbox"] { cursor: pointer; }
 
 .song-block-note {
     font-size: 0.75rem;
