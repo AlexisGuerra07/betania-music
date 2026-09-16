@@ -401,6 +401,17 @@ body {
 }
 .transpose-btn:hover { background: var(--primary-hover); }
 
+.uniform-key-select {
+    border: 1px solid var(--border-color);
+    background: white;
+    color: var(--text-primary);
+    padding: 0.5rem 0.6rem;
+    border-radius: 6px;
+    font-weight: 500;
+    font-size: 0.875rem;
+    cursor: pointer;
+}
+
 .key-select-reader {
     background: white;
     border: 1px solid var(--border-color);
