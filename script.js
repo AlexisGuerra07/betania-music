@@ -1108,10 +1108,8 @@ const Router = {
         this.bindButton('btn-back-to-list', () => { history.back(); });
         this.bindButton('btn-back-from-editor', () => { this.saveCurrentSong(); history.back(); });
         this.bindButton('btn-edit-song', () => { if (AppState.currentSong && AppState.isAdmin) this.editSong(AppState.currentSong.id); });
-        this.bindButton('btn-transpose-up-reader', () => this.transposeSong(1));
-        this.bindButton('btn-transpose-down-reader', () => this.transposeSong(-1));
         this.bindButton('btn-reset-key-reader', () => this.resetTransposition());
-        this.bindButton('btn-toggle-notation', () => this.toggleNotation());
+        this.bindSelect('current-key-reader', (e) => this.selectKeyReader(e.target.value));
         this.bindButton('btn-voice-mode', () => this.toggleVoiceMode());
         this.bindButton('btn-font-increase', () => this.adjustReaderFontSize(0.1));
         this.bindButton('btn-font-decrease', () => this.adjustReaderFontSize(-0.1));
@@ -1688,10 +1686,7 @@ const Router = {
             const profiles = AppState.vocalProfiles || {};
             const offset = (name && typeof profiles[name] === 'number') ? profiles[name] : 0;
             AppState.currentTranspose = offset;
-            if (AppState.notationMode !== 'degrees') {
-                document.getElementById('current-key-reader').textContent =
-                    Transposer.cleanChord(Transposer.transpose(AppState.currentSong.keyBase, offset));
-            }
+            this.updateKeySelectDisplay();
             this.renderSongContent();
         }
     },
@@ -1737,7 +1732,7 @@ const Router = {
         const extraHtml = this.formatReaderExtra(song);
         if (extraEl) { extraEl.innerHTML = extraHtml; extraEl.style.display = extraHtml ? 'block' : 'none'; }
 
-        document.getElementById('current-key-reader').textContent = song.keyBase;
+        this.updateKeySelectDisplay();
         this.renderSongContent();
         this.applyReaderFontSize();
         this.renderStructureBar();
@@ -1777,7 +1772,7 @@ const Router = {
         const extraEl = document.getElementById('reader-extra-info');
         if (extraEl) { extraEl.style.display = 'none'; extraEl.innerHTML = ''; }
 
-        document.getElementById('current-key-reader').textContent = Transposer.cleanChord(Transposer.transpose(song.keyBase, effectiveOffset));
+        this.updateKeySelectDisplay();
         this.renderSongContent();
         this.applyReaderFontSize();
         this.renderStructureBar();
@@ -1907,38 +1902,46 @@ const Router = {
         content.classList.toggle('voice-mode', !!AppState.voiceMode);
     },
 
-    transposeSong(semitones) {
+    // Sincroniza el valor mostrado en el desplegable de tonalidad con el estado actual
+    // (tonalidad transportada, o "GRADOS" si está en modo grados).
+    updateKeySelectDisplay() {
+        const select = document.getElementById('current-key-reader');
+        if (!select || !AppState.currentSong) return;
+        if (AppState.notationMode === 'degrees') { select.value = 'GRADOS'; return; }
+        const baseIdx = this.keyIndex(AppState.currentSong.keyBase);
+        if (baseIdx === 99) { select.value = 'C'; return; }
+        let idx = (baseIdx + AppState.currentTranspose) % 12;
+        if (idx < 0) idx += 12;
+        select.value = Transposer.notes[idx];
+    },
+
+    // Elegir directamente una tonalidad del desplegable (en vez de subir/bajar de a un semitono),
+    // o elegir "GRADOS" para ver la canción en números romanos.
+    selectKeyReader(value) {
         if (!AppState.currentSong) return;
-        AppState.currentTranspose += semitones;
-        this.persistSetlistTransposeOverride();
-        if (AppState.notationMode !== 'degrees') {
-            document.getElementById('current-key-reader').textContent =
-                Transposer.cleanChord(Transposer.transpose(AppState.currentSong.keyBase, AppState.currentTranspose));
+        if (value === 'GRADOS') {
+            AppState.notationMode = 'degrees';
+            this.renderSongContent();
+            return;
         }
+        AppState.notationMode = 'chords';
+        const baseIdx = this.keyIndex(AppState.currentSong.keyBase);
+        const targetIdx = Transposer.notes.indexOf(value);
+        if (baseIdx === 99 || targetIdx === -1) return;
+        let diff = targetIdx - baseIdx;
+        if (diff > 6) diff -= 12;
+        if (diff < -6) diff += 12;
+        AppState.currentTranspose = diff;
+        this.persistSetlistTransposeOverride();
         this.renderSongContent();
     },
 
     resetTransposition() {
         const target = AppState.baseTransposeOffset || 0;
-        if (AppState.currentTranspose === target) return;
+        AppState.notationMode = 'chords';
         AppState.currentTranspose = target;
         this.clearSetlistTransposeOverride();
-        if (AppState.notationMode !== 'degrees') {
-            document.getElementById('current-key-reader').textContent =
-                Transposer.cleanChord(Transposer.transpose(AppState.currentSong.keyBase, target));
-        }
-        this.renderSongContent();
-    },
-
-    toggleNotation() {
-        if (!AppState.currentSong) return;
-        AppState.notationMode = AppState.notationMode === 'degrees' ? 'chords' : 'degrees';
-        const btn = document.getElementById('btn-toggle-notation');
-        if (btn) btn.textContent = AppState.notationMode === 'degrees' ? '🎹 Ver acordes' : 'Ver en grados';
-        const keyLabel = document.getElementById('current-key-reader');
-        keyLabel.textContent = AppState.notationMode === 'degrees'
-            ? 'Grados'
-            : Transposer.cleanChord(Transposer.transpose(AppState.currentSong.keyBase, AppState.currentTranspose));
+        this.updateKeySelectDisplay();
         this.renderSongContent();
     },
 
