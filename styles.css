@@ -235,22 +235,45 @@ body {
 }
 .convocado-chip .instrumento { font-weight: 700; color: var(--text-primary); }
 .convocado-chip .persona { color: var(--text-secondary); }
+#equipo-panel {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    padding: 1rem 1.1rem;
+    margin-top: 0.5rem;
+}
+.equipo-role-row {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+    padding: 0.45rem 0;
+    border-bottom: 1px solid var(--border-color);
+}
+.equipo-role-row:last-child { border-bottom: none; }
+.equipo-role-label {
+    font-weight: 700;
+    font-size: 0.85rem;
+    color: var(--text-primary);
+    min-width: 5.5rem;
+    flex-shrink: 0;
+}
+.equipo-role-options { display: flex; flex-wrap: wrap; gap: 0.4rem; }
 .convocado-option {
     display: inline-flex;
     align-items: center;
-    gap: 0.4rem;
     background: white;
     border: 1px solid var(--border-color);
     border-radius: 999px;
-    padding: 0.4rem 0.9rem;
-    font-size: 0.85rem;
+    padding: 0.35rem 0.85rem;
+    font-size: 0.82rem;
+    font-family: inherit;
     cursor: pointer;
     transition: all 0.15s;
     user-select: none;
 }
-.convocado-option:hover { background: var(--bg-secondary); }
+.convocado-option:hover { background: var(--bg-tertiary); }
 .convocado-option.checked { background: var(--primary-color); color: white; border-color: var(--primary-color); }
-.convocado-option input[type="checkbox"] { cursor: pointer; }
 
 .song-block-note {
     font-size: 0.75rem;
