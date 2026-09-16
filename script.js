@@ -406,10 +406,11 @@ const Teleprompter = {
             const { baseText, repeats } = this.parseStructureEntry(rawEntry);
             const match = this.matchSection(baseText, anchors);
             if (!match) return;
-            // Un "x2"/"x4" significa que ese MISMO bloque de texto se canta varias veces
-            // seguidas — se queda más tiempo en pantalla, no se vuelve a recorrer desde
-            // arriba (eso causaba un salto brusco hacia atrás en el scroll).
-            segments.push({ startY: match.topY, endY: match.topY + match.height, durationSec: match.durationSec * repeats });
+            // Un "x2"/"x4" se canta esa cantidad de veces seguidas a ritmo normal —
+            // se recorre el bloque, se vuelve arriba, y se recorre de nuevo (no en cámara lenta).
+            for (let i = 0; i < repeats; i++) {
+                segments.push({ startY: match.topY, endY: match.topY + match.height, durationSec: match.durationSec });
+            }
         });
 
         // Diagnóstico: abre la consola del navegador (F12) para ver exactamente qué calculó.
