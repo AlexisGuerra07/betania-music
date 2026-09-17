@@ -2268,8 +2268,8 @@ const Router = {
         { key: 'bajo', label: 'Bajo', color: '#1e3a8a', options: ['Pau'] },
         { key: 'guitarra', label: 'Guitarra', color: '#d97706', options: ['Ale'] },
         { key: 'piano', label: 'Piano', color: '#7c3aed', options: ['Sarah', 'Samuel'] },
-        { key: 'voces', label: 'Voces', color: '#0d9488', options: ['Sarah', 'Aleja', 'Cristina', 'Lady', 'Samuel', 'Pau'] },
-        { key: 'sonido', label: 'Sonido', color: '#64748b', options: ['Felipe', 'Alexi', 'Julián', 'Leandro'] }
+        { key: 'voces', label: 'Voces', color: '#0d9488', options: ['Sarah', 'Aleja', 'Cristina', 'Lady', 'Samuel', 'Pau'], multi: true },
+        { key: 'sonido', label: 'Sonido', color: '#64748b', options: ['Felipe', 'Alexi', 'Julián', 'Leandro'], multi: true }
     ],
 
     showEquipoModal() {
@@ -2279,41 +2279,50 @@ const Router = {
             content: `<div id="equipo-modal-body">${this.buildEquipoRowsHTML()}</div>`,
             actions: [{ text: 'Cerrar', primary: true, action: () => this.closeModal() }]
         });
+        this.bindEquipoSelects();
     },
 
     buildEquipoRowsHTML() {
         const sl = AppState.currentSetlist;
         const current = (sl && sl.convocados) || {};
-        return this.CONVOCADOS_ROLES.map(role => `
-            <div class="equipo-role-row">
-                <span class="equipo-role-label" style="background:${role.color}">${role.label}</span>
-                <div class="equipo-role-options">
-                    ${role.options.map(name => {
-                        const checked = (current[role.key] || []).includes(name);
-                        const style = checked
-                            ? `background:${role.color};border-color:${role.color};color:#fff;`
-                            : `border-color:${role.color};color:${role.color};`;
-                        return `<button type="button" class="convocado-option${checked ? ' checked' : ''}" style="${style}" onclick="Router.toggleConvocadoPerson('${role.key}','${name}')">${name}</button>`;
-                    }).join('')}
+        return this.CONVOCADOS_ROLES.map(role => {
+            const selected = current[role.key] || [];
+            if (role.multi) {
+                return `
+                    <div class="form-group">
+                        <label class="form-label" style="color:${role.color};">${role.label}</label>
+                        <select multiple size="${role.options.length}" class="conv-select form-select" data-role="${role.key}">
+                            ${role.options.map(name => `<option value="${name}" ${selected.includes(name) ? 'selected' : ''}>${name}</option>`).join('')}
+                        </select>
+                    </div>
+                `;
+            }
+            return `
+                <div class="form-group">
+                    <label class="form-label" style="color:${role.color};">${role.label}</label>
+                    <select class="conv-select form-select" data-role="${role.key}">
+                        <option value="">Sin asignar</option>
+                        ${role.options.map(name => `<option value="${name}" ${selected[0] === name ? 'selected' : ''}>${name}</option>`).join('')}
+                    </select>
                 </div>
-            </div>
-        `).join('');
+            `;
+        }).join('');
     },
 
-    // Tocar un nombre lo prende/apaga al instante y guarda — sin botón de Guardar aparte.
-    // La página principal solo muestra el resumen; la selección vive dentro del modal.
-    toggleConvocadoPerson(roleKey, name) {
-        const sl = AppState.currentSetlist;
-        if (!sl) return;
-        if (!sl.convocados) sl.convocados = {};
-        if (!sl.convocados[roleKey]) sl.convocados[roleKey] = [];
-        const idx = sl.convocados[roleKey].indexOf(name);
-        if (idx === -1) sl.convocados[roleKey].push(name);
-        else sl.convocados[roleKey].splice(idx, 1);
-        Storage.saveSetlists();
-        const modalBody = document.getElementById('equipo-modal-body');
-        if (modalBody) modalBody.innerHTML = this.buildEquipoRowsHTML();
-        this.renderConvocadosDisplay();
+    bindEquipoSelects() {
+        document.querySelectorAll('#equipo-modal-body .conv-select').forEach(sel => {
+            sel.addEventListener('change', () => {
+                const roleKey = sel.dataset.role;
+                const sl = AppState.currentSetlist;
+                if (!sl) return;
+                if (!sl.convocados) sl.convocados = {};
+                sl.convocados[roleKey] = sel.multiple
+                    ? Array.from(sel.selectedOptions).map(o => o.value)
+                    : (sel.value ? [sel.value] : []);
+                Storage.saveSetlists();
+                this.renderConvocadosDisplay();
+            });
+        });
     },
 
     renderConvocadosDisplay() {
