@@ -2287,42 +2287,66 @@ const Router = {
         const current = (sl && sl.convocados) || {};
         return this.CONVOCADOS_ROLES.map(role => {
             const selected = current[role.key] || [];
-            if (role.multi) {
-                return `
-                    <div class="form-group">
-                        <label class="form-label" style="color:${role.color};">${role.label}</label>
-                        <select multiple size="${role.options.length}" class="conv-select form-select" data-role="${role.key}">
-                            ${role.options.map(name => `<option value="${name}" ${selected.includes(name) ? 'selected' : ''}>${name}</option>`).join('')}
-                        </select>
-                    </div>
-                `;
-            }
             return `
-                <div class="form-group">
-                    <label class="form-label" style="color:${role.color};">${role.label}</label>
-                    <select class="conv-select form-select" data-role="${role.key}">
-                        <option value="">Sin asignar</option>
-                        ${role.options.map(name => `<option value="${name}" ${selected[0] === name ? 'selected' : ''}>${name}</option>`).join('')}
-                    </select>
-                </div>
+                <details class="convocatoria-role" data-role-key="${role.key}">
+                    <summary style="color:${role.color};">${role.label}${selected.length ? ` (${selected.length})` : ''}</summary>
+                    <div class="convocatoria-role-body">
+                        <div class="convocatoria-name-list">
+                            ${role.options.map(name => `
+                                <button type="button" class="convocatoria-name-btn${selected.includes(name) ? ' added' : ''}" data-role="${role.key}" data-name="${name}">${name}</button>
+                            `).join('')}
+                        </div>
+                        <div class="convocatoria-selected" id="conv-selected-${role.key}">
+                            ${this.renderConvocadoTags(role.key, selected)}
+                        </div>
+                    </div>
+                </details>
             `;
         }).join('');
     },
 
+    renderConvocadoTags(roleKey, selected) {
+        if (!selected.length) return '<span class="convocatoria-empty">Nadie asignado todavía</span>';
+        return selected.map(name => `<span class="convocatoria-selected-tag" data-role="${roleKey}" data-name="${name}">${name} ✕</span>`).join('');
+    },
+
     bindEquipoSelects() {
-        document.querySelectorAll('#equipo-modal-body .conv-select').forEach(sel => {
-            sel.addEventListener('change', () => {
-                const roleKey = sel.dataset.role;
-                const sl = AppState.currentSetlist;
-                if (!sl) return;
-                if (!sl.convocados) sl.convocados = {};
-                sl.convocados[roleKey] = sel.multiple
-                    ? Array.from(sel.selectedOptions).map(o => o.value)
-                    : (sel.value ? [sel.value] : []);
-                Storage.saveSetlists();
-                this.renderConvocadosDisplay();
-            });
+        document.querySelectorAll('#equipo-modal-body .convocatoria-name-btn').forEach(btn => {
+            btn.addEventListener('click', () => this.toggleConvocadoPerson(btn.dataset.role, btn.dataset.name));
         });
+        document.querySelectorAll('#equipo-modal-body .convocatoria-selected-tag').forEach(tag => {
+            tag.addEventListener('click', () => this.toggleConvocadoPerson(tag.dataset.role, tag.dataset.name));
+        });
+    },
+
+    // Marca/desmarca sin volver a dibujar todo el modal — así los desplegables
+    // que ya estaban abiertos no se cierran solos al elegir un nombre.
+    toggleConvocadoPerson(roleKey, name) {
+        const sl = AppState.currentSetlist;
+        if (!sl) return;
+        if (!sl.convocados) sl.convocados = {};
+        if (!sl.convocados[roleKey]) sl.convocados[roleKey] = [];
+        const idx = sl.convocados[roleKey].indexOf(name);
+        if (idx === -1) sl.convocados[roleKey].push(name);
+        else sl.convocados[roleKey].splice(idx, 1);
+        Storage.saveSetlists();
+
+        const selected = sl.convocados[roleKey];
+        const role = this.CONVOCADOS_ROLES.find(r => r.key === roleKey);
+        document.querySelectorAll(`#equipo-modal-body .convocatoria-name-btn[data-role="${roleKey}"]`).forEach(btn => {
+            btn.classList.toggle('added', selected.includes(btn.dataset.name));
+        });
+        const selectedEl = document.getElementById(`conv-selected-${roleKey}`);
+        if (selectedEl) {
+            selectedEl.innerHTML = this.renderConvocadoTags(roleKey, selected);
+            selectedEl.querySelectorAll('.convocatoria-selected-tag').forEach(tag => {
+                tag.addEventListener('click', () => this.toggleConvocadoPerson(tag.dataset.role, tag.dataset.name));
+            });
+        }
+        const summary = document.querySelector(`#equipo-modal-body details[data-role-key="${roleKey}"] summary`);
+        if (summary && role) summary.textContent = `${role.label}${selected.length ? ` (${selected.length})` : ''}`;
+
+        this.renderConvocadosDisplay();
     },
 
     renderConvocadosDisplay() {
