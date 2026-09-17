@@ -2289,7 +2289,7 @@ const Router = {
             const selected = current[role.key] || [];
             return `
                 <details class="convocatoria-role" data-role-key="${role.key}">
-                    <summary style="color:${role.color};">${role.label}${selected.length ? ` (${selected.length})` : ''}</summary>
+                    <summary>${role.label}${selected.length ? ` (${selected.length})` : ''}</summary>
                     <div class="convocatoria-role-body">
                         <div class="convocatoria-name-list">
                             ${role.options.map(name => `
@@ -2355,13 +2355,13 @@ const Router = {
         const sl = AppState.currentSetlist;
         const data = (sl && sl.convocados) || {};
         const entries = this.CONVOCADOS_ROLES
-            .map(role => ({ label: role.label, color: role.color, names: (data[role.key] || []) }))
+            .map(role => ({ label: role.label, names: (data[role.key] || []) }))
             .filter(e => e.names.length > 0);
         if (!entries.length) { el.style.display = 'none'; el.innerHTML = ''; return; }
         el.style.display = 'flex';
         el.innerHTML = entries.map(e => `
-            <span class="convocado-chip" style="border-color:${e.color};">
-                <span class="instrumento" style="color:${e.color};">${e.label}:</span>
+            <span class="convocado-chip">
+                <span class="instrumento">${e.label}:</span>
                 <span class="persona">${e.names.join(', ')}</span>
             </span>
         `).join('');
