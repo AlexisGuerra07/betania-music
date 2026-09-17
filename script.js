@@ -2063,7 +2063,7 @@ const Router = {
             <div class="song-item" onclick="Router.openSetlist('${sl.id}')">
                 <div class="song-info">
                     <div class="song-title">${sl.name}</div>
-                    <div class="song-meta">${(sl.songIds || []).length} canción(es)${sl.creatorName ? ' • por ' + sl.creatorName : ''}${sl.uniformKey ? ' • 🎯 ' + sl.uniformKey : ''}</div>
+                    <div class="song-meta">${(sl.songIds || []).length} canción(es)${sl.creatorName ? ' • por ' + sl.creatorName : ''}</div>
                 </div>
                 <div class="song-actions" onclick="event.stopPropagation()">
                     <button class="action-btn delete-btn" onclick="Router.deleteSetlist('${sl.id}')" title="Eliminar">
@@ -2249,6 +2249,10 @@ const Router = {
         const sl = AppState.currentSetlist;
         if (!sl) return;
         sl.uniformKey = val || null;
+        // La tonalidad uniforme debe aplicarse a TODAS las canciones por igual —
+        // si alguna tenía un ajuste manual guardado de antes, ese ajuste le ganaba
+        // y la dejaba en otra tonalidad distinta al resto. Se limpia para evitarlo.
+        if (val) sl.songTransposeOverrides = {};
         Storage.saveSetlists();
         this.closeModal();
         this.renderSetlistDetail();
