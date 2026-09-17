@@ -127,24 +127,9 @@
                            style="font-size: 1.5rem; font-weight: 700; border: none; background: transparent; outline: none; padding: 0.25rem 0;">
                     <div style="display:flex; gap:0.5rem; flex-wrap:wrap; align-items:center;">
                         <button class="btn" id="btn-add-songs-to-setlist">+ Añadir canciones</button>
-                        <div class="custom-select">
-                            <button type="button" class="uniform-key-select" id="uniform-key-trigger" data-value="">Tonalidad</button>
-                            <div class="custom-select-menu" id="uniform-key-menu">
-                                <button type="button" class="custom-select-option" data-value="">Tonalidad</button>
-                                <button type="button" class="custom-select-option" data-value="C">C</button>
-                                <button type="button" class="custom-select-option" data-value="C#">C#</button>
-                                <button type="button" class="custom-select-option" data-value="D">D</button>
-                                <button type="button" class="custom-select-option" data-value="D#">D#</button>
-                                <button type="button" class="custom-select-option" data-value="E">E</button>
-                                <button type="button" class="custom-select-option" data-value="F">F</button>
-                                <button type="button" class="custom-select-option" data-value="F#">F#</button>
-                                <button type="button" class="custom-select-option" data-value="G">G</button>
-                                <button type="button" class="custom-select-option" data-value="G#">G#</button>
-                                <button type="button" class="custom-select-option" data-value="A">A</button>
-                                <button type="button" class="custom-select-option" data-value="A#">A#</button>
-                                <button type="button" class="custom-select-option" data-value="B">B</button>
-                            </div>
-                        </div>
+                        <button class="btn" id="btn-uniform-key">Tonalidad uniforme</button>
+                        <span id="uniform-key-badge" style="display:none; font-size:0.85rem; color:var(--text-secondary); font-weight:600;"></span>
+                        <button class="btn btn-sm" id="btn-clear-uniform-key" style="display:none;">↩️ Volver a tonalidades originales</button>
                         <button class="btn" id="btn-toggle-equipo">Convocatoria</button>
                     </div>
                     <div id="convocados-display" style="display:none;"></div>
@@ -179,24 +164,10 @@
 
                     <div class="reader-controls">
                         <div class="control-group transpose-controls" id="transpose-controls-wrap">
-                            <div class="custom-select">
-                                <button type="button" class="key-select-reader" id="current-key-reader" data-value="C">C</button>
-                                <div class="custom-select-menu" id="key-select-menu">
-                                    <button type="button" class="custom-select-option" data-value="I">I</button>
-                                    <button type="button" class="custom-select-option" data-value="C">C</button>
-                                    <button type="button" class="custom-select-option" data-value="C#">C#</button>
-                                    <button type="button" class="custom-select-option" data-value="D">D</button>
-                                    <button type="button" class="custom-select-option" data-value="D#">D#</button>
-                                    <button type="button" class="custom-select-option" data-value="E">E</button>
-                                    <button type="button" class="custom-select-option" data-value="F">F</button>
-                                    <button type="button" class="custom-select-option" data-value="F#">F#</button>
-                                    <button type="button" class="custom-select-option" data-value="G">G</button>
-                                    <button type="button" class="custom-select-option" data-value="G#">G#</button>
-                                    <button type="button" class="custom-select-option" data-value="A">A</button>
-                                    <button type="button" class="custom-select-option" data-value="A#">A#</button>
-                                    <button type="button" class="custom-select-option" data-value="B">B</button>
-                                </div>
-                            </div>
+                            <button class="transpose-btn" id="btn-transpose-down-reader">♭</button>
+                            <div class="current-key" id="current-key-reader">C</div>
+                            <button class="transpose-btn" id="btn-transpose-up-reader">♯</button>
+                            <button class="btn btn-sm" id="btn-reset-key-reader">Base</button>
                         </div>
 
                         <div class="control-group lead-vocal-controls lv-hidden" id="lead-vocal-controls-wrap">
@@ -211,17 +182,18 @@
                         <div class="control-group font-size-controls">
                             <button class="btn btn-sm" id="btn-font-decrease" title="Achicar letra">A-</button>
                             <button class="btn btn-sm" id="btn-font-increase" title="Agrandar letra">A+</button>
-                            <button class="btn-icon-nav" id="btn-fullscreen-toggle" title="Pantalla completa">⛶</button>
                         </div>
 
                         <div class="control-group view-controls">
-                            <button class="btn btn-sm" id="btn-voice-mode">Letra</button>
+                            <button class="btn btn-sm" id="btn-toggle-notation">Ver en grados</button>
+                            <button class="btn btn-sm" id="btn-voice-mode">🎤 Modo Voz</button>
                         </div>
 
                         <div class="control-divider"></div>
 
                         <div class="control-group utility-controls">
                             <button class="btn btn-sm" id="btn-song-structure-setlist" style="display:none;">🗂️ Orden</button>
+                            <button class="btn btn-sm" id="btn-fullscreen-toggle">⛶ Pantalla completa</button>
                             <button class="btn btn-primary" id="btn-edit-song" style="display:none;">Editar</button>
                         </div>
                     </div>
