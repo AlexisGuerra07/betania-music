@@ -338,8 +338,44 @@ const Teleprompter = {
         if (instanceNum) return sameCategory[Math.min(instanceNum - 1, sameCategory.length - 1)];
         return sameCategory[0];
     },
+    // Arma el plan directo a partir de los bloques ya expandidos según el orden — cada
+    // bloque en pantalla dura lo que le corresponde (su propia cantidad de acordes,
+    // multiplicada por las repeticiones de su línea, ej. "Coro x8" tarda 8 veces lo
+    // normal en ESE bloque, en vez de recorrerlo 8 veces con saltos hacia atrás).
+    buildPlanFromOrderedBlocks(song, ordered, sectionEls) {
+        const segments = [];
+        ordered.forEach((block, i) => {
+            const el = sectionEls[i];
+            if (!el) return;
+            const rect = el.getBoundingClientRect();
+            const topY = rect.top + window.scrollY;
+            const height = Math.max(20, rect.height);
+            const { baseText, repeats } = this.parseStructureEntry(block.label);
+            const durationSec = this.estimateSectionDurationSec({ pairs: block.pairs }, song, baseText) * repeats;
+            segments.push({ startY: topY, endY: topY + height, durationSec });
+        });
+        console.log('[Teleprompter] Plan (modo "según el orden"):', segments.map(s => ({ y: Math.round(s.startY), altura: Math.round(s.endY - s.startY), durationSec: Math.round(s.durationSec) })));
+        console.log('[Teleprompter] Duración total estimada (seg):', Math.round(segments.reduce((sum, s) => sum + s.durationSec, 0)));
+        return segments.length ? segments : null;
+    },
+
     buildPlan(song) {
         if (!song || !song.sections || !song.sections.length) return null;
+
+        // Si la letra está armada "según el orden" (dentro de un repertorio, cada bloque
+        // en pantalla ya es una línea real del orden, repetida físicamente si hace falta),
+        // cada bloque corresponde 1 a 1 con lo que se ve — no hay que emparejar nada,
+        // se arma el plan directo a partir de lo que ya está en pantalla.
+        if (AppState.currentSetlist) {
+            const ordered = Router.getOrderedRenderSections(song);
+            if (ordered) {
+                const orderedEls = Array.from(document.querySelectorAll('#song-content .section'));
+                if (orderedEls.length === ordered.length) {
+                    return this.buildPlanFromOrderedBlocks(song, ordered, orderedEls);
+                }
+            }
+        }
+
         const structureRaw = Router.getEffectiveStructure(song);
         const sectionEls = Array.from(document.querySelectorAll('#song-content .section'));
         if (!structureRaw.length || sectionEls.length !== song.sections.length) return null;
