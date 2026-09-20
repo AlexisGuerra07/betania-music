@@ -672,6 +672,14 @@ const Storage = {
         if (this.setlistsUnsub) this.setlistsUnsub();
         this.setlistsUnsub = db.collection('appdata').doc('setlists').onSnapshot(doc => {
             AppState.setlists = doc.exists ? (doc.data().setlists || []) : [];
+            // Si había un repertorio abierto, lo reapuntamos al objeto nuevo correspondiente.
+            // Sin esto, cualquier cambio hecho sobre la referencia vieja (ej. transponer una
+            // canción) se pierde en silencio al guardar, porque esa referencia ya no forma
+            // parte del array que realmente se sube.
+            if (AppState.currentSetlist) {
+                const fresh = AppState.setlists.find(s => s.id === AppState.currentSetlist.id);
+                if (fresh) AppState.currentSetlist = fresh;
+            }
             if (callback) callback();
         }, err => console.error(err));
     },
