@@ -556,12 +556,30 @@ const HorizontalStructureSync = {
 // ============ HISTORIAL DE NAVEGACIÓN ============
 const HistoryManager = {
     init() {
-        history.replaceState({ view: 'repertorio' }, '', location.href);
+        // Solo se pone "repertorio" si de verdad no había nada antes (primera vez que
+        // se abre la app). Si ya había un estado (ej. veníamos leyendo una canción antes
+        // de recargar/deslizar para actualizar), se conserva tal cual — el navegador ya
+        // lo guarda solo across reloads, el problema era que antes lo pisábamos siempre.
+        if (!history.state) {
+            history.replaceState({ view: 'repertorio' }, '', location.href);
+        }
         window.addEventListener('popstate', (e) => this.handlePopState(e));
     },
     push(state) { history.pushState(state, '', location.href); },
-    handlePopState(e) {
-        const state = e.state || { view: 'repertorio' };
+    // Una vez que canciones y repertorios ya cargaron desde la nube, intenta reabrir
+    // la vista que había antes de recargar la página (ej. al deslizar para actualizar).
+    // Antes de eso no sirve de nada: la canción/repertorio referenciados todavía no
+    // existen en AppState, así que no se podría encontrar.
+    tryRestoreOnLoad() {
+        if (this._restored) return;
+        if (!AppState.songsLoaded || !AppState.setlistsLoaded) return;
+        this._restored = true;
+        this.restoreFromState(history.state);
+    },
+    // Reconstruye la app a partir de un estado guardado (ya sea por "atrás/adelante"
+    // del navegador, o al recargar la página con un estado previo).
+    restoreFromState(state) {
+        state = state || { view: 'repertorio' };
         if (AppState.fullscreenMode && !state.fullscreen) { Router.exitFullscreenMode(); return; }
         if (AppState.currentView === 'edicion' && AppState.currentSong) { Router.saveCurrentSong(); }
 
@@ -585,7 +603,8 @@ const HistoryManager = {
         } else {
             Router.navigate(state.view || 'repertorio', false);
         }
-    }
+    },
+    handlePopState(e) { this.restoreFromState(e.state); }
 };
 
 // Estado global
@@ -2984,12 +3003,14 @@ document.addEventListener('DOMContentLoaded', () => {
         SplashManager.checkReady();
         if (AppState.currentView === 'canciones') Router.renderSongsList();
         if (AppState.currentView === 'repertorio-detail') Router.renderSetlistDetail();
+        HistoryManager.tryRestoreOnLoad();
     });
     Storage.listenSetlists(() => {
         AppState.setlistsLoaded = true;
         SplashManager.checkReady();
         if (AppState.currentView === 'repertorio') Router.renderSetlistsList();
         if (AppState.currentView === 'repertorio-detail') Router.renderSetlistDetail();
+        HistoryManager.tryRestoreOnLoad();
     });
     Storage.listenVocalProfiles(() => {
         AppState.vocalProfilesLoaded = true;
