@@ -1870,13 +1870,67 @@ const Router = {
         }
     },
 
+    // Versión sin DOM de la misma idea que usa el teleprompter para "anclas": separa
+    // las secciones originales en bloques más chicos cuando dentro de una sección hay
+    // una etiqueta interna (ej. una Estrofa que en realidad contiene un Pre-Coro metido
+    // adentro). Sirve para poder armar la vista "según el orden" sin depender de medir
+    // posiciones en pantalla.
+    splitSectionsIntoAnchors(song) {
+        const anchors = [];
+        (song.sections || []).forEach(sectionData => {
+            let current = { label: sectionData.label || '', pairs: [] };
+            anchors.push(current);
+            (sectionData.pairs || []).forEach(pair => {
+                const letraTrim = (pair.letra || '').trim();
+                const acordesEmpty = !pair.acordes || !pair.acordes.trim();
+                const isInline = letraTrim && acordesEmpty && ChordParser.isSectionHeader(letraTrim);
+                if (isInline) {
+                    const inlineName = ChordParser.normalizeSectionName(letraTrim);
+                    current = { label: inlineName, pairs: [] };
+                    anchors.push(current);
+                } else {
+                    current.pairs.push(pair);
+                }
+            });
+        });
+        return anchors;
+    },
+
+    // Arma la letra siguiendo el "Orden de la canción" en vez del orden en que se
+    // escribió originalmente: cada línea del orden (ej. "Coro x8") se convierte en su
+    // propio bloque, con ese texto completo como título y el contenido de esa sección
+    // debajo. Devuelve null si la canción no tiene ningún orden cargado.
+    getOrderedRenderSections(song) {
+        const structureRaw = this.getEffectiveStructure(song);
+        if (!structureRaw.length) return null;
+        const anchors = this.splitSectionsIntoAnchors(song);
+        if (!anchors.length) return null;
+        const result = [];
+        structureRaw.forEach(rawEntry => {
+            const { baseText } = Teleprompter.parseStructureEntry(rawEntry);
+            const match = Teleprompter.matchSection(baseText, anchors);
+            if (!match) return;
+            result.push({ label: rawEntry.trim(), pairs: match.pairs });
+        });
+        return result.length ? result : null;
+    },
+
     renderSongContent() {
         const content = document.getElementById('song-content');
         if (!AppState.currentSong) return;
         const song = AppState.currentSong;
         const mode = AppState.notationMode || 'chords';
 
-        content.innerHTML = song.sections.map(section => {
+        // Dentro de un repertorio, si la canción tiene un orden cargado, se arma
+        // siguiendo ESE orden (repitiendo bloques según haga falta). Sola desde
+        // Canciones, o sin orden cargado, se ve como siempre (tal cual se escribió).
+        let sectionsToRender = song.sections;
+        if (AppState.currentSetlist) {
+            const ordered = this.getOrderedRenderSections(song);
+            if (ordered) sectionsToRender = ordered;
+        }
+
+        content.innerHTML = sectionsToRender.map(section => {
             const sectionChip = this.buildStructureChip(section.label);
             return `
             <div class="section">
