@@ -1149,6 +1149,15 @@ const Router = {
         this.bindButton('btn-detect-key', () => Editor.detectKey());
         this.bindButton('btn-edit-song-structure', () => Editor.showStructureModal());
         this.bindButton('btn-song-structure-setlist', () => this.showSetlistStructureModal());
+        const structureBarInner = document.getElementById('structure-bar-inner');
+        if (structureBarInner && !structureBarInner.hasAttribute('data-bound')) {
+            structureBarInner.addEventListener('click', (e) => {
+                const chip = e.target.closest('.structure-chip');
+                if (!chip) return;
+                this.scrollToStructureIndex(parseInt(chip.dataset.index, 10), chip.dataset.label);
+            });
+            structureBarInner.setAttribute('data-bound', 'true');
+        }
         this.bindInput('search-box', (e) => this.filterSongs(e.target.value));
         this.bindInput('bpm-editor-input', (e) => {
             if (!AppState.currentSong) return;
@@ -1588,11 +1597,43 @@ const Router = {
         const structure = this.getEffectiveStructure(AppState.currentSong);
         if (!structure.length) { bar.style.display = 'none'; inner.innerHTML = ''; StickyStructureBar.reset(); return; }
         bar.style.display = 'block';
-        inner.innerHTML = structure.map(label => {
+        inner.innerHTML = structure.map((label, idx) => {
             const { text, color, textColor } = this.buildStructureChip(label);
-            return `<span class="structure-chip" style="background:${color};color:${textColor}">${text}</span>`;
+            return `<span class="structure-chip" style="background:${color};color:${textColor}" data-index="${idx}" data-label="${label.replace(/"/g, '&quot;')}">${text}</span>`;
         }).join('');
         requestAnimationFrame(() => HorizontalStructureSync.update());
+    },
+
+    // Detecta si la letra actual se está mostrando "expandida según el orden" (una
+    // burbuja = un bloque en pantalla, mismo orden) o "tal cual se escribió" (varias
+    // burbujas pueden apuntar al mismo bloque). Del primer caso alcanza con el índice;
+    // del segundo hay que buscar la etiqueta correspondiente en el propio texto en pantalla.
+    scrollToStructureIndex(index, rawLabel) {
+        const sectionEls = Array.from(document.querySelectorAll('#song-content .section'));
+        if (!sectionEls.length) return;
+        const isExpanded = !!(AppState.currentSetlist && this.getOrderedRenderSections(AppState.currentSong));
+        let target = null;
+        if (isExpanded) {
+            target = sectionEls[index] || null;
+        } else {
+            const { baseText } = Teleprompter.parseStructureEntry(rawLabel);
+            const allLabels = Array.from(document.querySelectorAll('#song-content .section-label'));
+            const normalized = baseText.toLowerCase();
+            let labelEl = allLabels.find(el => el.textContent.trim().toLowerCase() === normalized);
+            if (!labelEl) {
+                const category = this.getStructureCategoryKey(baseText);
+                if (category) {
+                    const sameCategory = allLabels.filter(el => this.getStructureCategoryKey(el.textContent.trim()) === category);
+                    if (sameCategory.length) {
+                        const numMatch = normalized.match(/(\d+)\s*$/);
+                        const instanceNum = numMatch ? parseInt(numMatch[1], 10) : null;
+                        labelEl = instanceNum ? sameCategory[Math.min(instanceNum - 1, sameCategory.length - 1)] : sameCategory[0];
+                    }
+                }
+            }
+            target = labelEl || null;
+        }
+        if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
     },
 
     // Editar el orden PROPIO DE ESTE REPERTORIO (cualquiera puede) — solo disponible viendo desde un repertorio
