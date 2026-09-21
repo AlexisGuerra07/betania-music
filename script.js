@@ -38,6 +38,103 @@ const db = firebase.firestore();
 const ADMIN_EMAIL = 'alexisg898@gmail.com';
 
 // ============ WAKE LOCK ============
+// ============ METRÓNOMO (ventanita al tocar el BPM de una canción) ============
+// Genera el clic con Web Audio (sin archivos de sonido externos), respetando el BPM
+// y el compás de la canción — el primer tiempo de cada compás suena distinto (acento).
+const Metronome = {
+    audioCtx: null,
+    running: false,
+    timerId: null,
+    beatIndex: 0,
+    bpm: 120,
+    beatsPerMeasure: 4,
+
+    ensureContext() {
+        if (!this.audioCtx) {
+            const Ctx = window.AudioContext || window.webkitAudioContext;
+            if (Ctx) this.audioCtx = new Ctx();
+        }
+        if (this.audioCtx && this.audioCtx.state === 'suspended') this.audioCtx.resume();
+    },
+
+    playClick(accent) {
+        if (!this.audioCtx) return;
+        const ctx = this.audioCtx;
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.frequency.value = accent ? 1050 : 750;
+        gain.gain.setValueAtTime(0.001, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.5, ctx.currentTime + 0.005);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.06);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start();
+        osc.stop(ctx.currentTime + 0.07);
+    },
+
+    open(song) {
+        this.bpm = (song && song.bpm) || 120;
+        this.beatsPerMeasure = Teleprompter.getBeatsPerMeasure(song);
+        this.beatIndex = 0;
+        const popup = document.getElementById('metronome-popup');
+        const bpmLabel = document.getElementById('metronome-bpm');
+        if (bpmLabel) bpmLabel.textContent = `${this.bpm} BPM`;
+        this.renderDots();
+        if (popup) popup.style.display = 'flex';
+    },
+
+    close() {
+        this.stop();
+        const popup = document.getElementById('metronome-popup');
+        if (popup) popup.style.display = 'none';
+    },
+
+    renderDots() {
+        const wrap = document.getElementById('metronome-dots');
+        if (!wrap) return;
+        wrap.innerHTML = Array.from({ length: this.beatsPerMeasure }).map(() => '<span class="metronome-dot"></span>').join('');
+    },
+
+    updateDots() {
+        const dots = document.querySelectorAll('#metronome-dots .metronome-dot');
+        dots.forEach((dot, i) => dot.classList.toggle('active', i === (this.beatIndex % this.beatsPerMeasure)));
+    },
+
+    tick() {
+        const accent = this.beatIndex % this.beatsPerMeasure === 0;
+        this.playClick(accent);
+        this.updateDots();
+        this.beatIndex++;
+    },
+
+    start() {
+        if (this.running || !this.bpm) return;
+        this.ensureContext();
+        if (!this.audioCtx) return; // el navegador no soporta Web Audio
+        this.running = true;
+        this.beatIndex = 0;
+        this.tick();
+        this.timerId = setInterval(() => this.tick(), (60000 / this.bpm));
+        this.updateToggleIcon();
+    },
+
+    stop() {
+        this.running = false;
+        if (this.timerId) { clearInterval(this.timerId); this.timerId = null; }
+        document.querySelectorAll('#metronome-dots .metronome-dot').forEach(dot => dot.classList.remove('active'));
+        this.updateToggleIcon();
+    },
+
+    toggle() { this.running ? this.stop() : this.start(); },
+
+    updateToggleIcon() {
+        const play = document.getElementById('metronome-icon-play');
+        const stop = document.getElementById('metronome-icon-stop');
+        if (play) play.style.display = this.running ? 'none' : 'block';
+        if (stop) stop.style.display = this.running ? 'block' : 'none';
+    }
+};
+
 const WakeLockManager = {
     sentinel: null,
     async request() {
@@ -1184,6 +1281,15 @@ const Router = {
         this.bindButton('btn-tp-slower', () => Teleprompter.slower());
         this.bindButton('btn-tp-faster', () => Teleprompter.faster());
         this.bindButton('btn-close-youtube-mini', () => this.closeYoutubeMiniPlayer());
+        const readerMeta = document.getElementById('reader-meta');
+        if (readerMeta && !readerMeta.hasAttribute('data-bound')) {
+            readerMeta.addEventListener('click', (e) => {
+                if (e.target.closest('.reader-bpm-clickable') && AppState.currentSong) Metronome.open(AppState.currentSong);
+            });
+            readerMeta.setAttribute('data-bound', 'true');
+        }
+        this.bindButton('btn-close-metronome', () => Metronome.close());
+        this.bindButton('btn-metronome-toggle', () => Metronome.toggle());
         this.bindButton('btn-save-song', () => this.saveCurrentSong());
         this.bindButton('btn-add-section', () => Editor.addSection());
         this.bindButton('btn-add-pair-editor', () => Editor.addPair());
@@ -1415,7 +1521,7 @@ const Router = {
     formatReaderMeta(song) {
         const parts = [];
         if (song.artist) parts.push(song.artist);
-        if (song.bpm) parts.push(`${song.bpm} BPM`);
+        if (song.bpm) parts.push(`<span class="reader-bpm-clickable" title="Abrir metrónomo">${song.bpm} BPM</span>`);
         if (song.compas) parts.push(`Compás ${song.compas}`);
         if (song.keyBase) parts.push(`Tono: ${song.keyBase}`);
         return parts.length > 0 ? parts.join(' • ') : '';
@@ -1835,7 +1941,7 @@ const Router = {
         document.getElementById('reader-title').textContent = song.title;
         const metaText = this.formatReaderMeta(song);
         const metaEl = document.getElementById('reader-meta');
-        metaEl.textContent = metaText;
+        metaEl.innerHTML = metaText;
         metaEl.style.display = metaText ? 'block' : 'none';
 
         const extraEl = document.getElementById('reader-extra-info');
@@ -1876,7 +1982,7 @@ const Router = {
         document.getElementById('reader-title').textContent = song.title;
         const metaText = this.formatReaderMeta(song);
         const metaEl = document.getElementById('reader-meta');
-        metaEl.textContent = metaText;
+        metaEl.innerHTML = metaText;
         metaEl.style.display = metaText ? 'block' : 'none';
 
         const extraEl = document.getElementById('reader-extra-info');
@@ -1923,6 +2029,7 @@ const Router = {
         StickyStructureBar.reset();
         Teleprompter.reset();
         this.closeYoutubeMiniPlayer();
+        Metronome.close();
         this.exitFullscreenMode();
     },
 
