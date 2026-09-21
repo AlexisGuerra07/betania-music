@@ -758,6 +758,52 @@ body.fullscreen-active .structure-bar-inner::-webkit-scrollbar { display: none; 
     box-shadow: var(--shadow-md);
 }
 
+.metronome-popup {
+    position: fixed;
+    top: max(4.5rem, calc(env(safe-area-inset-top) + 4rem));
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 950;
+    background: white;
+    border-radius: 14px;
+    box-shadow: var(--shadow-lg);
+    padding: 1.1rem 1.4rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.6rem;
+    min-width: 160px;
+}
+.metronome-bpm { font-weight: 700; font-size: 1.1rem; color: var(--text-primary); }
+.metronome-dots { display: flex; gap: 0.4rem; }
+.metronome-dot {
+    width: 0.6rem;
+    height: 0.6rem;
+    border-radius: 50%;
+    background: var(--border-color);
+    transition: background 0.05s, transform 0.05s;
+}
+.metronome-dot.active { background: var(--primary-color); transform: scale(1.3); }
+.metronome-toggle-btn {
+    background: var(--primary-color);
+    color: white;
+    border: none;
+    width: 3rem;
+    height: 3rem;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    padding: 0;
+}
+.metronome-toggle-btn:hover { background: var(--primary-hover); }
+.reader-bpm-clickable {
+    cursor: pointer;
+    text-decoration: underline dotted;
+    text-underline-offset: 2px;
+}
+
 .import-preview-item {
     display: flex;
     align-items: center;
