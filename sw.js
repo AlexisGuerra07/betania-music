@@ -1,4 +1,4 @@
-// Service Worker mínimo para Betania Music.
+// Service Worker mínimo para Repertia.
 // Su único propósito es cumplir el requisito de Chrome para que la app sea
 // instalable de verdad (icono propio, sin barra de direcciones al abrirla).
 // A PROPÓSITO no cachea nada: cada petición va siempre a la red tal cual,
