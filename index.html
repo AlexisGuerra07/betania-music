@@ -36,8 +36,11 @@
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
+    <!-- Dos versiones del logo de arranque: el CSS muestra una u otra según el
+         tema. La clara lleva el fondo crema incrustado; la oscura es transparente. -->
     <div id="app-splash">
-        <img src="logo-splash.webp" alt="Repertia" id="splash-logo">
+        <img src="logo-splash.webp" alt="Repertia" id="splash-logo" class="splash-logo splash-logo-light">
+        <img src="logo-splash-dark.webp" alt="Repertia" class="splash-logo splash-logo-dark">
     </div>
 
     <button id="btn-fullscreen-exit">✕</button>
