@@ -13,6 +13,21 @@
     <meta name="apple-mobile-web-app-title" content="Repertia">
     <link rel="apple-touch-icon" href="apple-touch-icon.png">
 
+    <!-- Aplica el tema guardado ANTES de pintar nada, para que al abrir la app
+         no se vea un destello blanco antes de pasar a oscuro. -->
+    <script>
+        (function () {
+            try {
+                var saved = localStorage.getItem('repertia_theme');
+                if (saved === 'dark' || saved === 'light') {
+                    document.documentElement.setAttribute('data-theme', saved);
+                    var meta = document.querySelector('meta[name="theme-color"]');
+                    if (meta) meta.setAttribute('content', saved === 'dark' ? '#0e1922' : '#0f2939');
+                }
+            } catch (e) { /* modo incógnito o almacenamiento bloqueado: se queda en claro */ }
+        })();
+    </script>
+
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.12.2/mammoth.browser.min.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
@@ -71,6 +86,10 @@
                 </nav>
                 <div class="auth-section" style="display:flex; align-items:center; gap:0.5rem;">
                     <span id="user-email-label" style="display:none; font-size:0.8rem; color: var(--text-secondary);"></span>
+                    <button class="btn btn-sm btn-theme" id="btn-theme-toggle" title="Cambiar a modo oscuro" aria-label="Cambiar tema">
+                        <svg id="theme-icon-moon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
+                        <svg id="theme-icon-sun" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none;"><circle cx="12" cy="12" r="4"></circle><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"></path></svg>
+                    </button>
                     <button class="btn btn-sm" id="btn-login">🔑 Iniciar sesión</button>
                     <button class="btn btn-sm" id="btn-logout" style="display:none;">Cerrar sesión</button>
                 </div>
@@ -95,7 +114,7 @@
 
                 <div class="search-container" style="display:flex; gap:0.75rem; flex-wrap: wrap;">
                     <input type="text" class="search-box" id="search-box" placeholder="Buscar por título o autor..." style="flex:1; min-width: 200px;">
-                    <select id="sort-select" style="padding: 0.75rem 1rem; border: 2px solid var(--border-color); border-radius: 8px; font-size: 0.9rem; background: white; color: var(--text-primary); cursor: pointer;">
+                    <select id="sort-select" style="padding: 0.75rem 1rem; border: 2px solid var(--border-color); border-radius: 8px; font-size: 0.9rem; background: var(--bg-card); color: var(--text-primary); cursor: pointer;">
                         <option value="alpha">Orden alfabético (A-Z)</option>
                         <option value="recent">Últimas añadidas</option>
                         <option value="key">Tonalidad</option>
@@ -135,7 +154,7 @@
                 <div class="section-header" style="flex-direction: column; align-items: stretch; gap: 1rem;">
                     <button class="btn" id="btn-back-to-repertorios" style="align-self: flex-start;">← Volver a repertorios</button>
                     <input type="text" id="setlist-name-input" placeholder="Nombre del repertorio" 
-                           style="font-size: 1.5rem; font-weight: 700; border: none; background: transparent; outline: none; padding: 0.25rem 0;">
+                           style="font-size: 1.5rem; font-weight: 700; border: none; background: transparent; outline: none; padding: 0.25rem 0; color: var(--text-primary);">
                     <div style="display:flex; gap:0.5rem; flex-wrap:wrap; align-items:center;">
                         <button class="btn" id="btn-add-songs-to-setlist">+ Añadir canciones</button>
                         <button class="btn" id="btn-uniform-key">Tonalidad uniforme</button>
@@ -269,7 +288,7 @@
                         <div class="toolbar-left" style="flex-wrap: wrap;">
                             <button class="btn btn-sm" id="btn-back-from-editor">← Volver</button>
                             <input type="text" id="song-title-editor" placeholder="Título de la canción" 
-                                   style="font-size: 1.1rem; font-weight: 600; border: none; background: transparent; outline: none; min-width: 180px;">
+                                   style="font-size: 1.1rem; font-weight: 600; border: none; background: transparent; outline: none; min-width: 180px; color: var(--text-primary);">
                             <input type="text" id="song-artist-editor" placeholder="Autor / Intérprete" 
                                    style="font-size: 0.9rem; color: var(--text-secondary); border: none; background: transparent; outline: none; min-width: 150px;">
                         </div>
@@ -317,5 +336,38 @@
     </div>
 
     <script src="script.js"></script>
+
+    <!-- Interruptor de modo oscuro. Va aparte de script.js a propósito: es
+         independiente del resto de la app y guarda la elección en el propio
+         móvil (no en la nube), para que cada uno tenga el tema que prefiera. -->
+    <script>
+        (function () {
+            var root = document.documentElement;
+            var btn = document.getElementById('btn-theme-toggle');
+            var moon = document.getElementById('theme-icon-moon');
+            var sun = document.getElementById('theme-icon-sun');
+            var meta = document.querySelector('meta[name="theme-color"]');
+
+            function applyTheme(theme) {
+                root.setAttribute('data-theme', theme);
+                if (meta) meta.setAttribute('content', theme === 'dark' ? '#0e1922' : '#0f2939');
+                if (moon) moon.style.display = theme === 'dark' ? 'none' : 'block';
+                if (sun) sun.style.display = theme === 'dark' ? 'block' : 'none';
+                if (btn) btn.title = theme === 'dark' ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro';
+            }
+
+            var saved = null;
+            try { saved = localStorage.getItem('repertia_theme'); } catch (e) { }
+            applyTheme(saved === 'dark' ? 'dark' : 'light');
+
+            if (btn) {
+                btn.addEventListener('click', function () {
+                    var next = root.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+                    try { localStorage.setItem('repertia_theme', next); } catch (e) { }
+                    applyTheme(next);
+                });
+            }
+        })();
+    </script>
 </body>
 </html>
