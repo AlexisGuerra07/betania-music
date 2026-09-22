@@ -292,8 +292,9 @@
                             <button class="btn btn-sm" id="btn-back-from-editor">← Volver</button>
                             <input type="text" id="song-title-editor" placeholder="Título de la canción" 
                                    style="font-size: 1.1rem; font-weight: 600; border: none; background: transparent; outline: none; min-width: 180px; color: var(--text-primary);">
-                            <input type="text" id="song-artist-editor" placeholder="Autor / Intérprete" 
+                            <input type="text" id="song-artist-editor" placeholder="Autor / Intérprete" list="artists-datalist" autocomplete="off"
                                    style="font-size: 0.9rem; color: var(--text-secondary); border: none; background: transparent; outline: none; min-width: 150px;">
+                            <datalist id="artists-datalist"></datalist>
                         </div>
                         <div class="toolbar-right">
                             <div class="chips-container">
@@ -370,6 +371,89 @@
                     applyTheme(next);
                 });
             }
+        })();
+    </script>
+
+    <!-- Sugerencias de autor. Dos cosas, ambas independientes de script.js:
+         1) Al enfocar el campo "Autor", se rellena una lista desplegable con los
+            autores que ya existen en la biblioteca.
+         2) Al salir del campo, si lo escrito es el mismo autor que uno existente
+            pero con otra grafía (mayúsculas, tildes, "y" vs "&"), se corrige a la
+            grafía que ya estaba. Así "majo & dan" no acaba siendo un autor distinto
+            de "Majo y Dan". -->
+    <script>
+        (function () {
+            var DATALIST_ID = 'artists-datalist';
+            var TILDES = { 'á': 'a', 'é': 'e', 'í': 'i', 'ó': 'o', 'ú': 'u', 'ü': 'u', 'ñ': 'n' };
+
+            // Reduce un nombre a su "huella": todo en minúsculas, sin tildes, con
+            // "&" convertido en "y" y sin espacios ni puntuación de sobra. Dos
+            // nombres con la misma huella se consideran el mismo autor.
+            function fingerprint(name) {
+                return (name || '')
+                    .toLowerCase()
+                    .replace(/[áéíóúüñ]/g, function (c) { return TILDES[c] || c; })
+                    .replace(/&/g, ' y ')
+                    .replace(/[.,'"()]/g, '')
+                    .replace(/\s+/g, ' ')
+                    .trim();
+            }
+
+            // Autores ya usados, uno por huella (se conserva la primera grafía que
+            // aparezca). Se puede excluir una canción: la que se está editando, para
+            // que su propia grafía anterior no impida corregirla.
+            function knownArtists(excludeSongId) {
+                var map = {};
+                var songs = (window.AppState && AppState.songs) || [];
+                songs.forEach(function (song) {
+                    if (!song || (excludeSongId && song.id === excludeSongId)) return;
+                    var raw = (song.artist || '').trim();
+                    if (!raw) return;
+                    var key = fingerprint(raw);
+                    if (key && !map[key]) map[key] = raw;
+                });
+                return map;
+            }
+
+            function fillDatalist(excludeSongId) {
+                var datalist = document.getElementById(DATALIST_ID);
+                if (!datalist) return;
+                var map = knownArtists(excludeSongId);
+                var names = Object.keys(map).map(function (k) { return map[k]; });
+                names.sort(function (a, b) { return a.localeCompare(b, 'es', { sensitivity: 'base' }); });
+                datalist.innerHTML = names.map(function (n) {
+                    return '<option value="' + n.replace(/"/g, '&quot;') + '"></option>';
+                }).join('');
+            }
+
+            function currentSongId() {
+                return (window.AppState && AppState.currentSong) ? AppState.currentSong.id : null;
+            }
+
+            function isArtistField(el) {
+                return !!el && (el.id === 'song-artist-editor' || el.id === 'modal-artist');
+            }
+
+            document.addEventListener('focusin', function (e) {
+                if (!isArtistField(e.target)) return;
+                e.target.setAttribute('list', DATALIST_ID);
+                e.target.setAttribute('autocomplete', 'off');
+                fillDatalist(currentSongId());
+            });
+
+            document.addEventListener('focusout', function (e) {
+                var el = e.target;
+                if (!isArtistField(el)) return;
+                var typed = (el.value || '').trim();
+                if (!typed) return;
+                var existing = knownArtists(currentSongId())[fingerprint(typed)];
+                var corrected = existing || typed;
+                if (corrected === el.value) return;
+                el.value = corrected;
+                // script.js guarda el autor escuchando el evento "input" del campo;
+                // al cambiarlo desde aquí hay que avisarle para que no se pierda.
+                el.dispatchEvent(new Event('input', { bubbles: true }));
+            });
         })();
     </script>
 </body>
