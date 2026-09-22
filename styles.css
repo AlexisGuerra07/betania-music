@@ -1,6 +1,16 @@
+/* ============ TEMAS (claro y oscuro) ============
+   Todos los colores de la app salen de estas variables. El tema oscuro se
+   activa poniendo data-theme="dark" en la etiqueta <html> (lo hace el botón
+   de la cabecera). Si añades algo nuevo, usa siempre una variable de aquí
+   en vez de escribir un color a mano: así sigue funcionando en los dos temas. */
 :root {
+    color-scheme: light;
+
     --primary-color: #0f2939;
     --primary-hover: #0a1d29;
+    --on-primary: #ffffff;
+    --accent-color: #c8952f;
+
     --secondary-color: #6b7280;
     --success-color: #16a34a;
     --danger-color: #dc2626;
@@ -9,6 +19,8 @@
     --bg-primary: #ffffff;
     --bg-secondary: #f9fafb;
     --bg-tertiary: #f3f4f6;
+    --bg-card: #ffffff;
+    --splash-bg: #f8f4ea;
 
     --text-primary: #111827;
     --text-secondary: #4b5563;
@@ -17,12 +29,56 @@
     --border-color: #e5e7eb;
     --border-hover: #d1d5db;
 
+    --chord-color: #0f2939;
+    --chord-input-bg: rgba(17, 24, 39, 0.03);
+    --overlay-bg: rgba(0, 0, 0, 0.5);
+    --tag-danger-hover: #fecaca;
+
     --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
     --shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
     --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.08), 0 2px 4px -2px rgb(0 0 0 / 0.08);
     --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
 
     --mono-font: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+}
+
+[data-theme="dark"] {
+    color-scheme: dark;
+
+    /* En oscuro el color de marca se invierte: el dorado del logo pasa a ser
+       el color de acento (botones, acordes), sobre fondos azul noche. */
+    --primary-color: #e5bd72;
+    --primary-hover: #f0cd8c;
+    --on-primary: #0e1922;
+    --accent-color: #e5bd72;
+
+    --secondary-color: #94a3b8;
+    --success-color: #4ade80;
+    --danger-color: #f87171;
+    --warning-color: #fbbf24;
+
+    --bg-primary: #0e1922;
+    --bg-secondary: #16242f;
+    --bg-tertiary: #1e3242;
+    --bg-card: #16242f;
+    --splash-bg: #0e1922;
+
+    --text-primary: #e8eef3;
+    --text-secondary: #a9bac6;
+    --text-muted: #7b8c99;
+
+    --border-color: #27394a;
+    --border-hover: #3a5165;
+
+    --chord-color: #e5bd72;
+    --chord-input-bg: rgba(229, 189, 114, 0.06);
+    --overlay-bg: rgba(0, 0, 0, 0.7);
+    --tag-danger-hover: #7f1d1d;
+
+    --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.4);
+    --shadow: 0 1px 3px 0 rgb(0 0 0 / 0.5), 0 1px 2px -1px rgb(0 0 0 / 0.5);
+    --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.5), 0 2px 4px -2px rgb(0 0 0 / 0.5);
+    --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.6), 0 4px 6px -4px rgb(0 0 0 / 0.6);
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -39,7 +95,7 @@ body {
 }
 
 .header {
-    background: #ffffff;
+    background: var(--bg-card);
     color: var(--text-primary);
     padding: 1rem 0;
     box-shadow: var(--shadow-sm);
@@ -61,7 +117,11 @@ body {
 .logo-section { display: flex; align-items: center; gap: 0.75rem; transition: opacity 0.2s; }
 .logo-section:hover { opacity: 0.7; }
 .logo-img { width: 52px; height: 52px; object-fit: contain; display: block; }
-.logo-text { font-size: 1.5rem; font-weight: 700; color: var(--primary-color); letter-spacing: -0.02em; white-space: nowrap; }
+.logo-text { font-size: 1.5rem; font-weight: 700; color: var(--text-primary); letter-spacing: -0.02em; white-space: nowrap; }
+
+/* Botón de cambio de tema (luna / sol) */
+.btn-theme { padding: 0.375rem 0.6rem; }
+.btn-theme svg { display: block; }
 
 .nav-tabs { display: flex; gap: 0.5rem; }
 
@@ -77,7 +137,7 @@ body {
     font-weight: 500;
 }
 .nav-tab:hover { background: var(--bg-tertiary); color: var(--text-primary); }
-.nav-tab.active { background: var(--primary-color); color: white; border-color: var(--primary-color); }
+.nav-tab.active { background: var(--primary-color); color: var(--on-primary); border-color: var(--primary-color); }
 
 .app-container { max-width: 1200px; margin: 0 auto; padding: 2rem 1rem; overflow-x: hidden; }
 .view { display: none; }
@@ -98,7 +158,7 @@ body {
 
 .btn-add-song {
     background: var(--primary-color);
-    color: white;
+    color: var(--on-primary);
     border: none;
     padding: 0.75rem 1.5rem;
     border-radius: 8px;
@@ -117,6 +177,8 @@ body {
     border: 2px solid var(--border-color);
     border-radius: 8px;
     font-size: 1rem;
+    background: var(--bg-card);
+    color: var(--text-primary);
     transition: border-color 0.2s;
 }
 .search-box:focus { outline: none; border-color: var(--primary-color); }
@@ -134,7 +196,7 @@ body {
 .songs-grid {
     display: flex;
     flex-direction: column;
-    background: white;
+    background: var(--bg-card);
     border-radius: 8px;
     overflow: hidden;
     box-shadow: var(--shadow-sm);
@@ -142,7 +204,7 @@ body {
 }
 
 .song-item {
-    background: white;
+    background: var(--bg-card);
     padding: 1rem 1.5rem;
     cursor: pointer;
     transition: background 0.15s;
@@ -153,7 +215,7 @@ body {
     border: none;
     box-shadow: none;
 }
-.song-item:hover { background: var(--bg-secondary); }
+.song-item:hover { background: var(--bg-tertiary); }
 
 .song-info { flex: 1; min-width: 0; }
 .song-title {
@@ -179,7 +241,7 @@ body {
     border-radius: 6px;
     padding: 0.3rem 0.5rem;
     font-size: 0.8rem;
-    background: white;
+    background: var(--bg-card);
     color: var(--text-primary);
     cursor: pointer;
     max-width: 220px;
@@ -201,7 +263,7 @@ body {
     border-radius: 6px;
     padding: 0.4rem 0.6rem;
     font-size: 0.85rem;
-    background: white;
+    background: var(--bg-card);
     color: var(--text-primary);
     cursor: pointer;
 }
@@ -228,7 +290,7 @@ body {
     display: inline-flex;
     align-items: center;
     gap: 0.3rem;
-    background: white;
+    background: var(--bg-card);
     border: 1.5px solid var(--border-color);
     border-radius: 999px;
     padding: 0.25rem 0.7rem;
@@ -256,7 +318,8 @@ body {
 .convocatoria-role-body { padding: 0.5rem 0.2rem 0.3rem 1.2rem; }
 .convocatoria-name-list { display: flex; flex-wrap: wrap; gap: 0.4rem; margin-bottom: 0.6rem; }
 .convocatoria-name-btn {
-    background: white;
+    background: var(--bg-card);
+    color: var(--text-primary);
     border: 1px solid var(--border-color);
     border-radius: 999px;
     padding: 0.3rem 0.8rem;
@@ -265,8 +328,8 @@ body {
     cursor: pointer;
     transition: all 0.12s;
 }
-.convocatoria-name-btn:hover { background: var(--bg-secondary); }
-.convocatoria-name-btn.added { background: var(--primary-color); color: white; border-color: var(--primary-color); }
+.convocatoria-name-btn:hover { background: var(--bg-tertiary); }
+.convocatoria-name-btn.added { background: var(--primary-color); color: var(--on-primary); border-color: var(--primary-color); }
 .convocatoria-selected { display: flex; flex-wrap: wrap; gap: 0.35rem; min-height: 1.6rem; }
 .convocatoria-selected-tag {
     background: var(--bg-tertiary);
@@ -276,13 +339,13 @@ body {
     cursor: pointer;
     transition: background 0.12s;
 }
-.convocatoria-selected-tag:hover { background: #fecaca; }
+.convocatoria-selected-tag:hover { background: var(--tag-danger-hover); }
 .convocatoria-empty { font-size: 0.8rem; color: var(--text-muted); font-style: italic; }
 
 .song-block-note {
     font-size: 0.75rem;
     font-weight: 700;
-    color: var(--primary-color);
+    color: var(--text-primary);
     background: var(--bg-tertiary);
     display: inline-block;
     padding: 0.15rem 0.5rem;
@@ -307,15 +370,15 @@ body {
     color: var(--text-muted);
 }
 .action-btn:hover { background: var(--bg-tertiary); border-color: var(--border-color); }
-.edit-btn:hover { color: var(--primary-color); background: rgba(17, 24, 39, 0.06); border-color: rgba(17, 24, 39, 0.15); }
-.delete-btn:hover { color: var(--danger-color); background: rgba(220, 38, 38, 0.08); border-color: rgba(220, 38, 38, 0.2); }
-.note-btn:hover { color: #7c3aed; background: rgba(124, 58, 237, 0.08); border-color: rgba(124, 58, 237, 0.2); }
-.note-btn.has-note { color: #7c3aed; }
+.edit-btn:hover { color: var(--primary-color); background: var(--bg-tertiary); border-color: var(--border-hover); }
+.delete-btn:hover { color: var(--danger-color); background: rgba(220, 38, 38, 0.12); border-color: rgba(220, 38, 38, 0.3); }
+.note-btn:hover { color: #a78bfa; background: rgba(124, 58, 237, 0.12); border-color: rgba(124, 58, 237, 0.3); }
+.note-btn.has-note { color: #a78bfa; }
 
 .song-reader { max-width: 1100px; margin: 0 auto; }
 
 .reader-header {
-    background: white;
+    background: var(--bg-card);
     border: 1px solid var(--border-color);
     border-radius: 12px;
     padding: 2rem;
@@ -326,7 +389,7 @@ body {
 .reader-block-note {
     font-size: 0.8rem;
     font-weight: 700;
-    color: var(--primary-color);
+    color: var(--text-primary);
     background: var(--bg-tertiary);
     display: inline-block;
     padding: 0.3rem 0.7rem;
@@ -393,7 +456,7 @@ body {
 
 .transpose-btn {
     background: var(--primary-color);
-    color: white;
+    color: var(--on-primary);
     border: none;
     width: 2rem;
     height: 2rem;
@@ -408,7 +471,8 @@ body {
 .transpose-btn:hover { background: var(--primary-hover); }
 
 .current-key {
-    background: white;
+    background: var(--bg-card);
+    color: var(--text-primary);
     border: 1px solid var(--border-color);
     padding: 0.5rem 1rem;
     border-radius: 6px;
@@ -423,7 +487,7 @@ body {
 .song-content {
     flex: 1;
     min-width: 0;
-    background: white;
+    background: var(--bg-card);
     border: 1px solid var(--border-color);
     border-radius: 12px;
     padding: 1.5rem 2rem;
@@ -487,7 +551,7 @@ body.fullscreen-active .structure-bar-inner::-webkit-scrollbar { display: none; 
 .section:last-child { margin-bottom: 0; }
 .section-label {
     background: var(--primary-color);
-    color: white;
+    color: var(--on-primary);
     padding: 0.35rem 0.8rem;
     border-radius: 6px;
     font-weight: 600;
@@ -499,7 +563,7 @@ body.fullscreen-active .structure-bar-inner::-webkit-scrollbar { display: none; 
 .section-label.inline-label { margin: 0.35rem 0 0.35rem; }
 
 .pair { margin-bottom: 0.5rem; max-width: 100%; }
-.chord-line { color: var(--primary-color); font-weight: 700; white-space: pre; margin-bottom: 0.1rem; font-size: 0.95em; transition: all 0.2s; }
+.chord-line { color: var(--chord-color); font-weight: 700; white-space: pre; margin-bottom: 0.1rem; font-size: 0.95em; transition: all 0.2s; }
 .lyric-line { color: var(--text-primary); white-space: pre; font-size: 1em; transition: all 0.2s; }
 
 .song-content.voice-mode .chord-line { display: none; }
@@ -510,7 +574,7 @@ body.fullscreen-active .structure-bar-inner::-webkit-scrollbar { display: none; 
 
 .editor-sidebar {
     width: 250px;
-    background: white;
+    background: var(--bg-card);
     border: 1px solid var(--border-color);
     border-radius: 12px;
     padding: 1.5rem;
@@ -538,7 +602,7 @@ body.fullscreen-active .structure-bar-inner::-webkit-scrollbar { display: none; 
     flex: 1;
     display: flex;
     flex-direction: column;
-    background: white;
+    background: var(--bg-card);
     border: 1px solid var(--border-color);
     border-radius: 12px;
     box-shadow: var(--shadow-sm);
@@ -586,17 +650,17 @@ body.fullscreen-active .structure-bar-inner::-webkit-scrollbar { display: none; 
 
 .section-label-input {
     background: var(--primary-color);
-    color: white;
+    color: var(--on-primary);
     border: none;
     padding: 0.5rem 1rem;
     border-radius: 6px;
     font-weight: 600;
     font-size: 0.875rem;
 }
-.section-label-input:focus { outline: none; box-shadow: 0 0 0 2px rgba(17, 24, 39, 0.25); }
+.section-label-input:focus { outline: none; box-shadow: 0 0 0 2px var(--border-hover); }
 .section-actions { display: flex; gap: 0.5rem; }
 
-.pair-editor { background: white; border: 1px solid var(--border-color); border-radius: 8px; padding: 1rem; margin-bottom: 1rem; }
+.pair-editor { background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 8px; padding: 1rem; margin-bottom: 1rem; }
 .pair-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem; }
 .pair-label { font-size: 0.75rem; color: var(--text-secondary); font-weight: 600; }
 .pair-actions { display: flex; gap: 0.25rem; }
@@ -607,17 +671,19 @@ body.fullscreen-active .structure-bar-inner::-webkit-scrollbar { display: none; 
     border-radius: 6px;
     padding: 0.75rem;
     font-family: var(--mono-font);
+    background: var(--bg-card);
+    color: var(--text-primary);
     resize: vertical;
     min-height: 2.5rem;
     margin-bottom: 0.5rem;
     transition: border-color 0.2s;
 }
 .chord-input:focus, .lyric-input:focus { outline: none; border-color: var(--primary-color); }
-.chord-input { background: rgba(17, 24, 39, 0.03); }
+.chord-input { background: var(--chord-input-bg); color: var(--chord-color); }
 
 .btn, .btn-sm, .btn-xs {
     border: 1px solid var(--border-color);
-    background: white;
+    background: var(--bg-card);
     color: var(--text-primary);
     padding: 0.5rem 1rem;
     border-radius: 6px;
@@ -632,13 +698,13 @@ body.fullscreen-active .structure-bar-inner::-webkit-scrollbar { display: none; 
     gap: 0.25rem;
     white-space: nowrap;
 }
-.btn:hover, .btn-sm:hover, .btn-xs:hover { background: var(--bg-secondary); border-color: var(--border-hover); }
+.btn:hover, .btn-sm:hover, .btn-xs:hover { background: var(--bg-tertiary); border-color: var(--border-hover); }
 
-.btn.active-mode { background: var(--primary-color); color: white; border-color: var(--primary-color); }
+.btn.active-mode { background: var(--primary-color); color: var(--on-primary); border-color: var(--primary-color); }
 
-.btn-primary { background: var(--primary-color); color: white; border-color: var(--primary-color); }
-.btn-primary:hover { background: var(--primary-hover); border-color: var(--primary-hover); }
-.btn-danger { background: var(--danger-color); color: white; border-color: var(--danger-color); }
+.btn-primary { background: var(--primary-color); color: var(--on-primary); border-color: var(--primary-color); }
+.btn-primary:hover { background: var(--primary-hover); border-color: var(--primary-hover); color: var(--on-primary); }
+.btn-danger { background: var(--danger-color); color: #ffffff; border-color: var(--danger-color); }
 .btn-danger:hover { background: #b91c1c; border-color: #b91c1c; }
 .btn-sm { padding: 0.375rem 0.75rem; font-size: 0.8rem; }
 .btn-xs { padding: 0.25rem 0.5rem; font-size: 0.75rem; border-radius: 4px; }
@@ -652,6 +718,8 @@ body.fullscreen-active .structure-bar-inner::-webkit-scrollbar { display: none; 
     border: 2px solid var(--border-color);
     border-radius: 6px;
     font-size: 1rem;
+    background: var(--bg-card);
+    color: var(--text-primary);
     transition: border-color 0.2s;
 }
 .form-input:focus, .form-select:focus, .form-textarea:focus { outline: none; border-color: var(--primary-color); }
@@ -660,7 +728,7 @@ body.fullscreen-active .structure-bar-inner::-webkit-scrollbar { display: none; 
 .modal-overlay {
     position: fixed;
     inset: 0;
-    background: rgba(0, 0, 0, 0.5);
+    background: var(--overlay-bg);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -669,7 +737,7 @@ body.fullscreen-active .structure-bar-inner::-webkit-scrollbar { display: none; 
 }
 
 .modal {
-    background: white;
+    background: var(--bg-card);
     border-radius: 12px;
     box-shadow: var(--shadow-lg);
     max-width: 500px;
@@ -747,8 +815,8 @@ body.fullscreen-active .structure-bar-inner::-webkit-scrollbar { display: none; 
     height: 1.6rem;
     border-radius: 50%;
     background: var(--primary-color);
-    color: white;
-    border: 2px solid white;
+    color: var(--on-primary);
+    border: 2px solid var(--bg-card);
     font-size: 0.75rem;
     display: flex;
     align-items: center;
@@ -764,7 +832,8 @@ body.fullscreen-active .structure-bar-inner::-webkit-scrollbar { display: none; 
     left: 50%;
     transform: translateX(-50%);
     z-index: 950;
-    background: white;
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
     border-radius: 14px;
     box-shadow: var(--shadow-lg);
     padding: 1.1rem 1.4rem;
@@ -786,7 +855,7 @@ body.fullscreen-active .structure-bar-inner::-webkit-scrollbar { display: none; 
 .metronome-dot.active { background: var(--primary-color); transform: scale(1.3); }
 .metronome-toggle-btn {
     background: var(--primary-color);
-    color: white;
+    color: var(--on-primary);
     border: none;
     width: 3rem;
     height: 3rem;
@@ -825,7 +894,7 @@ body.fullscreen-active .structure-bar-inner::-webkit-scrollbar { display: none; 
     right: 0.5rem;
     z-index: 900;
     background: var(--primary-color);
-    color: white;
+    color: var(--on-primary);
     border: none;
     width: 2.4rem;
     height: 2.4rem;
@@ -847,7 +916,7 @@ body.fullscreen-active .structure-bar-inner::-webkit-scrollbar { display: none; 
     z-index: 900;
     align-items: center;
     gap: 0.6rem;
-    background: rgba(17, 24, 39, 0.55);
+    background: rgba(14, 25, 34, 0.6);
     backdrop-filter: blur(6px);
     -webkit-backdrop-filter: blur(6px);
     padding: 0.5rem;
@@ -871,6 +940,7 @@ body.fullscreen-active .structure-bar-inner::-webkit-scrollbar { display: none; 
 .tp-icon-btn:hover { background: rgba(255, 255, 255, 0.15); }
 .tp-icon-btn-main {
     background: var(--primary-color);
+    color: var(--on-primary);
     width: 2.6rem;
     height: 2.6rem;
 }
@@ -974,7 +1044,7 @@ body.fullscreen-active .song-content { padding: 0.85rem 1.1rem calc(5.5rem + env
 #app-splash {
     position: fixed;
     inset: 0;
-    background: #f8f4ea;
+    background: var(--splash-bg);
     z-index: 5000;
     display: flex;
     align-items: center;
