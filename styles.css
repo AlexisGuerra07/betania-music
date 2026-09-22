@@ -1057,12 +1057,17 @@ body.fullscreen-active .song-content { padding: 0.85rem 1.1rem calc(5.5rem + env
     pointer-events: none;
 }
 
-#splash-logo {
+.splash-logo {
     width: 200px;
     height: auto;
     object-fit: contain;
     animation: splash-pulse 1.4s ease-in-out infinite;
 }
+
+/* En claro se ve la versión con fondo crema; en oscuro, la transparente. */
+.splash-logo-dark { display: none; }
+[data-theme="dark"] .splash-logo-light { display: none; }
+[data-theme="dark"] .splash-logo-dark { display: block; }
 
 @keyframes splash-pulse {
     0%, 100% { opacity: 1; transform: scale(1); }
