@@ -336,6 +336,14 @@
                     <div class="editor-content" id="editor-content"></div>
                 </div>
             </div>
+
+            <!-- Guardar siempre a mano, sin subir hasta la cabecera. Va DENTRO de
+                 la vista de edición a propósito: así aparece y desaparece con ella
+                 sin necesidad de JavaScript. -->
+            <button type="button" class="btn-save-floating" id="btn-save-floating" title="Guardar la canción">
+                <span class="save-dot"></span>
+                Guardar
+            </button>
         </div>
     </div>
 
@@ -454,6 +462,29 @@
                 // al cambiarlo desde aquí hay que avisarle para que no se pierda.
                 el.dispatchEvent(new Event('input', { bubbles: true }));
             });
+        })();
+    </script>
+
+    <!-- El botón flotante no guarda por su cuenta: pulsa el "Guardar" de la
+         cabecera, para que toda la lógica de guardado siga viviendo en un solo
+         sitio (script.js). También copia el aviso de "Sin guardar" como un
+         puntito naranja, para saber si queda algo pendiente. -->
+    <script>
+        (function () {
+            var floating = document.getElementById('btn-save-floating');
+            var real = document.getElementById('btn-save-song');
+            var indicator = document.getElementById('save-indicator');
+            if (!floating || !real) return;
+
+            floating.addEventListener('click', function () { real.click(); });
+
+            if (indicator && window.MutationObserver) {
+                var sync = function () {
+                    floating.classList.toggle('unsaved', indicator.classList.contains('unsaved'));
+                };
+                new MutationObserver(sync).observe(indicator, { attributes: true, attributeFilter: ['class'] });
+                sync();
+            }
         })();
     </script>
 </body>
