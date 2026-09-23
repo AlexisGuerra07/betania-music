@@ -3118,6 +3118,7 @@ const Editor = {
                 <div class="pair-header">
                     <span class="pair-label">Acordes/Letra ${pIndex + 1}</span>
                     <div class="pair-actions">
+                        ${this.isLabelCandidate(pair) ? `<button class="btn-xs btn-split" onclick="Editor.splitSectionAtPair(${sIndex}, ${pIndex})" title="Convertir esta línea en una sección propia">✂️</button>` : ''}
                         <button class="btn-xs" onclick="Editor.duplicatePair(${sIndex}, ${pIndex})">📋</button>
                         <button class="btn-xs" onclick="Editor.movePair(${sIndex}, ${pIndex}, -1)">↑</button>
                         <button class="btn-xs" onclick="Editor.movePair(${sIndex}, ${pIndex}, 1)">↓</button>
@@ -3134,9 +3135,24 @@ const Editor = {
         const outline = document.getElementById('sections-outline');
         if (!AppState.currentSong || !AppState.currentSong.sections) { outline.innerHTML = '<div class="text-center">Sin secciones</div>'; return; }
         const total = AppState.currentSong.sections.length;
+
+        // Al importar un PDF es habitual que toda la canción caiga dentro de una o
+        // dos secciones gigantes, con los nombres de las partes ("Estrofa 1",
+        // "Instrumental"...) metidos como si fueran letra. Aquí se detectan y se
+        // ofrece separarlas de una vez.
+        const sueltas = this.findInlineLabels();
+        const aviso = sueltas.length ? `
+            <div class="outline-hint">
+                <div class="outline-hint-text">
+                    ${sueltas.length === 1 ? 'Hay 1 parte escrita' : `Hay ${sueltas.length} partes escritas`} dentro de otra sección:
+                    <strong>${sueltas.slice(0, 4).map(f => f.name).join(', ')}${sueltas.length > 4 ? '…' : ''}</strong>
+                </div>
+                <button class="btn-xs" onclick="Editor.splitAllInlineLabels()">Separar en secciones</button>
+            </div>
+        ` : '';
         // Aquí se ven todas las secciones de un vistazo, así que es el mejor sitio
         // para reordenarlas: se mueven sin perderlas de vista ni bajar por el editor.
-        outline.innerHTML = AppState.currentSong.sections.map((section, index) => `
+        outline.innerHTML = aviso + AppState.currentSong.sections.map((section, index) => `
             <div class="outline-item">
                 <span class="outline-name" onclick="Editor.scrollToSection(${index})" title="Ir a esta sección">${section.label}</span>
                 <span class="outline-count">${section.pairs ? section.pairs.length : 0}</span>
@@ -3205,6 +3221,87 @@ const Editor = {
             this.render();
             Storage.updateSaveStatus('unsaved');
         }
+    },
+
+    // ¿Este par es en realidad el nombre de una parte de la canción? Lo es cuando
+    // tiene texto, no tiene acordes, cabe en una línea corta y la app reconoce el
+    // nombre ("Estrofa 2", "Instrumental", "Puente"...).
+    isInlineLabel(pair) {
+        const letra = (pair && pair.letra || '').trim();
+        const sinAcordes = !pair || !pair.acordes || !pair.acordes.trim();
+        return !!(letra && sinAcordes && ChordParser.isSectionHeader(letra));
+    },
+
+    // Más permisivo que el anterior: cualquier línea corta sin acordes PODRÍA ser
+    // un nombre de parte, aunque la app no lo reconozca ("Vamp", "Tag final"...).
+    // Se usa solo para decidir si enseñar el botón ✂️, nunca para separar en lote.
+    isLabelCandidate(pair) {
+        const letra = (pair && pair.letra || '').trim();
+        const sinAcordes = !pair || !pair.acordes || !pair.acordes.trim();
+        return !!(letra && sinAcordes && letra.length <= 40 && !letra.includes('\n'));
+    },
+
+    findInlineLabels() {
+        const found = [];
+        (AppState.currentSong && AppState.currentSong.sections || []).forEach((section, sIndex) => {
+            (section.pairs || []).forEach((pair, pIndex) => {
+                if (this.isInlineLabel(pair)) {
+                    found.push({ sIndex, pIndex, name: ChordParser.normalizeSectionName(pair.letra.trim()) });
+                }
+            });
+        });
+        return found;
+    },
+
+    // Parte la sección en dos justo en ese par: el texto del par pasa a ser el
+    // nombre de la sección nueva, y todo lo que venía debajo se va con ella.
+    splitSectionAtPair(sIndex, pIndex) {
+        const sections = AppState.currentSong && AppState.currentSong.sections;
+        const section = sections && sections[sIndex];
+        if (!section || !section.pairs || !section.pairs[pIndex]) return;
+        const raw = (section.pairs[pIndex].letra || '').trim();
+        if (!raw) return;
+        const name = ChordParser.isSectionHeader(raw) ? ChordParser.normalizeSectionName(raw) : raw;
+        const after = section.pairs.slice(pIndex + 1);
+        section.pairs = section.pairs.slice(0, pIndex);
+        sections.splice(sIndex + 1, 0, { label: name, pairs: after });
+        this.cleanupEmptySections();
+        this.render(); this.renderOutline();
+        Storage.updateSaveStatus('unsaved');
+    },
+
+    // Separa de una vez todas las partes que quedaron metidas dentro de otra sección.
+    splitAllInlineLabels() {
+        const found = this.findInlineLabels();
+        if (!found.length) { alert('No hay ninguna parte suelta que separar.'); return; }
+        const nombres = found.map(f => f.name).join(', ');
+        if (!confirm(`Se crearán ${found.length} sección(es) nueva(s): ${nombres}.\n\nNo se pierde nada: cada nombre pasa a ser el título de su sección y la letra que venía debajo se va con ella. ¿Continuar?`)) return;
+
+        const result = [];
+        (AppState.currentSong.sections || []).forEach(section => {
+            let current = { label: section.label || 'Sin sección', pairs: [] };
+            result.push(current);
+            (section.pairs || []).forEach(pair => {
+                if (this.isInlineLabel(pair)) {
+                    current = { label: ChordParser.normalizeSectionName(pair.letra.trim()), pairs: [] };
+                    result.push(current);
+                } else {
+                    current.pairs.push(pair);
+                }
+            });
+        });
+        AppState.currentSong.sections = result;
+        this.cleanupEmptySections();
+        this.render(); this.renderOutline();
+        Storage.updateSaveStatus('unsaved');
+    },
+
+    // Al partir, la sección original puede quedarse sin nada dentro (cuando el
+    // nombre suelto estaba justo al principio). Esas cáscaras vacías se quitan.
+    cleanupEmptySections() {
+        const sections = AppState.currentSong.sections || [];
+        AppState.currentSong.sections = sections.filter(s => (s.pairs || []).length > 0);
+        if (!AppState.currentSong.sections.length) AppState.currentSong.sections = sections;
     },
 
     // Copia una sección entera (con todos sus pares) justo debajo. Pensado para
