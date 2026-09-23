@@ -1059,6 +1059,18 @@ body.fullscreen-active .song-content { padding: 0.85rem 1.1rem calc(5.5rem + env
 .section-header-inline { flex-wrap: nowrap; align-items: center; }
 .btn-add-compact { flex-shrink: 0; }
 
+/* En la lista de un repertorio la línea de datos lleva tonalidad, BPM y vídeo:
+   se deja partir en dos líneas en vez de cortarse con puntos suspensivos, y los
+   dos elementos pulsables se separan un poco para no fallar el dedo. */
+#setlist-songs-list .song-meta {
+    white-space: normal;
+    overflow: visible;
+    text-overflow: clip;
+    line-height: 1.8;
+}
+#setlist-songs-list .reader-bpm-clickable,
+#setlist-songs-list .youtube-inline-btn { padding: 0.15rem 0.2rem; }
+
 /* ============ TARJETA DE REPERTORIO ============
    A diferencia de las canciones, aquí la papelera se queda pegada al título
    (misma fila, tamaño reducido) en vez de bajar a una fila propia: era lo único
