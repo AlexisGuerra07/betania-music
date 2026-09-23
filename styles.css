@@ -10,6 +10,10 @@
     --primary-hover: #0a1d29;
     --on-primary: #ffffff;
     --accent-color: #c8952f;
+    /* Dorado de la marca: el mismo del punto de la "i" y de la estrella del
+       logo. No cambia entre temas a propósito — es color de identidad, no de
+       interfaz, y solo aparece en detalles pequeños. */
+    --brand-gold: #e5bd72;
 
     --secondary-color: #6b7280;
     --success-color: #16a34a;
@@ -51,6 +55,7 @@
     --primary-hover: #f0cd8c;
     --on-primary: #0e1922;
     --accent-color: #e5bd72;
+    --brand-gold: #e5bd72;
 
     --secondary-color: #94a3b8;
     --success-color: #4ade80;
@@ -135,10 +140,10 @@ body {
     left: 50%;
     top: 0.22em;
     transform: translateX(-50%);
-    width: 0.11em;
-    height: 0.11em;
+    width: 0.13em;
+    height: 0.13em;
     border-radius: 50%;
-    background: var(--accent-color);
+    background: var(--brand-gold);
 }
 
 /* Botón de cambio de tema (luna / sol) */
