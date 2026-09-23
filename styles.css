@@ -133,15 +133,18 @@ body {
     letter-spacing: -0.01em;
     white-space: nowrap;
 }
-.logo-i { position: relative; }
+/* La "i" lleva caja propia (inline-block) para que el punto se coloque siempre
+   igual: si no, cada navegador calcula la altura de la línea a su manera y el
+   punto acaba en un sitio distinto, o fuera de la vista. */
+.logo-i { position: relative; display: inline-block; line-height: 1; }
 .logo-i::after {
     content: '';
     position: absolute;
     left: 50%;
-    top: 0.22em;
+    top: -0.22em;
     transform: translateX(-50%);
-    width: 0.13em;
-    height: 0.13em;
+    width: 0.14em;
+    height: 0.14em;
     border-radius: 50%;
     background: var(--brand-gold);
 }
