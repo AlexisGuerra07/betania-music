@@ -462,17 +462,15 @@ const Teleprompter = {
     buildPlan(song) {
         if (!song || !song.sections || !song.sections.length) return null;
 
-        // Si la letra está armada "según el orden" (dentro de un repertorio, cada bloque
+        // Si la letra está armada "según el orden" (cada bloque
         // en pantalla ya es una línea real del orden, repetida físicamente si hace falta),
         // cada bloque corresponde 1 a 1 con lo que se ve — no hay que emparejar nada,
         // se arma el plan directo a partir de lo que ya está en pantalla.
-        if (AppState.currentSetlist) {
-            const ordered = Router.getOrderedRenderSections(song);
-            if (ordered) {
-                const orderedEls = Array.from(document.querySelectorAll('#song-content .section'));
-                if (orderedEls.length === ordered.length) {
-                    return this.buildPlanFromOrderedBlocks(song, ordered, orderedEls);
-                }
+        const ordered = Router.getOrderedRenderSections(song);
+        if (ordered) {
+            const orderedEls = Array.from(document.querySelectorAll('#song-content .section'));
+            if (orderedEls.length === ordered.length) {
+                return this.buildPlanFromOrderedBlocks(song, ordered, orderedEls);
             }
         }
 
@@ -1767,7 +1765,7 @@ const Router = {
     scrollToStructureIndex(index, rawLabel) {
         const sectionEls = Array.from(document.querySelectorAll('#song-content .section'));
         if (!sectionEls.length) return;
-        const isExpanded = !!(AppState.currentSetlist && this.getOrderedRenderSections(AppState.currentSong));
+        const isExpanded = !!this.getOrderedRenderSections(AppState.currentSong);
         let target = null;
         if (isExpanded) {
             target = sectionEls[index] || null;
@@ -2141,14 +2139,13 @@ const Router = {
         const song = AppState.currentSong;
         const mode = AppState.notationMode || 'chords';
 
-        // Dentro de un repertorio, si la canción tiene un orden cargado, se arma
-        // siguiendo ESE orden (repitiendo bloques según haga falta). Sola desde
-        // Canciones, o sin orden cargado, se ve como siempre (tal cual se escribió).
+        // Si la canción tiene un orden cargado, la letra se arma siguiendo ESE orden
+        // (repitiendo bloques según haga falta), tanto desde Canciones como dentro
+        // de un repertorio. Sin orden cargado se ve tal cual se escribió.
+        // OJO: lo que el orden no mencione, no aparece.
         let sectionsToRender = song.sections;
-        if (AppState.currentSetlist) {
-            const ordered = this.getOrderedRenderSections(song);
-            if (ordered) sectionsToRender = ordered;
-        }
+        const ordered = this.getOrderedRenderSections(song);
+        if (ordered) sectionsToRender = ordered;
 
         content.innerHTML = sectionsToRender.map(section => {
             const sectionChip = this.buildStructureChip(section.label);
@@ -3103,6 +3100,7 @@ const Editor = {
                     <input type="text" class="section-label-input" value="${section.label}" onchange="Editor.updateSectionLabel(${sIndex}, this.value)">
                     <div class="section-actions">
                         <button class="btn-xs" onclick="Editor.addPairToSection(${sIndex})">+ Par</button>
+                        <button class="btn-xs" onclick="Editor.duplicateSection(${sIndex})" title="Duplicar la sección entera">📑</button>
                         <button class="btn-xs" onclick="Editor.moveSection(${sIndex}, -1)">↑</button>
                         <button class="btn-xs" onclick="Editor.moveSection(${sIndex}, 1)">↓</button>
                         <button class="btn-xs" onclick="Editor.deleteSection(${sIndex})">🗑️</button>
@@ -3200,6 +3198,31 @@ const Editor = {
             this.render();
             Storage.updateSaveStatus('unsaved');
         }
+    },
+
+    // Copia una sección entera (con todos sus pares) justo debajo. Pensado para
+    // "Estrofa 2": mismos acordes, letra distinta — duplicas y reescribes la letra.
+    // Al copiar se le pone un número libre (Estrofa -> Estrofa 2) para que dos
+    // secciones no compartan nombre; si no, el orden de la canción no sabría a
+    // cuál de las dos se refiere.
+    duplicateSection(sIndex) {
+        const sections = AppState.currentSong && AppState.currentSong.sections;
+        if (!sections || !sections[sIndex]) return;
+        const copy = JSON.parse(JSON.stringify(sections[sIndex]));
+        copy.label = this.nextFreeSectionLabel(copy.label);
+        sections.splice(sIndex + 1, 0, copy);
+        this.render(); this.renderOutline();
+        Storage.updateSaveStatus('unsaved');
+    },
+
+    nextFreeSectionLabel(label) {
+        const base = (label || 'Sección').replace(/\s*\d+\s*$/, '').trim() || 'Sección';
+        const taken = (AppState.currentSong.sections || []).map(s => (s.label || '').trim().toLowerCase());
+        for (let n = 2; n <= 30; n++) {
+            const candidate = `${base} ${n}`;
+            if (!taken.includes(candidate.toLowerCase())) return candidate;
+        }
+        return label;
     },
 
     moveSection(sIndex, direction) {
