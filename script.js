@@ -2317,6 +2317,11 @@ const Router = {
         this.openSetlist(setlist.id);
     },
 
+    // "1 canción" / "2 canciones" — sin el "(es)" entre paréntesis.
+    formatSongCount(count) {
+        return count === 1 ? '1 canción' : `${count} canciones`;
+    },
+
     renderSetlistsList() {
         const grid = document.getElementById('repertorio-grid');
         const emptyState = document.getElementById('repertorio-empty-state');
@@ -2325,14 +2330,14 @@ const Router = {
         grid.style.display = 'block';
         const sorted = [...AppState.setlists].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
         grid.innerHTML = sorted.map(sl => `
-            <div class="song-item" onclick="Router.openSetlist('${sl.id}')">
+            <div class="song-item setlist-item" onclick="Router.openSetlist('${sl.id}')">
                 <div class="song-info">
                     <div class="song-title">${sl.name}</div>
-                    <div class="song-meta">${(sl.songIds || []).length} canción(es)${sl.creatorName ? ' • por ' + sl.creatorName : ''}</div>
+                    <div class="song-meta">${this.formatSongCount((sl.songIds || []).length)}${sl.creatorName ? ' • por ' + sl.creatorName : ''}</div>
                 </div>
                 <div class="song-actions" onclick="event.stopPropagation()">
-                    <button class="action-btn delete-btn" onclick="Router.deleteSetlist('${sl.id}')" title="Eliminar">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <button class="action-btn delete-btn btn-delete-compact" onclick="Router.deleteSetlist('${sl.id}')" title="Eliminar">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <polyline points="3,6 5,6 21,6"></polyline>
                             <path d="m19,6v14a2,2 0 0,1 -2,2H7a2,2 0 0,1 -2,-2V6m3,0V4a2,2 0 0,1 2,-2h4a2,2 0 0,1 2,2v2"></path>
                         </svg>
