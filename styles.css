@@ -585,6 +585,22 @@ body.fullscreen-active .structure-bar-inner::-webkit-scrollbar { display: none; 
 .sidebar-section:last-child { margin-bottom: 0; }
 .sidebar-title { font-size: 1rem; font-weight: 600; margin-bottom: 1rem; color: var(--text-primary); }
 
+/* Aviso en la barra lateral cuando hay partes escritas dentro de otra sección. */
+.outline-hint {
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 0.6rem 0.7rem;
+    margin-bottom: 0.75rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+.outline-hint-text { font-size: 0.78rem; line-height: 1.4; color: var(--text-secondary); }
+.outline-hint strong { color: var(--text-primary); }
+.outline-hint .btn-xs { align-self: flex-start; }
+.btn-split { border-color: var(--border-hover); }
+
 .outline-item {
     display: flex;
     justify-content: space-between;
