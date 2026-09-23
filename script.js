@@ -759,6 +759,7 @@ const AppState = {
     lastSaveTime: 0,
     settings: { fontSize: 14, autoSections: true, sortBy: 'alpha', readerFontScale: 1 },
     isCreatingNew: false,
+    searchQuery: '',
     pendingImports: [],
     isAdmin: false,
     currentUser: null,
@@ -1445,13 +1446,49 @@ const Router = {
         return arr;
     },
 
+    // Compara ignorando mayúsculas y tildes: "esta" encuentra "ESTÁ".
+    searchNormalize(text) {
+        return ChordParser.normalizeTildes((text || '').toLowerCase()).trim();
+    },
+
     renderSongsList() {
         const grid = document.getElementById('songs-grid');
         const emptyState = document.getElementById('empty-state');
-        if (AppState.songs.length === 0) { grid.style.display = 'none'; emptyState.style.display = 'block'; return; }
+        if (AppState.songs.length === 0) {
+            grid.style.display = 'none';
+            emptyState.style.display = 'block';
+            emptyState.innerHTML = '<h3>Aún no hay canciones</h3><p>Inicia sesión como líder para añadir canciones, o espera a que se sincronicen.</p>';
+            return;
+        }
+
+        const query = this.searchNormalize(AppState.searchQuery);
+        let matches = AppState.songs;
+        if (query) {
+            matches = AppState.songs.filter(song =>
+                this.searchNormalize(song.title).includes(query) ||
+                this.searchNormalize(song.artist).includes(query)
+            );
+        }
+
+        if (matches.length === 0) {
+            grid.style.display = 'none';
+            emptyState.style.display = 'block';
+            emptyState.innerHTML = '<h3>Sin resultados</h3><p>No hay ninguna canción que coincida con lo que buscas.</p>';
+            return;
+        }
         emptyState.style.display = 'none';
         grid.style.display = 'block';
-        const sorted = this.sortSongs(AppState.songs);
+
+        const sorted = this.sortSongs(matches);
+        // Si buscas "toma tu", primero la canción que SE LLAMA así y después las
+        // que solo coinciden por el autor: si no, las de un autor con muchas
+        // canciones entierran la que estabas buscando.
+        if (query) {
+            sorted.sort((a, b) =>
+                (this.searchNormalize(b.title).includes(query) ? 1 : 0) -
+                (this.searchNormalize(a.title).includes(query) ? 1 : 0)
+            );
+        }
         grid.innerHTML = sorted.map(song => `
             <div class="song-item" onclick="Router.viewSong('${song.id}')">
                 <div class="song-info">
@@ -1510,13 +1547,8 @@ const Router = {
     },
 
     filterSongs(query) {
-        const items = document.querySelectorAll('#songs-grid .song-item');
-        const q = query.toLowerCase();
-        items.forEach(item => {
-            const title = item.querySelector('.song-title').textContent.toLowerCase();
-            const meta = item.querySelector('.song-meta').textContent.toLowerCase();
-            item.style.display = (title.includes(q) || meta.includes(q)) ? 'flex' : 'none';
-        });
+        AppState.searchQuery = query || '';
+        this.renderSongsList();
     },
 
     formatReaderMeta(song) {
