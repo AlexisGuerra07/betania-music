@@ -48,6 +48,7 @@ const Metronome = {
     beatIndex: 0,
     bpm: 120,
     beatsPerMeasure: 4,
+    songId: null,   // de qué canción es lo que está sonando ahora mismo
 
     ensureContext() {
         if (!this.audioCtx) {
@@ -73,6 +74,7 @@ const Metronome = {
     },
 
     open(song) {
+        this.songId = song ? song.id : null;
         this.bpm = (song && song.bpm) || 120;
         this.beatsPerMeasure = Teleprompter.getBeatsPerMeasure(song);
         this.beatIndex = 0;
@@ -84,6 +86,7 @@ const Metronome = {
     },
 
     close() {
+        this.songId = null;
         this.stop();
         const popup = document.getElementById('metronome-popup');
         if (popup) popup.style.display = 'none';
@@ -1533,7 +1536,7 @@ const Router = {
         if (song.youtubeLink) {
             if (html) html += ' &nbsp;•&nbsp; ';
             const safeUrl = song.youtubeLink.replace(/'/g, '&#39;');
-            html += `<button type="button" class="youtube-inline-btn" onclick="Router.showYoutubeModal('${safeUrl}')">▶ Ver video</button>`;
+            html += `<button type="button" class="youtube-inline-btn" onclick="Router.showYoutubeModal('${safeUrl}', '${song.id}')">▶ Ver vídeo</button>`;
         }
         return html;
     },
@@ -1559,7 +1562,9 @@ const Router = {
 
     // Abre el video de YouTube como mini-reproductor flotante (esquina de la pantalla),
     // sin bloquear el resto de la app — se puede seguir leyendo y deslizando la canción.
-    showYoutubeModal(url) {
+    youtubePlayerSongId: null,
+    showYoutubeModal(url, songId) {
+        this.youtubePlayerSongId = songId || null;
         const videoId = this.extractYoutubeId(url);
         if (!videoId) { window.open(url, '_blank', 'noopener'); return; }
         const wrap = document.getElementById('youtube-mini-iframe-wrap');
@@ -1570,6 +1575,7 @@ const Router = {
         player.style.display = 'block';
     },
     closeYoutubeMiniPlayer() {
+        this.youtubePlayerSongId = null;
         const wrap = document.getElementById('youtube-mini-iframe-wrap');
         const player = document.getElementById('youtube-mini-player');
         if (wrap) wrap.innerHTML = ''; // quita el iframe -> detiene la reproducción
@@ -2028,8 +2034,11 @@ const Router = {
         if (leadVocalWrap) leadVocalWrap.classList.add('lv-hidden');
         StickyStructureBar.reset();
         Teleprompter.reset();
-        this.closeYoutubeMiniPlayer();
-        Metronome.close();
+        // Si el vídeo o el metrónomo que están abiertos son de la canción que se
+        // acaba de abrir, se dejan en marcha: es justo lo que quieres en un ensayo.
+        const sameSongId = AppState.currentSong ? AppState.currentSong.id : null;
+        if (this.youtubePlayerSongId !== sameSongId) this.closeYoutubeMiniPlayer();
+        if (Metronome.songId !== sameSongId) Metronome.close();
         this.exitFullscreenMode();
     },
 
@@ -2428,12 +2437,22 @@ const Router = {
             const displayKey = offset !== 0 ? Transposer.cleanChord(Transposer.transpose(song.keyBase, offset)) : song.keyBase;
             const note = (sl.songNotes && sl.songNotes[song.id]) || '';
             const leadVocal = (sl.songLeadVocals && sl.songLeadVocals[song.id]) || '';
+            // Tonalidad, BPM (abre el metrónomo) y vídeo, sin salir de la lista:
+            // en un ensayo son las tres referencias que se piden a cada rato.
+            const metaParts = [`${displayKey}${offset !== 0 ? ` (orig. ${song.keyBase})` : ''}`];
+            if (song.bpm) {
+                metaParts.push(`<span class="reader-bpm-clickable" title="Abrir metrónomo" onclick="event.stopPropagation(); Router.openMetronomeForSong('${song.id}')">${song.bpm} BPM</span>`);
+            }
+            if (song.youtubeLink) {
+                const safeUrl = song.youtubeLink.replace(/'/g, '&#39;');
+                metaParts.push(`<button type="button" class="youtube-inline-btn" onclick="event.stopPropagation(); Router.showYoutubeModal('${safeUrl}', '${song.id}')">▶ Vídeo</button>`);
+            }
             return `
             <div class="song-item" onclick="Router.viewSetlistSong('${song.id}')">
                 <div class="song-info">
                     ${note ? `<div class="song-block-note">${note}</div>` : ''}
                     <div class="song-title">${idx + 1}. ${song.title}</div>
-                    <div class="song-meta">${displayKey}${offset !== 0 ? ` (orig. ${song.keyBase})` : ''}${song.bpm ? ` • ${song.bpm} BPM` : ''}</div>
+                    <div class="song-meta">${metaParts.join(' • ')}</div>
                     <select class="lead-vocal-select" onclick="event.stopPropagation()" onchange="event.stopPropagation(); Router.setSongLeadVocal('${song.id}', this.value)">
                         <option value="">🎤 Sin asignar</option>
                         ${this.LEAD_VOCAL_OPTIONS.map(name => `<option value="${name}" ${name === leadVocal ? 'selected' : ''}>🎤 ${name}</option>`).join('')}
@@ -2461,6 +2480,12 @@ const Router = {
             </div>
         `;
         }).join('');
+    },
+
+    // Abre el metrónomo de una canción sin tener que entrar en ella.
+    openMetronomeForSong(songId) {
+        const song = AppState.songs.find(s => s.id === songId);
+        if (song) Metronome.open(song);
     },
 
     moveSetlistSong(index, direction) {
