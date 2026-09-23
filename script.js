@@ -2322,6 +2322,38 @@ const Router = {
         return count === 1 ? '1 canción' : `${count} canciones`;
     },
 
+    // Fecha corta ("23 sept"). Si el repertorio es de otro año se añade el año,
+    // para que no parezca de este.
+    formatShortDate(iso) {
+        if (!iso) return '';
+        const d = new Date(iso);
+        if (isNaN(d.getTime())) return '';
+        const opts = { day: 'numeric', month: 'short' };
+        if (d.getFullYear() !== new Date().getFullYear()) opts.year = 'numeric';
+        return d.toLocaleDateString('es-ES', opts).replace(/\./g, '');
+    },
+
+    // Las primeras canciones del repertorio, para saber qué hay dentro sin abrirlo.
+    formatSetlistPreview(sl) {
+        const titles = (sl.songIds || [])
+            .map(id => AppState.songs.find(s => s.id === id))
+            .filter(Boolean)
+            .map(s => s.title);
+        if (!titles.length) return 'Todavía sin canciones';
+        const shown = titles.slice(0, 3).join(' · ');
+        const rest = titles.length - 3;
+        return rest > 0 ? `${shown} · +${rest}` : shown;
+    },
+
+    // Línea discreta de abajo: cuántas canciones, cuándo se creó y quién lo hizo.
+    formatSetlistMeta(sl) {
+        const parts = [this.formatSongCount((sl.songIds || []).length)];
+        const date = this.formatShortDate(sl.createdAt);
+        if (date) parts.push(date);
+        if (sl.creatorName) parts.push(`por ${sl.creatorName}`);
+        return parts.join(' • ');
+    },
+
     renderSetlistsList() {
         const grid = document.getElementById('repertorio-grid');
         const emptyState = document.getElementById('repertorio-empty-state');
@@ -2333,7 +2365,8 @@ const Router = {
             <div class="song-item setlist-item" onclick="Router.openSetlist('${sl.id}')">
                 <div class="song-info">
                     <div class="song-title">${sl.name}</div>
-                    <div class="song-meta">${this.formatSongCount((sl.songIds || []).length)}${sl.creatorName ? ' • por ' + sl.creatorName : ''}</div>
+                    <div class="setlist-preview">${this.formatSetlistPreview(sl)}</div>
+                    <div class="song-meta">${this.formatSetlistMeta(sl)}</div>
                 </div>
                 <div class="song-actions" onclick="event.stopPropagation()">
                     <button class="action-btn delete-btn btn-delete-compact" onclick="Router.deleteSetlist('${sl.id}')" title="Eliminar">
