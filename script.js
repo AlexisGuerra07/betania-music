@@ -1,29 +1,3 @@
-// ============ CAPTURADOR DE ERRORES VISIBLE (diagnóstico temporal) ============
-// Muestra en pantalla, en rojo, cualquier error que impida que la app cargue —
-// así se puede ver la causa real desde el móvil, sin necesitar la consola del navegador.
-(function () {
-    function showError(text) {
-        var box = document.getElementById('fatal-error-box');
-        if (!box) {
-            box = document.createElement('div');
-            box.id = 'fatal-error-box';
-            box.style.cssText = 'display:block;position:fixed;top:0;left:0;right:0;z-index:99999;background:#7f1d1d;color:#fff;padding:1rem;font-family:monospace;font-size:12px;white-space:pre-wrap;max-height:70vh;overflow:auto;';
-            (document.body || document.documentElement).appendChild(box);
-        }
-        box.style.display = 'block';
-        box.textContent += text + '\n\n';
-    }
-    window.addEventListener('error', function (e) {
-        showError('ERROR: ' + (e.message || '(sin mensaje)') +
-            '\narchivo: ' + (e.filename || '?') + ':' + (e.lineno || '?') +
-            (e.error && e.error.stack ? '\n' + e.error.stack : ''));
-    });
-    window.addEventListener('unhandledrejection', function (e) {
-        var reason = e.reason;
-        showError('PROMESA RECHAZADA: ' + (reason && reason.message ? reason.message : reason));
-    });
-})();
-
 // ============ FIREBASE ============
 const firebaseConfig = {
   apiKey: "AIzaSyAq6nR416IldHvVbt0E5ECl-8Rb9PCM0S4",
