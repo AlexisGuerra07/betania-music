@@ -3133,10 +3133,17 @@ const Editor = {
     renderOutline() {
         const outline = document.getElementById('sections-outline');
         if (!AppState.currentSong || !AppState.currentSong.sections) { outline.innerHTML = '<div class="text-center">Sin secciones</div>'; return; }
+        const total = AppState.currentSong.sections.length;
+        // Aquí se ven todas las secciones de un vistazo, así que es el mejor sitio
+        // para reordenarlas: se mueven sin perderlas de vista ni bajar por el editor.
         outline.innerHTML = AppState.currentSong.sections.map((section, index) => `
-            <div class="outline-item" onclick="Editor.scrollToSection(${index})">
-                <span>${section.label}</span>
-                <span style="font-size: 0.8rem; opacity: 0.7;">${section.pairs ? section.pairs.length : 0}</span>
+            <div class="outline-item">
+                <span class="outline-name" onclick="Editor.scrollToSection(${index})" title="Ir a esta sección">${section.label}</span>
+                <span class="outline-count">${section.pairs ? section.pairs.length : 0}</span>
+                <span class="outline-actions">
+                    <button class="btn-xs" title="Subir" onclick="Editor.moveSection(${index}, -1, true)" ${index === 0 ? 'disabled' : ''}>↑</button>
+                    <button class="btn-xs" title="Bajar" onclick="Editor.moveSection(${index}, 1, true)" ${index === total - 1 ? 'disabled' : ''}>↓</button>
+                </span>
             </div>
         `).join('');
     },
@@ -3225,13 +3232,17 @@ const Editor = {
         return label;
     },
 
-    moveSection(sIndex, direction) {
+    // fromOutline: true cuando se pulsa desde la barra lateral. En ese caso no se
+    // mueve la pantalla, para poder dar varias veces seguidas sin marearse; desde
+    // el editor sí se sigue a la sección, que si no se pierde de vista al saltar.
+    moveSection(sIndex, direction, fromOutline = false) {
         const newIndex = sIndex + direction;
         if (newIndex < 0 || newIndex >= AppState.currentSong.sections.length) return;
         const section = AppState.currentSong.sections.splice(sIndex, 1)[0];
         AppState.currentSong.sections.splice(newIndex, 0, section);
         this.render(); this.renderOutline();
         Storage.updateSaveStatus('unsaved');
+        if (!fromOutline) this.scrollToSection(newIndex);
     },
 
     deleteSection(sIndex) {
