@@ -985,9 +985,17 @@ body.fullscreen-active .song-content { padding: 0.85rem 1.1rem calc(5.5rem + env
 
 @media (max-width: 768px) {
     .app-container { padding: 0.75rem 0.5rem; }
-    .header-content { padding: 0 0.5rem; flex-wrap: wrap; gap: 0.5rem; }
+    /* Tres filas (logo / pestañas / tema y sesión) eran demasiado alto en un
+       móvil. Con "display: contents" el bloque derecho desaparece como caja y
+       sus hijos pasan a colocarse solos: las pestañas suben junto al logo, y
+       tema y sesión se quedan con una fila propia debajo. */
+    .header-content { padding: 0 0.5rem; flex-wrap: wrap; column-gap: 0.5rem; row-gap: 0.5rem; }
+    .header-right { display: contents; }
+    .header-right > nav { margin-left: auto; }
+    .auth-section { flex-basis: 100%; justify-content: flex-end; }
     .logo-img { width: 36px; height: 36px; }
-    .logo-text { font-size: 1.1rem; }
+    .logo-text { font-size: 1rem; }
+    .logo-section { gap: 0.5rem; }
     .nav-tabs { gap: 0.35rem; }
     .nav-tab { padding: 0.4rem 0.7rem; font-size: 0.8rem; }
     .auth-section { font-size: 0.75rem; }
@@ -1039,12 +1047,34 @@ body.fullscreen-active .song-content { padding: 0.85rem 1.1rem calc(5.5rem + env
     .toolbar-left, .toolbar-right { flex-wrap: wrap; }
     .chips-container { display: none; }
     .section-header { flex-direction: column; align-items: stretch; gap: 0.75rem; }
+    .section-header-inline { flex-direction: row; align-items: center; gap: 0.75rem; margin-bottom: 1.25rem; }
 }
+/* Bloque derecho de la cabecera (pestañas + tema + sesión). En escritorio va
+   todo en línea; en móvil se reparte (ver la media query del final). */
+.header-right { display: flex; align-items: center; gap: 1.5rem; flex-wrap: wrap; }
+
+/* Cabecera de sección que NO se parte en dos filas en móvil: el título a la
+   izquierda y un único botón a la derecha. La de "Canciones" no la usa porque
+   allí hay varios botones y sí necesitan su propia fila. */
+.section-header-inline { flex-wrap: nowrap; align-items: center; }
+.btn-add-compact { flex-shrink: 0; }
+
 /* ============ TARJETA DE REPERTORIO ============
    A diferencia de las canciones, aquí la papelera se queda pegada al título
    (misma fila, tamaño reducido) en vez de bajar a una fila propia: era lo único
    pulsable de la tarjeta y quedaba justo donde cae el pulgar. */
 .setlist-item .btn-delete-compact { padding: 0.3rem; }
+
+/* Las primeras canciones, en una línea que se corta con puntos suspensivos. */
+.setlist-preview {
+    font-size: 0.82rem;
+    color: var(--text-secondary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    margin-bottom: 0.15rem;
+}
+.setlist-item .song-meta { font-size: 0.76rem; color: var(--text-muted); }
 
 @media (max-width: 768px) {
     .setlist-item { flex-direction: row; align-items: center; gap: 0.5rem; padding: 0.85rem 1rem; }
