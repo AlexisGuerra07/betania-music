@@ -49,10 +49,12 @@
 [data-theme="dark"] {
     color-scheme: dark;
 
-    /* En oscuro el color de marca se invierte: el dorado del logo pasa a ser
-       el color de acento (botones, acordes), sobre fondos azul noche. */
-    --primary-color: #e5bd72;
-    --primary-hover: #f0cd8c;
+    /* En oscuro el azul noche del logo no se ve sobre el fondo, así que los
+       botones usan el mismo turquesa del logo pero aclarado (mismo tono, 198°).
+       El dorado NO se usa para botones: queda reservado a los detalles de
+       identidad y a los acordes, que es donde de verdad significa algo. */
+    --primary-color: #6eb2cf;
+    --primary-hover: #8cc3db;
     --on-primary: #0e1922;
     --accent-color: #e5bd72;
     --brand-gold: #e5bd72;
