@@ -1428,6 +1428,7 @@ const Router = {
     renderSongsList() {
         const grid = document.getElementById('songs-grid');
         const emptyState = document.getElementById('empty-state');
+        if (!grid || !emptyState) return;
         if (AppState.songs.length === 0) {
             grid.style.display = 'none';
             emptyState.style.display = 'block';
@@ -2369,6 +2370,9 @@ const Router = {
     renderSetlistsList() {
         const grid = document.getElementById('repertorio-grid');
         const emptyState = document.getElementById('repertorio-empty-state');
+        // Si se llama antes de que la vista exista en la página, no hacemos nada:
+        // vendrá otra llamada en cuanto esté lista.
+        if (!grid || !emptyState) return;
         if (AppState.setlists.length === 0) { grid.style.display = 'none'; emptyState.style.display = 'block'; return; }
         emptyState.style.display = 'none';
         grid.style.display = 'block';
@@ -2431,6 +2435,7 @@ const Router = {
         const empty = document.getElementById('setlist-empty-state');
         const songs = (sl.songIds || []).map(id => AppState.songs.find(s => s.id === id)).filter(Boolean);
 
+        if (!list || !empty) return;
         if (songs.length === 0) { list.style.display = 'none'; empty.style.display = 'block'; return; }
         empty.style.display = 'none';
         list.style.display = 'block';
