@@ -196,6 +196,14 @@
                     <div id="convocados-display" style="display:none;"></div>
                 </div>
 
+                <!-- Mientras se edita la lista, una barra visible lo dice y ofrece la
+                     salida. Esconder el "Listo" dentro del menú dejaba al usuario
+                     sin saber cómo volver al modo normal. -->
+                <div class="setlist-edit-bar" id="setlist-edit-bar" hidden>
+                    <span>Editando la lista: reordena, borra o añade notas.</span>
+                    <button class="btn btn-sm btn-primary" id="btn-setlist-edit-done">✓ Listo</button>
+                </div>
+
                 <div id="setlist-empty-state" class="empty-state">
                     <h3>Repertorio vacío</h3>
                     <p>Usa "+ Añadir canciones" para armar la lista.</p>
