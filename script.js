@@ -1200,6 +1200,11 @@ const Router = {
 
     navigate(view, push = true) {
         if (view === 'edicion' && !AppState.isAdmin) view = 'canciones';
+        // Salir del editor por las pestañas guardaba solo al usar "Volver".
+        // Ahora guarda siempre, para no perder cambios sin darse cuenta.
+        if (AppState.currentView === 'edicion' && view !== 'edicion' && AppState.currentSong) {
+            this.saveCurrentSong();
+        }
         if (AppState.currentView === 'song-reader' && view !== 'song-reader') {
             WakeLockManager.release();
             this.exitFullscreenMode();
@@ -1489,11 +1494,13 @@ const Router = {
         `).join('');
     },
 
-    saveCurrentSong() {
+    // force: para guardados que vienen de una acción concreta (ej. el orden de la
+    // canción), que no deben descartarse por la espera que evita el doble clic.
+    saveCurrentSong(force = false) {
         if (!AppState.isAdmin) return;
         if (AppState.isSaving) return;
         const now = Date.now();
-        if (now - AppState.lastSaveTime < 800) return;
+        if (!force && now - AppState.lastSaveTime < 800) return;
         if (!AppState.currentSong) return;
         AppState.isSaving = true;
         AppState.lastSaveTime = now;
@@ -3095,8 +3102,10 @@ const Editor = {
         const textarea = document.getElementById('structure-textarea');
         const lines = (textarea ? textarea.value : '').split('\n').map(l => l.trim()).filter(l => l.length > 0);
         AppState.currentSong.structure = lines;
-        Storage.updateSaveStatus('unsaved');
         Router.closeModal();
+        // Antes esto solo quedaba en memoria y se perdía si salías sin pulsar
+        // "Guardar". Ahora el orden se sube en el momento.
+        Router.saveCurrentSong(true);
     },
 
     render() {
