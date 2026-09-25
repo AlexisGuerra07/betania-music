@@ -1164,7 +1164,8 @@ body.fullscreen-active .song-content { padding: 0.85rem 1.1rem calc(5.5rem + env
 /* Título a la izquierda, opciones detrás de un icono a la derecha. */
 /* Fila superior del repertorio: "Volver" a la izquierda, menú a la derecha. */
 .setlist-topbar { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; }
-.btn-icon-menu { font-size: 1.1rem; line-height: 1; padding: 0.3rem 0.75rem; letter-spacing: 0.08em; }
+.btn-icon-menu { padding: 0.4rem 0.55rem; line-height: 0; }
+.btn-icon-menu svg { display: block; }
 .setlist-menu-wrap { position: relative; flex-shrink: 0; }
 
 .setlist-menu {
