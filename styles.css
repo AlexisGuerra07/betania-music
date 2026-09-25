@@ -215,6 +215,28 @@ body {
 }
 .search-box:focus { outline: none; border-color: var(--primary-color); }
 
+/* El buscador lleva la cruz DENTRO, así que necesita caja propia y hueco a la
+   derecha para que el texto no pase por debajo del botón. */
+.search-field { position: relative; flex: 1; min-width: 200px; }
+.search-field .search-box { width: 100%; padding-right: 2.6rem; }
+.search-clear {
+    position: absolute;
+    right: 0.45rem;
+    top: 50%;
+    transform: translateY(-50%);
+    background: transparent;
+    border: none;
+    color: var(--text-muted);
+    font-size: 0.95rem;
+    line-height: 1;
+    padding: 0.35rem 0.45rem;
+    border-radius: 50%;
+    cursor: pointer;
+    transition: all 0.15s;
+}
+.search-clear:hover { background: var(--bg-tertiary); color: var(--text-primary); }
+.search-clear[hidden] { display: none; }
+
 .empty-state {
     text-align: center;
     padding: 4rem 2rem;
