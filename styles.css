@@ -1162,9 +1162,10 @@ body.fullscreen-active .song-content { padding: 0.85rem 1.1rem calc(5.5rem + env
 #setlist-songs-list:not(.edit-mode) .song-actions { display: none; }
 
 /* Título a la izquierda, opciones detrás de un icono a la derecha. */
-.setlist-title-row { display: flex; align-items: center; gap: 0.5rem; }
+/* Fila superior del repertorio: "Volver" a la izquierda, menú a la derecha. */
+.setlist-topbar { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; }
+.btn-icon-menu { font-size: 1.1rem; line-height: 1; padding: 0.3rem 0.75rem; letter-spacing: 0.08em; }
 .setlist-menu-wrap { position: relative; flex-shrink: 0; }
-#btn-setlist-menu { font-size: 1.15rem; line-height: 1; padding: 0.35rem 0.7rem; }
 
 .setlist-menu {
     position: absolute;
