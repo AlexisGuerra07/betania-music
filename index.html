@@ -162,18 +162,29 @@
         <!-- Repertorio Detail View -->
         <div class="view" id="view-repertorio-detail">
             <div class="songs-container">
-                <div class="section-header" style="flex-direction: column; align-items: stretch; gap: 1rem;">
-                    <button class="btn" id="btn-back-to-repertorios" style="align-self: flex-start;">← Volver a repertorios</button>
-                    <input type="text" id="setlist-name-input" placeholder="Nombre del repertorio" 
-                           style="font-size: 1.5rem; font-weight: 700; border: none; background: transparent; outline: none; padding: 0.25rem 0; color: var(--text-primary);">
-                    <div style="display:flex; gap:0.5rem; flex-wrap:wrap; align-items:center;">
-                        <button class="btn" id="btn-add-songs-to-setlist">+ Añadir canciones</button>
-                        <button class="btn" id="btn-uniform-key">Tonalidad uniforme</button>
-                        <span id="uniform-key-badge" style="display:none; font-size:0.85rem; color:var(--text-secondary); font-weight:600;"></span>
-                        <button class="btn btn-sm" id="btn-clear-uniform-key" style="display:none;">↩️ Volver a tonalidades originales</button>
-                        <button class="btn" id="btn-toggle-equipo">Convocatoria</button>
-                        <button class="btn" id="btn-toggle-setlist-edit">✏️ Editar lista</button>
+                <div class="section-header" style="flex-direction: column; align-items: stretch; gap: 0.7rem;">
+                    <button class="btn btn-sm" id="btn-back-to-repertorios" style="align-self: flex-start;">← Volver</button>
+                    <!-- Título y, detrás de un solo icono, todo lo que solo se usa al
+                         PREPARAR el repertorio. El domingo la pantalla empieza por las
+                         canciones, que es a lo que se entra. -->
+                    <div class="setlist-title-row">
+                        <input type="text" id="setlist-name-input" placeholder="Nombre del repertorio"
+                               style="font-size: 1.5rem; font-weight: 700; border: none; background: transparent; outline: none; padding: 0.25rem 0; color: var(--text-primary); flex:1; min-width:0;">
+                        <div class="setlist-menu-wrap">
+                            <button class="btn btn-sm" id="btn-setlist-menu" title="Opciones del repertorio" aria-label="Opciones del repertorio">⋯</button>
+                            <div class="setlist-menu" id="setlist-menu" hidden>
+                                <button class="btn btn-sm" id="btn-add-songs-to-setlist">+ Añadir canciones</button>
+                                <button class="btn btn-sm" id="btn-uniform-key">Tonalidad uniforme</button>
+                                <button class="btn btn-sm" id="btn-clear-uniform-key" style="display:none;">↩️ Volver a tonalidades originales</button>
+                                <button class="btn btn-sm" id="btn-toggle-equipo">Convocatoria</button>
+                                <button class="btn btn-sm" id="btn-toggle-setlist-edit">✏️ Editar lista</button>
+                            </div>
+                        </div>
                     </div>
+                    <span id="uniform-key-badge" style="display:none; font-size:0.85rem; color:var(--text-secondary); font-weight:600;"></span>
+
+                    <!-- La convocatoria SÍ se queda a la vista: es de lo que más se
+                         consulta el domingo, no algo de preparación. -->
                     <div id="convocados-display" style="display:none;"></div>
                 </div>
 
