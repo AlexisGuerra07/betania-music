@@ -131,6 +131,24 @@ document.addEventListener('visibilitychange', () => {
     }
 });
 
+// ============ AVISO DE "SIN CONEXIÓN" ============
+// Sin red la app sigue abriendo con la última copia guardada en el móvil, pero
+// hay que decirlo: si alguien cambia el repertorio mientras tanto, lo que se ve
+// no es lo último. El aviso evita que nadie toque una lista equivocada creyendo
+// que está al día.
+const ConnectionBanner = {
+    init() {
+        window.addEventListener('online', () => this.update());
+        window.addEventListener('offline', () => this.update());
+        this.update();
+    },
+    update() {
+        const el = document.getElementById('offline-banner');
+        if (!el) return;
+        el.hidden = navigator.onLine;
+    }
+};
+
 // ============ PANTALLA DE CARGA (SPLASH) ============
 const SplashManager = {
     hidden: false,
@@ -747,6 +765,12 @@ const AppState = {
 // Storage
 const Storage = {
     SETTINGS_KEY: 'betania_settings_v4',
+    // Copia en el propio móvil de lo último que llegó de la nube. Sirve para dos
+    // cosas: que la app abra con contenido al instante, y que siga siendo útil
+    // sin conexión (el escenario donde falla el wifi de la iglesia).
+    CACHE_SONGS: 'repertia_cache_songs',
+    CACHE_SETLISTS: 'repertia_cache_setlists',
+    CACHE_VOCALS: 'repertia_cache_vocalprofiles',
     songsUnsub: null,
     setlistsUnsub: null,
     vocalProfilesUnsub: null,
@@ -766,6 +790,7 @@ const Storage = {
         if (this.songsUnsub) this.songsUnsub();
         this.songsUnsub = db.collection('appdata').doc('songs').onSnapshot(doc => {
             AppState.songs = doc.exists ? (doc.data().songs || []) : [];
+            this.guardarCache(this.CACHE_SONGS, AppState.songs);
             if (callback) callback();
         }, err => console.error(err));
     },
@@ -782,6 +807,7 @@ const Storage = {
         if (this.setlistsUnsub) this.setlistsUnsub();
         this.setlistsUnsub = db.collection('appdata').doc('setlists').onSnapshot(doc => {
             AppState.setlists = doc.exists ? (doc.data().setlists || []) : [];
+            this.guardarCache(this.CACHE_SETLISTS, AppState.setlists);
             // Si había un repertorio abierto, lo reapuntamos al objeto nuevo correspondiente.
             // Sin esto, cualquier cambio hecho sobre la referencia vieja (ej. transponer una
             // canción) se pierde en silencio al guardar, porque esa referencia ya no forma
@@ -806,8 +832,29 @@ const Storage = {
         if (this.vocalProfilesUnsub) this.vocalProfilesUnsub();
         this.vocalProfilesUnsub = db.collection('appdata').doc('vocalProfiles').onSnapshot(doc => {
             AppState.vocalProfiles = doc.exists ? (doc.data().profiles || {}) : {};
+            this.guardarCache(this.CACHE_VOCALS, AppState.vocalProfiles);
             if (callback) callback();
         }, err => console.error(err));
+    },
+
+    leerCache(clave) {
+        try { const raw = localStorage.getItem(clave); return raw ? JSON.parse(raw) : null; }
+        catch (e) { return null; }
+    },
+    guardarCache(clave, valor) {
+        try { localStorage.setItem(clave, JSON.stringify(valor)); }
+        catch (e) { /* almacenamiento lleno o bloqueado: seguimos sin copia */ }
+    },
+
+    // Se llama antes de conectar con la nube: pinta lo último conocido enseguida.
+    // Cuando lleguen los datos reales se vuelve a dibujar con ellos.
+    cargarDesdeCache() {
+        const songs = this.leerCache(this.CACHE_SONGS);
+        if (Array.isArray(songs) && songs.length) { AppState.songs = songs; AppState.songsLoaded = true; }
+        const setlists = this.leerCache(this.CACHE_SETLISTS);
+        if (Array.isArray(setlists)) { AppState.setlists = setlists; AppState.setlistsLoaded = true; }
+        const vocals = this.leerCache(this.CACHE_VOCALS);
+        if (vocals && typeof vocals === 'object') { AppState.vocalProfiles = vocals; AppState.vocalProfilesLoaded = true; }
     },
 
     saveSettings() {
@@ -3497,6 +3544,8 @@ const Editor = {
 // Inicialización
 document.addEventListener('DOMContentLoaded', () => {
     Storage.loadSettings();
+    Storage.cargarDesdeCache();
+    ConnectionBanner.init();
 
     if (typeof pdfjsLib !== 'undefined') {
         pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
