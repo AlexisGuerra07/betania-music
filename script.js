@@ -3117,7 +3117,33 @@ const Router = {
         `;
         overlay._actions = actions;
         document.body.appendChild(overlay);
-        overlay.addEventListener('click', (e) => { if (e.target === overlay) this.closeModal(); });
+
+        // Tocar el fondo cierra la ventana, pero DESLIZAR sobre él mueve la
+        // página de detrás en vez de cerrarla: así se puede leer la canción sin
+        // perder lo que se está escribiendo.
+        let arrastrado = false;
+        overlay.addEventListener('click', (e) => {
+            if (e.target === overlay && !arrastrado) this.closeModal();
+            arrastrado = false;
+        });
+        overlay.addEventListener('wheel', (e) => {
+            if (e.target.closest('.modal')) return;   // dentro de la ventana, scroll normal
+            window.scrollBy(0, e.deltaY);
+        }, { passive: true });
+
+        let ultimoY = null;
+        overlay.addEventListener('touchstart', (e) => {
+            ultimoY = e.target.closest('.modal') ? null : e.touches[0].clientY;
+        }, { passive: true });
+        overlay.addEventListener('touchmove', (e) => {
+            if (ultimoY === null) return;
+            const y = e.touches[0].clientY;
+            if (Math.abs(ultimoY - y) > 2) arrastrado = true;
+            window.scrollBy(0, ultimoY - y);
+            ultimoY = y;
+        }, { passive: true });
+        overlay.addEventListener('touchend', () => { ultimoY = null; }, { passive: true });
+
         this.makeModalDraggable(overlay);
         return overlay;
     },
