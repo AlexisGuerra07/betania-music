@@ -1275,6 +1275,7 @@ const Router = {
         if (view === 'canciones') {
             const sortSelect = document.getElementById('sort-select');
             if (sortSelect) sortSelect.value = AppState.settings.sortBy || 'alpha';
+            this.updateSearchClear();
             this.renderSongsList();
         }
         if (view === 'repertorio') this.renderSetlistsList();
@@ -1337,7 +1338,8 @@ const Router = {
             });
             structureBarInner.setAttribute('data-bound', 'true');
         }
-        this.bindInput('search-box', (e) => this.filterSongs(e.target.value));
+        this.bindInput('search-box', (e) => { this.filterSongs(e.target.value); this.updateSearchClear(); });
+        this.bindButton('btn-clear-search', () => this.clearSearch());
         this.bindInput('bpm-editor-input', (e) => {
             if (!AppState.currentSong) return;
             const val = parseInt(e.target.value);
@@ -1593,6 +1595,20 @@ const Router = {
     filterSongs(query) {
         AppState.searchQuery = query || '';
         this.renderSongsList();
+    },
+
+    // La cruz dentro del buscador: solo aparece cuando hay algo escrito.
+    updateSearchClear() {
+        const box = document.getElementById('search-box');
+        const btn = document.getElementById('btn-clear-search');
+        if (btn) btn.hidden = !(box && box.value.length > 0);
+    },
+
+    clearSearch() {
+        const box = document.getElementById('search-box');
+        if (box) { box.value = ''; box.focus(); }
+        this.filterSongs('');
+        this.updateSearchClear();
     },
 
     formatReaderMeta(song) {
