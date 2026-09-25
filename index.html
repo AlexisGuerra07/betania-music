@@ -163,15 +163,13 @@
         <div class="view" id="view-repertorio-detail">
             <div class="songs-container">
                 <div class="section-header" style="flex-direction: column; align-items: stretch; gap: 0.7rem;">
-                    <button class="btn btn-sm" id="btn-back-to-repertorios" style="align-self: flex-start;">← Volver</button>
-                    <!-- Título y, detrás de un solo icono, todo lo que solo se usa al
-                         PREPARAR el repertorio. El domingo la pantalla empieza por las
-                         canciones, que es a lo que se entra. -->
-                    <div class="setlist-title-row">
-                        <input type="text" id="setlist-name-input" placeholder="Nombre del repertorio"
-                               style="font-size: 1.5rem; font-weight: 700; border: none; background: transparent; outline: none; padding: 0.25rem 0; color: var(--text-primary); flex:1; min-width:0;">
+                    <!-- Fila superior: volver a la izquierda y, a la derecha, el menú con
+                         todo lo que solo se usa al PREPARAR el repertorio. El domingo la
+                         pantalla empieza por las canciones, que es a lo que se entra. -->
+                    <div class="setlist-topbar">
+                        <button class="btn btn-sm" id="btn-back-to-repertorios">← Volver</button>
                         <div class="setlist-menu-wrap">
-                            <button class="btn btn-sm" id="btn-setlist-menu" title="Opciones del repertorio" aria-label="Opciones del repertorio">⋯</button>
+                            <button class="btn btn-sm btn-icon-menu" id="btn-setlist-menu" title="Opciones del repertorio" aria-label="Opciones del repertorio">⋯</button>
                             <div class="setlist-menu" id="setlist-menu" hidden>
                                 <button class="btn btn-sm" id="btn-add-songs-to-setlist">+ Añadir canciones</button>
                                 <button class="btn btn-sm" id="btn-uniform-key">Tonalidad uniforme</button>
@@ -181,6 +179,10 @@
                             </div>
                         </div>
                     </div>
+
+                    <input type="text" id="setlist-name-input" placeholder="Nombre del repertorio"
+                           style="font-size: 1.5rem; font-weight: 700; border: none; background: transparent; outline: none; padding: 0.25rem 0; color: var(--text-primary); width: 100%;">
+
                     <span id="uniform-key-badge" style="display:none; font-size:0.85rem; color:var(--text-secondary); font-weight:600;"></span>
 
                     <!-- La convocatoria SÍ se queda a la vista: es de lo que más se
