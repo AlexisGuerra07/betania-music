@@ -2613,7 +2613,7 @@ const Router = {
     CONVOCADOS_ROLES: [
         { key: 'bateria', label: 'Batería', color: '#dc2626', options: ['Rubén', 'Alex'] },
         { key: 'bajo', label: 'Bajo', color: '#1e3a8a', options: ['Pau'] },
-        { key: 'guitarra', label: 'Guitarra', color: '#d97706', options: ['Ale'] },
+        { key: 'guitarra', label: 'Guitarra', color: '#d97706', options: ['Ale', 'Rubén'] },
         { key: 'piano', label: 'Piano', color: '#7c3aed', options: ['Sarah', 'Samuel'] },
         { key: 'voces', label: 'Voces', color: '#0d9488', options: ['Sarah', 'Aleja', 'Cristina', 'Lady', 'Samuel', 'Pau'], multi: true },
         { key: 'sonido', label: 'Sonido', color: '#64748b', options: ['Felipe', 'Alexi', 'Julián', 'Leandro'], multi: true }
