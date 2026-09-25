@@ -1161,6 +1161,32 @@ body.fullscreen-active .song-content { padding: 0.85rem 1.1rem calc(5.5rem + env
    tiempo la pantalla es la lista de canciones, que es para lo que se abre. */
 #setlist-songs-list:not(.edit-mode) .song-actions { display: none; }
 
+/* Título a la izquierda, opciones detrás de un icono a la derecha. */
+.setlist-title-row { display: flex; align-items: center; gap: 0.5rem; }
+.setlist-menu-wrap { position: relative; flex-shrink: 0; }
+#btn-setlist-menu { font-size: 1.15rem; line-height: 1; padding: 0.35rem 0.7rem; }
+
+.setlist-menu {
+    position: absolute;
+    right: 0;
+    top: calc(100% + 0.4rem);
+    z-index: 120;
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    box-shadow: var(--shadow-lg);
+    padding: 0.4rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    min-width: 15rem;
+}
+.setlist-menu[hidden] { display: none; }
+.setlist-menu .btn-sm { justify-content: flex-start; border-color: transparent; background: transparent; }
+.setlist-menu .btn-sm:hover { background: var(--bg-tertiary); border-color: var(--border-color); }
+
+/* La convocatoria se consulta una vez: va plegada en una línea. */
+
 /* El desplegable de voz se ve como una etiqueta tranquila; sigue siendo un
    desplegable normal al tocarlo. */
 #setlist-songs-list .lead-vocal-select {
