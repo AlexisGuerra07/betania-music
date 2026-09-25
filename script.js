@@ -1866,6 +1866,37 @@ const Router = {
         if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
     },
 
+    // Botones con los nombres reales de las secciones, para escribir el orden sin
+    // tener que ir a mirarlos a la canción. Al pulsar uno se añade esa línea.
+    buildStructurePicker(song) {
+        const vistos = [];
+        (this.splitSectionsIntoAnchors(song) || []).forEach(a => {
+            const etiqueta = (a.label || '').trim();
+            if (etiqueta && !vistos.includes(etiqueta)) vistos.push(etiqueta);
+        });
+        if (!vistos.length) return '';
+        return `
+            <p class="structure-picker-hint">Partes de esta canción — pulsa para añadirlas al orden:</p>
+            <div class="structure-picker">
+                ${vistos.map(n => `<button type="button" class="structure-pick" data-label="${n.replace(/"/g, '&quot;')}">${n}</button>`).join('')}
+            </div>
+        `;
+    },
+
+    bindStructurePicker(textareaId) {
+        const textarea = document.getElementById(textareaId);
+        if (!textarea) return;
+        document.querySelectorAll('.structure-pick').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const valor = textarea.value;
+                const sep = (!valor || valor.endsWith('\n')) ? '' : '\n';
+                textarea.value = valor + sep + btn.dataset.label + '\n';
+                textarea.scrollTop = textarea.scrollHeight;
+                textarea.focus();
+            });
+        });
+    },
+
     // Editar el orden PROPIO DE ESTE REPERTORIO (cualquiera puede) — solo disponible viendo desde un repertorio
     showSetlistStructureModal() {
         if (!AppState.currentSetlist || !AppState.currentSong) return;
@@ -1879,6 +1910,7 @@ const Router = {
         this.createModal({
             title: `Orden en "${sl.name}"`,
             content: `
+                ${this.buildStructurePicker(song)}
                 <div class="form-group">
                     <textarea class="form-textarea" id="setlist-structure-textarea" style="min-height:220px; font-family:var(--mono-font); font-size:0.9rem;">${prefill}</textarea>
                 </div>
@@ -1888,6 +1920,7 @@ const Router = {
                 { text: 'Guardar orden', primary: true, action: () => this.saveSetlistStructure() }
             ]
         });
+        this.bindStructurePicker('setlist-structure-textarea');
     },
 
     saveSetlistStructure() {
@@ -3128,7 +3161,7 @@ const Router = {
         });
         overlay.addEventListener('wheel', (e) => {
             if (e.target.closest('.modal')) return;   // dentro de la ventana, scroll normal
-            window.scrollBy(0, e.deltaY);
+            this.desplazarFondo(e.clientX, e.clientY, e.deltaY);
         }, { passive: true });
 
         let ultimoY = null;
@@ -3139,13 +3172,27 @@ const Router = {
             if (ultimoY === null) return;
             const y = e.touches[0].clientY;
             if (Math.abs(ultimoY - y) > 2) arrastrado = true;
-            window.scrollBy(0, ultimoY - y);
+            this.desplazarFondo(e.touches[0].clientX, y, ultimoY - y);
             ultimoY = y;
         }, { passive: true });
         overlay.addEventListener('touchend', () => { ultimoY = null; }, { passive: true });
 
         this.makeModalDraggable(overlay);
         return overlay;
+    },
+
+    // En el editor la canción no se desplaza con la página: vive en un panel con
+    // su propia barra. Así que buscamos qué hay realmente debajo del cursor y
+    // movemos eso; si no hay nada con scroll propio, movemos la página.
+    desplazarFondo(x, y, delta) {
+        const debajo = document.elementsFromPoint(x, y);
+        for (const el of debajo) {
+            if (!el || el.closest('.modal-overlay')) continue;
+            const est = getComputedStyle(el);
+            const puede = (est.overflowY === 'auto' || est.overflowY === 'scroll');
+            if (puede && el.scrollHeight > el.clientHeight + 1) { el.scrollTop += delta; return; }
+        }
+        window.scrollBy(0, delta);
     },
 
     // La ventana se arrastra por su barra de título, para poder apartarla y ver
@@ -3257,6 +3304,7 @@ const Editor = {
                 <p style="margin-bottom:1rem; color:var(--text-secondary); font-size:0.9rem;">
                     Escribe el orden en que se toca esta canción (escuchando la versión original), una parte por línea. Repite líneas, añade "x2", "x4", o texto libre como "Instrumental" o "Final" según necesites. Este es el orden por defecto de la canción; cada repertorio puede tener su propio orden que sobrescribe este.
                 </p>
+                ${Router.buildStructurePicker(AppState.currentSong)}
                 <div class="form-group">
                     <textarea class="form-textarea" id="structure-textarea" style="min-height:220px; font-family:var(--mono-font); font-size:0.9rem;">${prefill}</textarea>
                 </div>
@@ -3266,6 +3314,7 @@ const Editor = {
                 { text: 'Guardar orden', primary: true, action: () => Editor.saveStructure() }
             ]
         });
+        Router.bindStructurePicker('structure-textarea');
     },
 
     saveStructure() {
