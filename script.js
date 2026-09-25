@@ -1335,7 +1335,19 @@ const Router = {
         this.bindButton('btn-uniform-key', () => this.showUniformKeyModal());
         this.bindButton('btn-clear-uniform-key', () => this.clearUniformKey());
         this.bindButton('btn-toggle-equipo', () => this.showEquipoModal());
-        this.bindButton('btn-toggle-setlist-edit', () => this.toggleSetlistEditMode());
+        this.bindButton('btn-toggle-setlist-edit', () => { this.closeSetlistMenu(); this.toggleSetlistEditMode(); });
+        this.bindButton('btn-setlist-menu', () => this.toggleSetlistMenu());
+        // Al elegir cualquier opción, o al tocar fuera, el menú se cierra solo.
+        if (!document.body.hasAttribute('data-setlist-menu-bound')) {
+            document.addEventListener('click', (e) => {
+                const menu = document.getElementById('setlist-menu');
+                if (!menu || menu.hidden) return;
+                if (e.target.closest('#btn-setlist-menu')) return;
+                if (e.target.closest('#setlist-menu') && !e.target.closest('button')) return;
+                this.closeSetlistMenu();
+            });
+            document.body.setAttribute('data-setlist-menu-bound', 'true');
+        }
         this.bindInput('setlist-name-input', (e) => {
             if (!AppState.currentSetlist) return;
             AppState.currentSetlist.name = e.target.value;
@@ -2424,6 +2436,15 @@ const Router = {
             Storage.saveSetlists();
             this.renderSetlistsList();
         }
+    },
+
+    toggleSetlistMenu() {
+        const menu = document.getElementById('setlist-menu');
+        if (menu) menu.hidden = !menu.hidden;
+    },
+    closeSetlistMenu() {
+        const menu = document.getElementById('setlist-menu');
+        if (menu) menu.hidden = true;
     },
 
     // Reordenar y borrar canciones se hace al preparar el repertorio, no al
