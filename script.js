@@ -1336,6 +1336,7 @@ const Router = {
         this.bindButton('btn-clear-uniform-key', () => this.clearUniformKey());
         this.bindButton('btn-toggle-equipo', () => this.showEquipoModal());
         this.bindButton('btn-toggle-setlist-edit', () => { this.closeSetlistMenu(); this.toggleSetlistEditMode(); });
+        this.bindButton('btn-setlist-edit-done', () => this.toggleSetlistEditMode());
         this.bindButton('btn-setlist-menu', () => this.toggleSetlistMenu());
         // Al elegir cualquier opción, o al tocar fuera, el menú se cierra solo.
         if (!document.body.hasAttribute('data-setlist-menu-bound')) {
@@ -2461,8 +2462,10 @@ const Router = {
         const btn = document.getElementById('btn-toggle-setlist-edit');
         if (btn) {
             btn.classList.toggle('active-mode', AppState.setlistEditMode);
-            btn.textContent = AppState.setlistEditMode ? '✓ Listo' : '✏️ Editar lista';
+            btn.textContent = AppState.setlistEditMode ? '✓ Terminar edición' : '✏️ Editar lista';
         }
+        const bar = document.getElementById('setlist-edit-bar');
+        if (bar) bar.hidden = !AppState.setlistEditMode;
     },
 
     renderSetlistDetail() {
