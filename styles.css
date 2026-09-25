@@ -1285,6 +1285,23 @@ body.fullscreen-active .song-content { padding: 0.85rem 1.1rem calc(5.5rem + env
 /* Hueco al final para que el botón no tape el último campo del editor. */
 #view-edicion { padding-bottom: 5rem; }
 
+/* Franja de "sin conexión". Va arriba del todo y por encima de casi todo,
+   menos de los modales, para que no se pierda de vista. */
+#offline-banner {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 960;
+    padding: calc(0.4rem + env(safe-area-inset-top, 0px)) 0.75rem 0.4rem;
+    text-align: center;
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: #ffffff;
+    background: var(--warning-color);
+}
+#offline-banner[hidden] { display: none; }
+
 /* ============ PANTALLA DE CARGA (SPLASH) ============ */
 #app-splash {
     position: fixed;
