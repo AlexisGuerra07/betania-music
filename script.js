@@ -3025,13 +3025,65 @@ const Router = {
         overlay._actions = actions;
         document.body.appendChild(overlay);
         overlay.addEventListener('click', (e) => { if (e.target === overlay) this.closeModal(); });
+        this.makeModalDraggable(overlay);
         return overlay;
+    },
+
+    // La ventana se arrastra por su barra de título, para poder apartarla y ver
+    // lo que tapa (por ejemplo la lista de secciones mientras escribes el orden).
+    makeModalDraggable(overlay) {
+        const modal = overlay.querySelector('.modal');
+        const header = overlay.querySelector('.modal-header');
+        if (!modal || !header) return;
+        let dragging = false, startX = 0, startY = 0, baseX = 0, baseY = 0;
+        const punto = (e) => (e.touches && e.touches[0]) ? e.touches[0] : e;
+
+        const empezar = (e) => {
+            if (e.target.closest('button')) return;   // la X sigue cerrando
+            const p = punto(e);
+            dragging = true;
+            startX = p.clientX; startY = p.clientY;
+            baseX = modal._dx || 0; baseY = modal._dy || 0;
+            overlay.classList.add('dragging');
+        };
+        const mover = (e) => {
+            if (!dragging) return;
+            const p = punto(e);
+            modal._dx = baseX + (p.clientX - startX);
+            modal._dy = baseY + (p.clientY - startY);
+            modal.style.transform = `translate(${modal._dx}px, ${modal._dy}px)`;
+            if (e.cancelable) e.preventDefault();
+        };
+        const soltar = () => {
+            if (!dragging) return;
+            dragging = false;
+            overlay.classList.remove('dragging');
+        };
+
+        header.addEventListener('mousedown', empezar);
+        header.addEventListener('touchstart', empezar, { passive: true });
+        document.addEventListener('mousemove', mover);
+        document.addEventListener('touchmove', mover, { passive: false });
+        document.addEventListener('mouseup', soltar);
+        document.addEventListener('touchend', soltar);
+        // Se guardan para poder quitarlos al cerrar y no dejarlos sueltos.
+        overlay._dragCleanup = () => {
+            document.removeEventListener('mousemove', mover);
+            document.removeEventListener('touchmove', mover);
+            document.removeEventListener('mouseup', soltar);
+            document.removeEventListener('touchend', soltar);
+        };
     },
     executeModalAction(index) {
         const overlay = document.getElementById('modal-overlay');
         if (overlay && overlay._actions && overlay._actions[index]) overlay._actions[index].action();
     },
-    closeModal() { const overlay = document.getElementById('modal-overlay'); if (overlay) overlay.remove(); },
+    closeModal() {
+        const overlay = document.getElementById('modal-overlay');
+        if (!overlay) return;
+        if (overlay._dragCleanup) overlay._dragCleanup();
+        overlay.remove();
+    },
     generateId() { return Date.now().toString(36) + Math.random().toString(36).substr(2); }
 };
 
