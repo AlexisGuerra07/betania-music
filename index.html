@@ -126,7 +126,10 @@
                 </div>
 
                 <div class="search-container" style="display:flex; gap:0.75rem; flex-wrap: wrap;">
-                    <input type="text" class="search-box" id="search-box" placeholder="Buscar por título o autor..." style="flex:1; min-width: 200px;">
+                    <div class="search-field">
+                        <input type="text" class="search-box" id="search-box" placeholder="Buscar por título o autor...">
+                        <button type="button" class="search-clear" id="btn-clear-search" hidden aria-label="Borrar la búsqueda" title="Borrar la búsqueda">✕</button>
+                    </div>
                     <select id="sort-select" style="padding: 0.75rem 1rem; border: 2px solid var(--border-color); border-radius: 8px; font-size: 0.9rem; background: var(--bg-card); color: var(--text-primary); cursor: pointer;">
                         <option value="alpha">Orden alfabético (A-Z)</option>
                         <option value="recent">Últimas añadidas</option>
