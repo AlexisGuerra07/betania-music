@@ -733,6 +733,7 @@ const AppState = {
     lastSaveTime: 0,
     settings: { fontSize: 14, autoSections: true, sortBy: 'alpha', readerFontScale: 1 },
     isCreatingNew: false,
+    setlistEditMode: false,
     searchQuery: '',
     pendingImports: [],
     isAdmin: false,
@@ -1334,6 +1335,7 @@ const Router = {
         this.bindButton('btn-uniform-key', () => this.showUniformKeyModal());
         this.bindButton('btn-clear-uniform-key', () => this.clearUniformKey());
         this.bindButton('btn-toggle-equipo', () => this.showEquipoModal());
+        this.bindButton('btn-toggle-setlist-edit', () => this.toggleSetlistEditMode());
         this.bindInput('setlist-name-input', (e) => {
             if (!AppState.currentSetlist) return;
             AppState.currentSetlist.name = e.target.value;
@@ -2424,6 +2426,24 @@ const Router = {
         }
     },
 
+    // Reordenar y borrar canciones se hace al preparar el repertorio, no al
+    // tocarlo. Por eso esos botones viven en un modo aparte: así el domingo la
+    // lista es solo la lista y cabe mucho más en pantalla.
+    toggleSetlistEditMode() {
+        AppState.setlistEditMode = !AppState.setlistEditMode;
+        this.renderSetlistDetail();
+    },
+
+    updateSetlistEditUI() {
+        const list = document.getElementById('setlist-songs-list');
+        if (list) list.classList.toggle('edit-mode', AppState.setlistEditMode);
+        const btn = document.getElementById('btn-toggle-setlist-edit');
+        if (btn) {
+            btn.classList.toggle('active-mode', AppState.setlistEditMode);
+            btn.textContent = AppState.setlistEditMode ? '✓ Listo' : '✏️ Editar lista';
+        }
+    },
+
     renderSetlistDetail() {
         if (!AppState.currentSetlist) { this.navigate('repertorio'); return; }
         const sl = AppState.currentSetlist;
@@ -2443,6 +2463,7 @@ const Router = {
         const songs = (sl.songIds || []).map(id => AppState.songs.find(s => s.id === id)).filter(Boolean);
 
         if (!list || !empty) return;
+        this.updateSetlistEditUI();
         if (songs.length === 0) { list.style.display = 'none'; empty.style.display = 'block'; return; }
         empty.style.display = 'none';
         list.style.display = 'block';
@@ -2495,6 +2516,7 @@ const Router = {
             </div>
         `;
         }).join('');
+        this.updateSetlistEditUI();
     },
 
     // Abre el metrónomo de una canción sin tener que entrar en ella.
