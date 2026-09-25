@@ -1810,7 +1810,12 @@ const Router = {
             const m = original.match(regex);
             if (m) {
                 const rest = original.slice(m[0].length).trim();
-                const text = rest ? `${short}${rest}` : short;
+                // Los números y las repeticiones van pegados a la abreviatura
+                // ("Coro 2" -> C2, "Coro x4" -> Cx4), pero si lo que sigue es otra
+                // palabra hace falta un espacio: un nombre compuesto como
+                // "Instrumental Puente" se leía "INSTPuente", que no se entiende.
+                const pegado = /^(\d|x\s*\d)/i.test(rest);
+                const text = rest ? `${short}${pegado ? '' : ' '}${rest}` : short;
                 return { text, color, textColor };
             }
         }
