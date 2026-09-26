@@ -1250,7 +1250,7 @@ const Team = {
     async join(rawCode, displayName) {
         const user = AppState.currentUser;
         const code = this.normalizeCode(rawCode);
-        if (!code) throw new Error('El código tiene 4 letras y 4 números, por ejemplo BETA-4821.');
+        if (!code) throw new Error('El código tiene 4 letras y 4 números, por ejemplo ABCD-1234.');
         const c = await db.collection('inviteCodes').doc(code).get();
         if (!c.exists) throw new Error('Ese código no existe o ya no es válido. Pídele a tu líder el código actual.');
         const { teamId } = c.data();
@@ -1346,11 +1346,12 @@ const Gate = {
         el.textContent = text || '';
         el.classList.toggle('error', !!isError);
     },
+    // El título es neutro (sin saludar por el nombre). El campo del nombre se
+    // rellena con el nombre de pila de la cuenta de Google de cada persona, pero
+    // se puede cambiar: es como le verá el resto del equipo.
     prepareOnboarding(message) {
         const user = AppState.currentUser;
-        const first = user && user.displayName ? user.displayName.split(' ')[0] : '';
-        const hello = document.getElementById('onb-hello');
-        if (hello) hello.textContent = first || 'hola';
+        const first = user && user.displayName ? user.displayName.trim().split(/\s+/)[0] : '';
         const nameInput = document.getElementById('onb-name');
         if (nameInput && !nameInput.value) nameInput.value = first;
         const email = document.getElementById('onb-email');
@@ -1396,7 +1397,7 @@ const Gate = {
         const name = this.readName();
         if (!name) return;
         const teamName = (document.getElementById('onb-team-name').value || '').trim();
-        if (!teamName) { this.setMessage('onb-message', 'Escribe el nombre del equipo, por ejemplo "Betania Manresa".', true); return; }
+        if (!teamName) { this.setMessage('onb-message', 'Escribe el nombre del equipo (el que verán todos sus integrantes).', true); return; }
         this.setBusy(true);
         this.setMessage('onb-message', 'Creando el equipo...');
         try {
