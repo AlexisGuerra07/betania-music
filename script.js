@@ -890,7 +890,15 @@ const Storage = {
             AppState.songsFromCloud = !snap.metadata.fromCache;
             this.guardarCache(this.CACHE_SONGS, AppState.songs);
             if (callback) callback();
-        }, err => console.error('Canciones:', err));
+        }, err => {
+            console.error('Canciones:', err);
+            // Equipo todavía sin aprobar: la nube no deja leer el catálogo.
+            if (err.code === 'permission-denied') {
+                AppState.songs = [];
+                AppState.songsFromCloud = false;
+                if (callback) callback();
+            }
+        });
     },
 
     // ---- Repertorios (privados de cada equipo, uno por documento) ----
@@ -1095,7 +1103,11 @@ const Team = {
         Storage.cargarDesdeCache(teamId);
 
         this.teamUnsub = this.teamRef(teamId).onSnapshot(doc => {
+            const wasApproved = AppState.team ? AppState.team.approved === true : undefined;
             AppState.team = doc.exists ? { id: doc.id, ...doc.data() } : null;
+            // Si el administrador acaba de aprobar el equipo, se vuelve a pedir
+            // el catálogo (antes la nube lo negaba) para que aparezca sin recargar.
+            if (wasApproved === false && AppState.team && AppState.team.approved === true) this.listenCatalog();
             this.saveSession();
             Auth.updateUI();
             if (AppState.currentView === 'equipo') Router.renderTeamView();
@@ -1248,6 +1260,8 @@ const Team = {
                 name: teamName,
                 inviteCode: code,
                 leaderUid: user.uid,
+                leaderName: displayName,
+                approved: false,   // lo aprueba el administrador
                 createdAt: new Date().toISOString()
             });
             batch.set(db.collection('inviteCodes').doc(code), { teamId, teamName });
@@ -1315,7 +1329,8 @@ const Team = {
         const me = Perm.uid();
         if (!Perm.isLeader() || !newUid || newUid === me) return;
         const batch = db.batch();
-        batch.update(this.teamRef(), { leaderUid: newUid });
+        const newLeader = AppState.members.find(m => m.uid === newUid);
+        batch.update(this.teamRef(), { leaderUid: newUid, leaderName: newLeader ? (newLeader.name || '') : '' });
         batch.update(this.membersRef().doc(newUid), { role: 'lider' });
         batch.update(this.membersRef().doc(me), { role: 'director' });
         await batch.commit();
@@ -1342,6 +1357,11 @@ const Team = {
         batch.delete(this.membersRef().doc(uid));
         batch.set(db.collection('users').doc(uid), { teamId: null }, { merge: true });
         await batch.commit();
+    },
+
+    // Equipo creado pero todavía sin aprobar por el administrador.
+    isPending() {
+        return !!(AppState.teamId && AppState.team && AppState.team.approved !== true);
     },
 
     // Nombres de las personas del equipo (para voz líder y convocatoria).
@@ -1460,6 +1480,79 @@ const Gate = {
     }
 };
 
+// ============ APROBACIÓN DE EQUIPOS (solo administrador) ============
+// Los equipos nuevos nacen pendientes y no ven el catálogo hasta que el
+// administrador los aprueba. El botón "🛡️ Equipos" muestra cuántos esperan.
+const AdminTeams = {
+    unsub: null,
+    teams: [],
+    watch() {
+        if (this.unsub) return;
+        this.unsub = db.collection('teams').onSnapshot(snap => {
+            this.teams = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+            this.updateButton();
+            if (document.getElementById('admin-teams-list')) this.renderList();
+        }, err => console.error('Equipos (admin):', err));
+    },
+    unwatch() {
+        if (this.unsub) this.unsub();
+        this.unsub = null;
+        this.teams = [];
+    },
+    pendingCount() { return this.teams.filter(t => t.approved !== true).length; },
+    updateButton() {
+        const btn = document.getElementById('btn-admin-teams');
+        if (!btn) return;
+        const n = this.pendingCount();
+        btn.textContent = n ? `🛡️ Equipos (${n} pendiente${n === 1 ? '' : 's'})` : '🛡️ Equipos';
+        btn.classList.toggle('btn-attention', n > 0);
+    },
+    open() {
+        if (!AppState.isAdmin) return;
+        Router.createModal({
+            title: 'Equipos',
+            content: `<p class="team-hint" style="margin-top:0;">Un equipo pendiente no ve ninguna canción hasta que lo apruebes. Puedes retirar la aprobación en cualquier momento.</p>
+                <div id="admin-teams-list"></div>`,
+            actions: [{ text: 'Cerrar', primary: true, action: () => Router.closeModal() }]
+        });
+        this.renderList();
+    },
+    renderList() {
+        const el = document.getElementById('admin-teams-list');
+        if (!el) return;
+        const esc = (t) => Router.escapeHtml(t);
+        const teams = [...this.teams].sort((a, b) =>
+            ((a.approved === true) - (b.approved === true)) || String(b.createdAt || '').localeCompare(String(a.createdAt || '')));
+        if (!teams.length) { el.innerHTML = '<p class="team-hint">Todavía no hay ningún equipo.</p>'; return; }
+        el.innerHTML = teams.map(t => {
+            const ok = t.approved === true;
+            const date = Router.formatShortDate(t.createdAt);
+            return `
+                <div class="team-member">
+                    <div class="team-member-info">
+                        <div class="team-member-name">${esc(t.name || '(sin nombre)')}</div>
+                        <div class="team-member-meta">
+                            <span class="role-badge ${ok ? 'role-approved' : 'role-pending'}">${ok ? 'Aprobado' : 'Pendiente'}</span>
+                            <span class="team-member-email">${t.leaderName ? 'Líder: ' + esc(t.leaderName) : ''}${date ? ' · ' + esc(date) : ''}</span>
+                        </div>
+                    </div>
+                    <div class="team-member-actions">
+                        ${ok
+                            ? `<button class="btn btn-sm btn-danger-outline" onclick="AdminTeams.setApproved('${t.id}', false)">Retirar aprobación</button>`
+                            : `<button class="btn btn-sm btn-primary" onclick="AdminTeams.setApproved('${t.id}', true)">Aprobar</button>`}
+                    </div>
+                </div>`;
+        }).join('');
+    },
+    async setApproved(teamId, value) {
+        if (!AppState.isAdmin) return;
+        const t = this.teams.find(x => x.id === teamId);
+        if (!value && !confirm(`¿Retirar la aprobación a "${t ? t.name : 'este equipo'}"? Dejarán de ver las canciones hasta que lo vuelvas a aprobar.`)) return;
+        try { await db.collection('teams').doc(teamId).update({ approved: value }); }
+        catch (err) { console.error(err); alert('No se pudo cambiar: ' + err.message); }
+    }
+};
+
 // Autenticación
 const Auth = {
     init() {
@@ -1474,6 +1567,7 @@ const Auth = {
             if (user && user.isAnonymous) { firebase.auth().signOut(); return; }
             Team.stop();
             if (!user) {
+                AdminTeams.unwatch();
                 AppState.currentUser = null;
                 AppState.isAdmin = false;
                 Gate.show('login');
@@ -1481,6 +1575,7 @@ const Auth = {
             }
             AppState.currentUser = user;
             AppState.isAdmin = !!(user.email && user.email === ADMIN_EMAIL);
+            if (AppState.isAdmin) AdminTeams.watch(); else AdminTeams.unwatch();
             let result;
             try {
                 result = await Team.resolve(user);
@@ -1516,10 +1611,10 @@ const Auth = {
     signIn() {
         const provider = new firebase.auth.GoogleAuthProvider();
         provider.setCustomParameters({ prompt: 'select_account' });
-        // En iPhone con la app instalada la ventana emergente no funciona bien:
-        // ahí se usa la redirección (sale de la app un momento y vuelve).
-        const isIOSStandalone = window.navigator.standalone === true;
-        if (isIOSStandalone) { firebase.auth().signInWithRedirect(provider); return; }
+        // Siempre con ventana emergente, también en iPhone. La "redirección"
+        // (salir a Google y volver) ya no sirve en Safari: bloquea que la app
+        // recupere la sesión a la vuelta y se queda en esta pantalla una y otra
+        // vez. La redirección solo se usa si el navegador bloquea la ventana.
         firebase.auth().signInWithPopup(provider).catch(err => {
             console.error(err);
             const needsRedirect = ['auth/popup-blocked', 'auth/operation-not-supported-in-this-environment', 'auth/web-storage-unsupported'];
@@ -1560,6 +1655,9 @@ const Auth = {
         showIf('btn-edit-song', AppState.isAdmin, 'inline-flex');
         showIf('btn-vocal-profiles', AppState.isAdmin, 'inline-flex');
         showIf('btn-backup', AppState.isAdmin, 'inline-flex');
+        showIf('btn-admin-teams', AppState.isAdmin, 'inline-flex');
+        const pending = document.getElementById('pending-banner');
+        if (pending) pending.hidden = !(loggedIn && Gate.current === 'app' && Team.isPending() && !AppState.isAdmin);
         showIf('btn-new-setlist', Perm.canCreateSetlist(), 'inline-flex');
 
         if (Gate.current !== 'app') return;
@@ -1892,6 +1990,7 @@ const Router = {
         this.bindButton('btn-import-pdfs', () => { if (AppState.isAdmin) this.showBulkPDFImport(); });
         this.bindButton('btn-bulk-detect-keys', () => { if (AppState.isAdmin) this.bulkDetectKeys(); });
         this.bindButton('btn-backup', () => { if (AppState.isAdmin) this.downloadBackup(); });
+        this.bindButton('btn-admin-teams', () => AdminTeams.open());
         this.bindButton('btn-migrate-local', () => { if (AppState.isAdmin) this.migrateOldData(); });
         this.bindButton('btn-vocal-profiles', () => { if (AppState.isAdmin) this.showVocalProfilesModal(); });
         this.bindButton('btn-back-to-list', () => { history.back(); });
@@ -2266,6 +2365,11 @@ const Router = {
             ((order[a.role] ?? 3) - (order[b.role] ?? 3)) || (a.name || '').localeCompare(b.name || '', 'es', { sensitivity: 'base' }));
 
         panel.innerHTML = `
+            ${Team.isPending() ? `
+            <div class="team-card team-card-pending">
+                <div class="team-card-label">Pendiente de aprobación</div>
+                <p class="team-hint" style="margin:0;">El administrador de Repertia tiene que aprobar este equipo antes de que podáis ver las canciones. Ya podéis ir uniéndoos con el código.</p>
+            </div>` : ''}
             ${canInvite ? `
             <div class="team-card">
                 <div class="team-card-label">Código para invitar</div>
@@ -2430,7 +2534,11 @@ const Router = {
         if (AppState.songs.length === 0) {
             grid.style.display = 'none';
             emptyState.style.display = 'block';
-            emptyState.innerHTML = '<h3>Aún no hay canciones</h3><p>Inicia sesión como líder para añadir canciones, o espera a que se sincronicen.</p>';
+            emptyState.innerHTML = Team.isPending() && !AppState.isAdmin
+                ? '<h3>Equipo pendiente de aprobación</h3><p>Cuando el administrador apruebe tu equipo, aparecerán aquí las canciones. Mientras tanto puedes invitar al resto del equipo desde la pestaña Equipo.</p>'
+                : AppState.isAdmin
+                ? '<h3>El catálogo está vacío</h3><p>Pulsa "📦 Pasar datos antiguos" para traer tus canciones, o añade una nueva.</p>'
+                : '<h3>Aún no hay canciones</h3><p>El catálogo todavía está vacío o se está cargando.</p>';
             return;
         }
 
