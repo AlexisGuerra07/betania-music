@@ -775,6 +775,14 @@ const Storage = {
     setlistsUnsub: null,
     vocalProfilesUnsub: null,
 
+    // Guardado "con espera" de los repertorios. Para acciones que se repiten
+    // muy seguidas (pulsar ♯ varias veces, escribir el nombre del repertorio),
+    // la pantalla cambia al instante pero la subida a la nube espera a que
+    // pase un momento sin tocar nada. Así 4 toques = 1 sola escritura, y los
+    // móviles del resto del equipo no recargan la lista con cada pulsación.
+    SETLISTS_SAVE_DELAY_MS: 1000,
+    setlistsSaveTimer: null,
+
     saveSongs() {
         try {
             const deduplicated = this.deduplicateSongs(AppState.songs);
@@ -795,7 +803,11 @@ const Storage = {
         }, err => console.error(err));
     },
 
+    // Guardado inmediato. Si había uno "con espera" pendiente, este ya lo
+    // incluye (sube todos los repertorios tal como están ahora), así que se
+    // cancela para no escribir dos veces.
     saveSetlists() {
+        if (this.setlistsSaveTimer) { clearTimeout(this.setlistsSaveTimer); this.setlistsSaveTimer = null; }
         try {
             db.collection('appdata').doc('setlists').set({ setlists: AppState.setlists })
                 .catch(err => { console.error(err); alert('Error al guardar: ' + err.message); });
@@ -803,9 +815,30 @@ const Storage = {
         } catch (error) { console.error(error); return false; }
     },
 
+    // Programa un guardado para dentro de un momento. Si vuelve a llamarse antes
+    // de que se cumpla, el reloj empieza de nuevo: solo se sube cuando paras.
+    scheduleSetlistsSave() {
+        if (this.setlistsSaveTimer) clearTimeout(this.setlistsSaveTimer);
+        this.setlistsSaveTimer = setTimeout(() => {
+            this.setlistsSaveTimer = null;
+            this.saveSetlists();
+        }, this.SETLISTS_SAVE_DELAY_MS);
+    },
+
+    // Si hay un guardado esperando, lo hace ya. Se usa al salir o esconder la
+    // app, para no perder el último cambio si se cierra justo después de tocar.
+    flushSetlistsSave() {
+        if (this.setlistsSaveTimer) this.saveSetlists();
+    },
+
     listenSetlists(callback) {
         if (this.setlistsUnsub) this.setlistsUnsub();
         this.setlistsUnsub = db.collection('appdata').doc('setlists').onSnapshot(doc => {
+            // Si tenemos un cambio propio esperando a subirse y llega una versión de
+            // la nube, NO la aplicamos encima: borraría ese cambio de la memoria antes
+            // de que se guarde. Subimos el nuestro ya, y la nube nos devolverá enseguida
+            // la versión con él incluido (que sí se aplica con normalidad).
+            if (this.setlistsSaveTimer) { this.saveSetlists(); return; }
             AppState.setlists = doc.exists ? (doc.data().setlists || []) : [];
             this.guardarCache(this.CACHE_SETLISTS, AppState.setlists);
             // Si había un repertorio abierto, lo reapuntamos al objeto nuevo correspondiente.
@@ -1398,10 +1431,11 @@ const Router = {
             });
             document.body.setAttribute('data-setlist-menu-bound', 'true');
         }
+        // El nombre se sube cuando dejas de escribir, no con cada letra.
         this.bindInput('setlist-name-input', (e) => {
             if (!AppState.currentSetlist) return;
             AppState.currentSetlist.name = e.target.value;
-            Storage.saveSetlists();
+            Storage.scheduleSetlistsSave();
         });
         this.bindButton('btn-prev-setlist-song', () => this.gotoSetlistSong(-1));
         this.bindButton('btn-next-setlist-song', () => this.gotoSetlistSong(1));
@@ -1729,19 +1763,21 @@ const Router = {
     },
 
     // Guarda (o borra) el ajuste manual de tonalidad de esta canción dentro del repertorio actual.
+    // La pantalla ya cambió al instante; la subida a la nube espera a que dejes de pulsar
+    // ♯/♭, para que varios toques seguidos se guarden de una sola vez.
     persistSetlistTransposeOverride() {
         if (!AppState.currentSetlist || !AppState.currentSong) return;
         const sl = AppState.currentSetlist;
         if (!sl.songTransposeOverrides) sl.songTransposeOverrides = {};
         sl.songTransposeOverrides[AppState.currentSong.id] = AppState.currentTranspose;
-        Storage.saveSetlists();
+        Storage.scheduleSetlistsSave();
     },
 
     clearSetlistTransposeOverride() {
         if (!AppState.currentSetlist || !AppState.currentSong) return;
         const sl = AppState.currentSetlist;
         if (sl.songTransposeOverrides) delete sl.songTransposeOverrides[AppState.currentSong.id];
-        Storage.saveSetlists();
+        Storage.scheduleSetlistsSave();
     },
 
     showVocalProfilesModal() {
@@ -3668,6 +3704,14 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     SplashManager.startSafetyTimeout();
+
+    // Si la app se esconde o se cierra con un cambio de repertorio todavía
+    // esperando a subirse (ej. subiste el tono y cambiaste de app enseguida),
+    // se sube en ese momento para que no se pierda.
+    document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'hidden') Storage.flushSetlistsSave();
+    });
+    window.addEventListener('pagehide', () => Storage.flushSetlistsSave());
 
     HistoryManager.init();
     Auth.init();
