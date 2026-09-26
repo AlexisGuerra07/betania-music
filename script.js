@@ -1286,6 +1286,19 @@ const Team = {
         throw lastErr;
     },
 
+    // El líder cede el puesto a otro integrante. Todo en un solo paso: el
+    // equipo apunta al nuevo líder, este pasa a "lider" y el anterior queda
+    // como director técnico (y ya podría salir del equipo si quiere).
+    async transferLeadership(newUid) {
+        const me = Perm.uid();
+        if (!Perm.isLeader() || !newUid || newUid === me) return;
+        const batch = db.batch();
+        batch.update(this.teamRef(), { leaderUid: newUid });
+        batch.update(this.membersRef().doc(newUid), { role: 'lider' });
+        batch.update(this.membersRef().doc(me), { role: 'director' });
+        await batch.commit();
+    },
+
     setRole(uid, role) {
         if (!Perm.isLeader() || uid === Perm.uid()) return Promise.resolve();
         return this.membersRef().doc(uid).update({ role });
@@ -2079,48 +2092,99 @@ const Router = {
     // ============ FIN COPIA DE SEGURIDAD ============
 
     // ============ PASAR LOS DATOS ANTIGUOS AL FORMATO NUEVO ============
-    // Copia las canciones del documento antiguo (appdata/songs) al catálogo común
-    // (una canción por documento), y los repertorios antiguos (appdata/setlists)
-    // a tu equipo. Los datos antiguos NO se borran: si algo sale mal, siguen ahí.
-    // Se puede repetir sin problema (sobrescribe con la versión antigua).
+    // Solo el administrador. Copia las canciones del formato antiguo
+    // (appdata/songs) al catálogo común y los repertorios antiguos
+    // (appdata/setlists) al equipo en el que está, aunque en él sea un miembro
+    // normal. Pregunta a nombre de qué integrante quedan los repertorios (esa
+    // persona será su "creador" y podrá gestionarlos, además del líder).
+    // No sobrescribe nada: solo añade lo que todavía no esté en el formato nuevo.
+    // Los datos antiguos no se borran.
     async migrateOldData() {
         if (!AppState.isAdmin) return;
-        if (!Perm.isLeader() || !AppState.team || !AppState.member) {
-            alert('Para pasar los repertorios necesitas ser el líder de tu equipo. Crea primero el equipo.');
+        if (!AppState.team || !AppState.member) {
+            alert('Primero tienes que estar dentro de un equipo (únete con su código).');
             return;
         }
-        const btn = document.getElementById('btn-migrate-local');
-        const originalText = btn ? btn.textContent : '';
+        let oldSongs = [], oldSetlists = [];
         try {
             const server = { source: 'server' };
             const ref = db.collection('appdata');
             const [songsDoc, setlistsDoc] = await Promise.all([ref.doc('songs').get(server), ref.doc('setlists').get(server)]);
-            const oldSongs = songsDoc.exists ? (songsDoc.data().songs || []) : [];
-            const oldSetlists = setlistsDoc.exists ? (setlistsDoc.data().setlists || []) : [];
-            if (!oldSongs.length && !oldSetlists.length) { alert('No hay datos antiguos que pasar.'); return; }
-            if (!confirm(
-                `Se copiarán:\n` +
-                `• ${oldSongs.length} canciones al catálogo común\n` +
-                `• ${oldSetlists.length} repertorios al equipo "${AppState.team.name}"\n\n` +
-                `Los datos antiguos NO se borran. ¿Continuar?`
-            )) return;
+            oldSongs = songsDoc.exists ? (songsDoc.data().songs || []) : [];
+            oldSetlists = setlistsDoc.exists ? (setlistsDoc.data().setlists || []) : [];
+        } catch (err) {
+            console.error(err);
+            alert('No se pudieron leer los datos antiguos (¿hay conexión?): ' + err.message);
+            return;
+        }
+        const existingSongs = new Set(AppState.songs.map(s => s.id));
+        const existingSetlists = new Set(AppState.setlists.map(s => s.id));
+        const newSongs = oldSongs.filter(s => s && s.id && !existingSongs.has(s.id));
+        const newSetlists = oldSetlists.filter(s => s && s.id && !existingSetlists.has(s.id));
+        if (!newSongs.length && !newSetlists.length) {
+            alert('Ya está todo pasado: no queda ninguna canción ni repertorio antiguo por copiar.');
+            return;
+        }
 
-            if (btn) { btn.disabled = true; btn.textContent = 'Copiando...'; }
-            const okSongs = await Storage.saveSongs(oldSongs);
-            if (!okSongs) return;
+        // Por defecto se propone al primer director técnico; si no hay, al líder.
+        const order = { lider: 1, director: 0, miembro: 2 };
+        const members = [...AppState.members].sort((a, b) =>
+            ((order[a.role] ?? 3) - (order[b.role] ?? 3)) || (a.name || '').localeCompare(b.name || '', 'es'));
+        const esc = (t) => this.escapeHtml(t);
+        this.createModal({
+            title: 'Pasar datos antiguos',
+            content: `
+                <p style="margin-bottom:1rem; color:var(--text-secondary); font-size:0.9rem; line-height:1.5;">
+                    Se añadirán <strong>${newSongs.length}</strong> canciones al catálogo y
+                    <strong>${newSetlists.length}</strong> repertorios al equipo <strong>${esc(AppState.team.name)}</strong>.
+                    Lo que ya estaba en el formato nuevo no se toca, y los datos antiguos no se borran.
+                </p>
+                ${newSetlists.length ? `
+                <div class="form-group">
+                    <label class="form-label" for="migrate-owner">¿A nombre de quién quedan los repertorios?</label>
+                    <select class="form-select" id="migrate-owner">
+                        ${members.map(m => `<option value="${m.uid}">${esc(m.name)} — ${Perm.roleLabel(m.role)}</option>`).join('')}
+                    </select>
+                    <p class="team-hint">Esa persona podrá gestionarlos, igual que el líder.</p>
+                </div>` : ''}
+            `,
+            actions: [
+                { text: 'Cancelar', action: () => this.closeModal() },
+                { text: 'Pasar datos', primary: true, action: () => {
+                    const sel = document.getElementById('migrate-owner');
+                    const ownerUid = sel ? sel.value : null;
+                    this.closeModal();
+                    this.runMigration(newSongs, newSetlists, ownerUid);
+                } }
+            ]
+        });
+    },
 
-            const uid = Perm.uid();
-            const myName = AppState.member.name || '';
-            for (let i = 0; i < oldSetlists.length; i += 400) {
-                const batch = db.batch();
-                oldSetlists.slice(i, i + 400).forEach(sl => {
-                    if (!sl || !sl.id) return;
-                    const data = Storage.clean({ ...sl, createdBy: uid, createdByName: sl.creatorName || myName });
-                    batch.set(Storage.setlistsRef().doc(sl.id), data);
-                });
-                await batch.commit();
+    async runMigration(newSongs, newSetlists, ownerUid) {
+        const btn = document.getElementById('btn-migrate-local');
+        const originalText = btn ? btn.textContent : '';
+        if (btn) { btn.disabled = true; btn.textContent = 'Copiando...'; }
+        try {
+            if (newSongs.length) {
+                const okSongs = await Storage.saveSongs(newSongs);
+                if (!okSongs) return;
             }
-            alert(`✅ Listo: ${oldSongs.length} canciones y ${oldSetlists.length} repertorios copiados.`);
+            if (newSetlists.length) {
+                const owner = AppState.members.find(m => m.uid === ownerUid);
+                if (!owner) { alert('Esa persona ya no está en el equipo.'); return; }
+                for (let i = 0; i < newSetlists.length; i += 400) {
+                    const batch = db.batch();
+                    newSetlists.slice(i, i + 400).forEach(sl => {
+                        const data = Storage.clean({ ...sl, createdBy: owner.uid, createdByName: owner.name || '' });
+                        delete data.creatorName;
+                        batch.set(Storage.setlistsRef().doc(sl.id), data);
+                    });
+                    await batch.commit();
+                }
+            }
+            const owner = AppState.members.find(m => m.uid === ownerUid);
+            alert(`✅ Listo: ${newSongs.length} canciones y ${newSetlists.length} repertorios añadidos` +
+                (newSetlists.length && owner ? ` (a nombre de ${owner.name}).` : '.'));
         } catch (err) {
             console.error(err);
             alert('No se pudo completar: ' + err.message);
@@ -2188,6 +2252,7 @@ const Router = {
                             ${leader && m.uid !== Perm.uid() ? `
                             <div class="team-member-actions">
                                 <button class="btn btn-sm" onclick="Router.toggleDirector('${m.uid}')">${m.role === 'director' ? 'Quitar director' : 'Hacer director'}</button>
+                                <button class="btn btn-sm" onclick="Router.makeLeader('${m.uid}')">Hacer líder</button>
                                 <button class="btn btn-sm btn-danger-outline" onclick="Router.removeTeamMember('${m.uid}')">Sacar</button>
                             </div>` : ''}
                         </div>
@@ -2244,6 +2309,19 @@ const Router = {
         const newRole = m.role === 'director' ? 'miembro' : 'director';
         try { await Team.setRole(uid, newRole); }
         catch (err) { console.error(err); alert('No se pudo cambiar el rol: ' + err.message); }
+    },
+
+    async makeLeader(uid) {
+        const m = AppState.members.find(x => x.uid === uid);
+        if (!m || !Perm.isLeader()) return;
+        if (!confirm(`¿Quieres que ${m.name} pase a ser el líder del equipo?\n\n` +
+            `• ${m.name} podrá gestionar el equipo y todos los repertorios.\n` +
+            `• Tú pasarás a ser director técnico.\n` +
+            `• Solo el nuevo líder podrá devolverte el puesto.`)) return;
+        try {
+            await Team.transferLeadership(uid);
+            alert(`✅ ${m.name} es ahora el líder del equipo.`);
+        } catch (err) { console.error(err); alert('No se pudo cambiar el líder: ' + err.message); }
     },
 
     async removeTeamMember(uid) {
@@ -3758,25 +3836,12 @@ const Router = {
                 const compasMatch = text.match(/(?:Comp[aá]s|Time)\s*:?\s*(\d+\s*\/\s*\d+)/i);
                 if (compasMatch) compas = compasMatch[1].replace(/\s/g, '');
 
-                let title = file.name.replace(/\.(pdf|docx)$/i, '').trim();
+                // El título sale del nombre del archivo (guiones bajos = espacios).
+                let title = file.name.replace(/\.(pdf|docx)$/i, '').replace(/_/g, ' ').trim();
                 let detectedArtist = '';
 
-                // Los archivos descargados de Secuencias.com siguen el patrón
-                // "Titulo-Autor-Titulo_Tono_N.pdf" (guiones bajos en vez de espacios,
-                // el título se repite al final junto con la tonalidad). Si el nombre
-                // calza con eso, es más confiable sacar título y autor de ahí que
-                // adivinar dentro del contenido del PDF.
-                const nameSegments = title.split('-');
-                if (nameSegments.length >= 3 && nameSegments[2].toLowerCase().startsWith(nameSegments[0].toLowerCase())) {
-                    title = nameSegments[0].replace(/_/g, ' ').trim();
-                    detectedArtist = nameSegments[1].replace(/_/g, ' ').trim();
-                } else {
-                    title = title.replace(/_/g, ' ').trim();
-                }
-
-                // Si el nombre de archivo no siguió ese patrón (u otra fuente distinta a
-                // Secuencias.com), intentamos detectar el autor dentro del propio documento:
-                // primera línea = título, segunda línea = autor, luego "Página: 1/N".
+                // Autor: si dentro del documento la línea siguiente al título parece
+                // un nombre (y no un dato como la tonalidad), se toma como autor.
                 if (!detectedArtist) {
                     const rawLines = text.split('\n').map(l => l.trim());
                     const titleLineIdx = rawLines.findIndex(l => l && l.toLowerCase() === title.toLowerCase());
@@ -3794,23 +3859,10 @@ const Router = {
                     if (!t) return true;
                     if (/tonalidad\s*:|key\s*:|tono\s*:|comp[aá]s\s*:|time\s*:|tempo\s*:/i.test(t)) return false;
                     if (/^estructura$/i.test(t)) return false;
-                    // Ruido típico de PDFs de Secuencias.com: encabezado de página repetido,
-                    // número de página, y créditos/derechos de autor al final del documento.
+                    // Número de página y el título/autor repetidos en cada página.
                     if (/^p[aá]gina\s*:?\s*\d+\s*\/\s*\d+$/i.test(t)) return false;
                     if (t.toLowerCase() === title.toLowerCase()) return false;
                     if (detectedArtist && t === detectedArtist) return false;
-                    if (/^un producto de/i.test(t)) return false;
-                    if (/^compositores?\s*:/i.test(t)) return false;
-                    if (/^seg[uú]n lo registrado por/i.test(t)) return false;
-                    if (/derechos reservados/i.test(t)) return false;
-                    if (/^©/.test(t)) return false;
-                    if (/^mtid\s*:/i.test(t)) return false;
-                    if (/^([A-Za-z0-9]{1,3}\s+){2,}[A-Za-z0-9]{1,3}$/.test(t) && !ChordParser.isChordLine(t)) return false;
-                    // Notas de instrumentación/dinámica típicas de Secuencias.com
-                    // (ej: "Pad & Guitarra Acústica", "Entra Piano", "Ritmo completo",
-                    // "Acentos", "Subir Intensidad") — no son letra, se descartan.
-                    if (t.length < 50 && !ChordParser.isChordLine(t) &&
-                        /^(pad\b|entra\b|ritmo\b|subir\b|acentos?\b|din[aá]mica?s?\b|suave\b|bajar\b|contin[uú]a\b|pausa\b|toda la banda\b|crece\b)/i.test(t)) return false;
                     return true;
                 });
                 text = cleanedLines.join('\n');
