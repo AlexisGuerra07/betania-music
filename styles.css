@@ -1676,3 +1676,7 @@ body.ve-open { overflow: hidden; }
     .ve-bar, .ve-tools, .ve-foot { padding-left: calc((100vw - 860px) / 2); padding-right: calc((100vw - 860px) / 2); }
     .ve-text { padding-left: calc((100vw - 860px) / 2); padding-right: calc((100vw - 860px) / 2); }
 }
+
+/* iPhone con la app instalada: la barra de estado (hora, batería) va encima
+   de la app, así que la cabecera deja ese hueco para no quedar tapada. */
+.header { padding-top: calc(1rem + env(safe-area-inset-top, 0px)); }
