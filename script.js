@@ -15,6 +15,12 @@ const ADMIN_EMAIL = 'alexisg898@gmail.com';
 // ============ METRÓNOMO (ventanita al tocar el BPM de una canción) ============
 // Genera el clic con Web Audio (sin archivos de sonido externos), respetando el BPM
 // y el compás de la canción — el primer tiempo de cada compás suena distinto (acento).
+//
+// Cómo lleva el tiempo: NO usa un temporizador normal para cada clic (esos se
+// retrasan en cuanto el móvil está ocupado, y el pulso "cojea"). En su lugar,
+// cada 25 ms mira qué clics tocan en la próxima décima de segundo y se los deja
+// programados al reloj interno de audio, que es exacto. Los puntitos de la
+// pantalla sí van con temporizador normal: si se retrasan un poco no se oye.
 const Metronome = {
     audioCtx: null,
     running: false,
@@ -23,6 +29,11 @@ const Metronome = {
     bpm: 120,
     beatsPerMeasure: 4,
     songId: null,   // de qué canción es lo que está sonando ahora mismo
+    LOOKAHEAD_MS: 25,        // cada cuánto se revisa si hay que programar clics
+    SCHEDULE_AHEAD_S: 0.12,  // cuánto por delante se dejan programados
+    nextNoteTime: 0,         // momento exacto (reloj de audio) del próximo clic
+    dotTimers: new Set(),    // temporizadores de los puntitos pendientes
+    pendingOscs: new Set(),  // clics ya programados que todavía no han sonado
 
     ensureContext() {
         if (!this.audioCtx) {
@@ -32,19 +43,24 @@ const Metronome = {
         if (this.audioCtx && this.audioCtx.state === 'suspended') this.audioCtx.resume();
     },
 
-    playClick(accent) {
+    // Programa un clic para que suene exactamente en "time" (reloj de audio).
+    playClick(accent, time) {
         if (!this.audioCtx) return;
         const ctx = this.audioCtx;
+        const t = Math.max(time, ctx.currentTime);
         const osc = ctx.createOscillator();
         const gain = ctx.createGain();
         osc.frequency.value = accent ? 1050 : 750;
-        gain.gain.setValueAtTime(0.001, ctx.currentTime);
-        gain.gain.exponentialRampToValueAtTime(0.5, ctx.currentTime + 0.005);
-        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.06);
+        gain.gain.setValueAtTime(0.001, t);
+        gain.gain.exponentialRampToValueAtTime(0.5, t + 0.005);
+        gain.gain.exponentialRampToValueAtTime(0.001, t + 0.06);
         osc.connect(gain);
         gain.connect(ctx.destination);
-        osc.start();
-        osc.stop(ctx.currentTime + 0.07);
+        osc.start(t);
+        osc.stop(t + 0.07);
+        // Se guarda para poder cortarlo si pulsas stop antes de que suene.
+        this.pendingOscs.add(osc);
+        osc.onended = () => this.pendingOscs.delete(osc);
     },
 
     open(song) {
@@ -72,16 +88,30 @@ const Metronome = {
         wrap.innerHTML = Array.from({ length: this.beatsPerMeasure }).map(() => '<span class="metronome-dot"></span>').join('');
     },
 
-    updateDots() {
+    updateDots(beat) {
         const dots = document.querySelectorAll('#metronome-dots .metronome-dot');
-        dots.forEach((dot, i) => dot.classList.toggle('active', i === (this.beatIndex % this.beatsPerMeasure)));
+        dots.forEach((dot, i) => dot.classList.toggle('active', i === beat));
     },
 
-    tick() {
-        const accent = this.beatIndex % this.beatsPerMeasure === 0;
-        this.playClick(accent);
-        this.updateDots();
-        this.beatIndex++;
+    // Deja programados todos los clics que caen dentro de la ventana próxima.
+    scheduler() {
+        if (!this.running || !this.audioCtx) return;
+        const ctx = this.audioCtx;
+        // Si el móvil se quedó colgado un rato, no disparamos de golpe todos los
+        // clics atrasados: retomamos el pulso desde ahora.
+        if (this.nextNoteTime < ctx.currentTime - 0.2) this.nextNoteTime = ctx.currentTime + 0.05;
+        while (this.nextNoteTime < ctx.currentTime + this.SCHEDULE_AHEAD_S) {
+            const beat = this.beatIndex % this.beatsPerMeasure;
+            this.playClick(beat === 0, this.nextNoteTime);
+            const delayMs = Math.max(0, (this.nextNoteTime - ctx.currentTime) * 1000);
+            const timer = setTimeout(() => {
+                this.dotTimers.delete(timer);
+                if (this.running) this.updateDots(beat);
+            }, delayMs);
+            this.dotTimers.add(timer);
+            this.beatIndex++;
+            this.nextNoteTime += 60 / this.bpm;
+        }
     },
 
     start() {
@@ -90,14 +120,22 @@ const Metronome = {
         if (!this.audioCtx) return; // el navegador no soporta Web Audio
         this.running = true;
         this.beatIndex = 0;
-        this.tick();
-        this.timerId = setInterval(() => this.tick(), (60000 / this.bpm));
+        // Un pelín de margen para que el primer clic no salga cortado.
+        this.nextNoteTime = this.audioCtx.currentTime + 0.05;
+        this.scheduler();
+        this.timerId = setInterval(() => this.scheduler(), this.LOOKAHEAD_MS);
         this.updateToggleIcon();
     },
 
     stop() {
         this.running = false;
         if (this.timerId) { clearInterval(this.timerId); this.timerId = null; }
+        this.dotTimers.forEach(t => clearTimeout(t));
+        this.dotTimers.clear();
+        // Los clics que estaban programados para dentro de unos milisegundos se
+        // cortan también, para que no suene "uno más" después de pulsar stop.
+        this.pendingOscs.forEach(osc => { try { osc.stop(); } catch (e) { } });
+        this.pendingOscs.clear();
         document.querySelectorAll('#metronome-dots .metronome-dot').forEach(dot => dot.classList.remove('active'));
         this.updateToggleIcon();
     },
@@ -757,6 +795,7 @@ const AppState = {
     isAdmin: false,
     currentUser: null,
     songsLoaded: false,
+    songsFromCloud: false,
     setlistsLoaded: false,
     vocalProfiles: {},
     vocalProfilesLoaded: false
@@ -798,6 +837,9 @@ const Storage = {
         if (this.songsUnsub) this.songsUnsub();
         this.songsUnsub = db.collection('appdata').doc('songs').onSnapshot(doc => {
             AppState.songs = doc.exists ? (doc.data().songs || []) : [];
+            // Solo cuenta como "de la nube" si viene del servidor, no de la copia
+            // local de Firestore (sin conexión podría estar incompleta).
+            AppState.songsFromCloud = !doc.metadata.fromCache;
             this.guardarCache(this.CACHE_SONGS, AppState.songs);
             if (callback) callback();
         }, err => console.error(err));
@@ -2248,10 +2290,37 @@ const Router = {
         if (confirm('¿Estás seguro de que quieres eliminar esta canción?')) {
             AppState.songs = AppState.songs.filter(s => s.id !== songId);
             Storage.saveSongs();
-            AppState.setlists.forEach(sl => { sl.songIds = (sl.songIds || []).filter(id => id !== songId); });
+            // Además de sacarla de las listas, se borra todo lo que los repertorios
+            // guardaban sobre ella (notas, voz, tono, orden). Aprovecha para limpiar
+            // también lo que hubiera quedado suelto de canciones borradas antes.
+            this.cleanOrphanSetlistData();
             Storage.saveSetlists();
             this.renderSongsList();
         }
+    },
+
+    // Quita de todos los repertorios cualquier dato que apunte a una canción que
+    // ya no existe. Seguridad: si la lista de canciones está vacía o no ha llegado
+    // todavía de la nube (ej. solo está la copia guardada en el móvil), NO toca
+    // nada — si no, un fallo de carga borraría las notas de todos los repertorios.
+    cleanOrphanSetlistData() {
+        if (!AppState.songsFromCloud || !AppState.songs.length) return 0;
+        const existing = new Set(AppState.songs.map(s => s.id));
+        const mapFields = ['songNotes', 'songLeadVocals', 'songTransposeOverrides', 'songStructures'];
+        let removed = 0;
+        AppState.setlists.forEach(sl => {
+            const before = (sl.songIds || []).length;
+            sl.songIds = (sl.songIds || []).filter(id => existing.has(id));
+            removed += before - sl.songIds.length;
+            mapFields.forEach(field => {
+                const map = sl[field];
+                if (!map) return;
+                Object.keys(map).forEach(id => {
+                    if (!existing.has(id)) { delete map[id]; removed++; }
+                });
+            });
+        });
+        return removed;
     },
 
     // Versión sin DOM de la misma idea que usa el teleprompter para "anclas": separa
