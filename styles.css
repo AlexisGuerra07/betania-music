@@ -1069,6 +1069,8 @@ body.fullscreen-active .font-size-controls,
 body.fullscreen-active #btn-toggle-notation,
 body.fullscreen-active #btn-voice-mode,
 body.fullscreen-active #btn-song-structure-setlist,
+body.fullscreen-active #btn-setlist-version,
+body.fullscreen-active .version-revert-btn,
 body.fullscreen-active #btn-fullscreen-toggle,
 body.fullscreen-active #btn-edit-song,
 body.fullscreen-active .reader-extra-info {
@@ -1538,4 +1540,139 @@ body.gated #user-email-label { display: none !important; }
     line-height: 1.5;
     color: var(--text-muted);
     white-space: normal;
+}
+
+/* ============ VERSIÓN PROPIA EN UN REPERTORIO ============ */
+.reader-version-note {
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: #b45309;
+    background: rgba(217, 119, 6, 0.12);
+    border: 1px solid rgba(217, 119, 6, 0.35);
+    padding: 0.3rem 0.7rem;
+    border-radius: 6px;
+    margin-bottom: 0.75rem;
+    margin-right: 0.5rem;
+}
+[data-theme="dark"] .reader-version-note { color: #fbbf24; }
+.version-revert-btn {
+    background: transparent;
+    border: 1px solid currentColor;
+    color: inherit;
+    border-radius: 999px;
+    padding: 0.1rem 0.6rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+    font-family: inherit;
+    cursor: pointer;
+}
+.version-tag { color: #b45309; font-weight: 600; }
+[data-theme="dark"] .version-tag { color: #fbbf24; }
+
+/* ============ EDITOR A PANTALLA COMPLETA ============ */
+body.ve-open { overflow: hidden; }
+.version-editor {
+    position: fixed;
+    left: 0;
+    right: 0;
+    top: 0;
+    height: 100vh;
+    height: 100dvh;
+    z-index: 1100;
+    background: var(--bg-primary);
+    display: flex;
+    flex-direction: column;
+    padding-top: env(safe-area-inset-top, 0px);
+}
+.ve-bar {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.55rem 0.75rem;
+    border-bottom: 1px solid var(--border-color);
+    background: var(--bg-card);
+    flex-shrink: 0;
+}
+.ve-bar .btn { padding: 0.5rem 0.9rem; font-size: 0.9rem; flex-shrink: 0; }
+.ve-title { flex: 1; min-width: 0; text-align: center; }
+.ve-title-main { font-weight: 700; font-size: 0.95rem; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ve-title-sub { font-size: 0.72rem; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ve-tools {
+    display: flex;
+    gap: 0.35rem;
+    padding: 0.45rem 0.6rem;
+    overflow-x: auto;
+    flex-shrink: 0;
+    border-bottom: 1px solid var(--border-color);
+    background: var(--bg-secondary);
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+}
+.ve-tools::-webkit-scrollbar { display: none; }
+.ve-chip {
+    flex-shrink: 0;
+    min-width: 2.6rem;
+    height: 2.4rem;
+    padding: 0 0.7rem;
+    border-radius: 8px;
+    border: 1px solid var(--border-color);
+    background: var(--bg-card);
+    color: var(--chord-color);
+    font-family: var(--mono-font);
+    font-weight: 700;
+    font-size: 0.95rem;
+    cursor: pointer;
+    touch-action: manipulation;
+}
+.ve-chip:active { background: var(--bg-tertiary); }
+.ve-chip-section { font-family: inherit; color: var(--text-primary); font-weight: 600; font-size: 0.85rem; }
+.ve-sep { flex-shrink: 0; width: 1px; background: var(--border-color); margin: 0.2rem 0.15rem; }
+.ve-text {
+    flex: 1;
+    min-height: 0;
+    width: 100%;
+    border: none;
+    outline: none;
+    resize: none;
+    padding: 0.9rem 0.9rem 2rem;
+    font-family: var(--mono-font);
+    font-size: 16px;
+    line-height: 1.5;
+    white-space: pre;
+    overflow: auto;
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    -webkit-overflow-scrolling: touch;
+    tab-size: 4;
+}
+.ve-foot {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+    padding: 0.45rem 0.75rem calc(0.45rem + env(safe-area-inset-bottom, 0px));
+    border-top: 1px solid var(--border-color);
+    background: var(--bg-secondary);
+    font-size: 0.72rem;
+    color: var(--text-muted);
+    flex-shrink: 0;
+}
+.ve-link {
+    background: none;
+    border: none;
+    color: var(--danger-color);
+    font-weight: 600;
+    font-size: 0.78rem;
+    font-family: inherit;
+    cursor: pointer;
+    padding: 0.2rem 0;
+}
+/* En pantallas grandes, el texto no se estira de lado a lado. */
+@media (min-width: 900px) {
+    .ve-bar, .ve-tools, .ve-foot { padding-left: calc((100vw - 860px) / 2); padding-right: calc((100vw - 860px) / 2); }
+    .ve-text { padding-left: calc((100vw - 860px) / 2); padding-right: calc((100vw - 860px) / 2); }
 }
