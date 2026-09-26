@@ -1511,3 +1511,19 @@ body.gated #user-email-label { display: none !important; }
 
 /* Aclaración debajo del campo del nombre en la pantalla de entrada. */
 .onb-help-below { margin: 0.45rem 0 0; line-height: 1.4; }
+
+/* ============ APROBACIÓN DE EQUIPOS ============ */
+#pending-banner {
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+    border-bottom: 1px solid var(--border-color);
+    text-align: center;
+    font-size: 0.82rem;
+    font-weight: 600;
+    padding: 0.5rem 0.75rem;
+}
+#pending-banner[hidden] { display: none; }
+.team-card-pending { border-color: var(--warning-color); }
+.role-badge.role-pending { background: rgba(217, 119, 6, 0.12); color: var(--warning-color); border-color: rgba(217, 119, 6, 0.4); }
+.role-badge.role-approved { background: rgba(22, 163, 74, 0.12); color: var(--success-color); border-color: rgba(22, 163, 74, 0.4); }
+.btn-attention { border-color: var(--warning-color); color: var(--warning-color); font-weight: 700; }
