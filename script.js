@@ -2568,9 +2568,9 @@ const Router = {
             <div class="team-card">
                 <div class="team-card-label">Código para invitar</div>
                 <div class="team-code">${esc(team.inviteCode || '—')}</div>
-                <p class="team-hint">Pásaselo a cada integrante: entra con su cuenta de Google y lo escribe una sola vez.</p>
+                <p class="team-hint">"Copiar invitación" copia un mensaje con el enlace de la app y este código, listo para pegar en el chat del equipo. Cada integrante entra con su cuenta de Google y escribe el código una sola vez.</p>
                 <div class="team-actions">
-                    <button class="btn btn-sm" onclick="Router.copyTeamCode()">📋 Copiar código</button>
+                    <button class="btn btn-sm" onclick="Router.copyTeamCode()">📋 Copiar invitación</button>
                     ${leader ? `<button class="btn btn-sm" onclick="Router.regenerateTeamCode()">🔄 Generar código nuevo</button>` : ''}
                 </div>
             </div>` : ''}
@@ -2617,7 +2617,7 @@ const Router = {
         const text = `Únete a "${AppState.team.name}" en Repertia: entra en ${location.origin}${location.pathname} con tu cuenta de Google y escribe el código ${code}`;
         if (navigator.clipboard && navigator.clipboard.writeText) {
             navigator.clipboard.writeText(text)
-                .then(() => alert('✅ Copiado. Pégalo en el chat del equipo.'))
+                .then(() => alert('✅ Invitación copiada (enlace + código). Pégala en el chat del equipo.'))
                 .catch(() => prompt('Copia este texto:', text));
         } else {
             prompt('Copia este texto:', text);
