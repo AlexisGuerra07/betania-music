@@ -736,6 +736,7 @@ const HistoryManager = {
     // existen en AppState, así que no se podría encontrar.
     tryRestoreOnLoad() {
         if (this._restored) return;
+        if (document.body.classList.contains('gated')) return; // aún en la pantalla de entrada
         if (!AppState.songsLoaded || !AppState.setlistsLoaded) return;
         this._restored = true;
         this.restoreFromState(history.state);
@@ -798,7 +799,33 @@ const AppState = {
     songsFromCloud: false,
     setlistsLoaded: false,
     vocalProfiles: {},
-    vocalProfilesLoaded: false
+    vocalProfilesLoaded: false,
+    teamId: null,       // equipo al que pertenece quien usa la app
+    team: null,         // { name, inviteCode, leaderUid }
+    member: null,       // su propia ficha dentro del equipo (nombre, rol)
+    members: []         // todas las personas del equipo
+};
+
+// ============ PERMISOS ============
+// Quién puede hacer qué dentro del equipo. Todo pasa por aquí para que la
+// pantalla y el guardado usen siempre la misma regla (y coinciden con las
+// reglas de Firestore, que son las que de verdad lo impiden en la nube).
+//   - Líder: quien creó el equipo. Gestiona todos los repertorios y el equipo.
+//   - Director técnico: lo nombra el líder. Crea repertorios y gestiona los suyos.
+//   - Miembro: usa todas las funciones; lo que cambie se queda en su pantalla.
+const Perm = {
+    uid() { return AppState.currentUser ? AppState.currentUser.uid : null; },
+    role() { return AppState.member ? AppState.member.role : null; },
+    isLeader() { return this.role() === 'lider'; },
+    isDirector() { return this.role() === 'director'; },
+    canCreateSetlist() { return this.isLeader() || this.isDirector(); },
+    canEditSetlist(sl) {
+        if (!sl) return false;
+        return this.isLeader() || (!!sl.createdBy && sl.createdBy === this.uid());
+    },
+    roleLabel(role) {
+        return role === 'lider' ? 'Líder' : role === 'director' ? 'Director técnico' : 'Miembro';
+    }
 };
 
 // Storage
@@ -807,94 +834,142 @@ const Storage = {
     // Copia en el propio móvil de lo último que llegó de la nube. Sirve para dos
     // cosas: que la app abra con contenido al instante, y que siga siendo útil
     // sin conexión (el escenario donde falla el wifi de la iglesia).
-    CACHE_SONGS: 'repertia_cache_songs',
-    CACHE_SETLISTS: 'repertia_cache_setlists',
+    CACHE_SONGS: 'repertia_cache_songs_v2',
+    CACHE_SETLISTS_PREFIX: 'repertia_cache_setlists_',
     CACHE_VOCALS: 'repertia_cache_vocalprofiles',
+    CACHE_SESSION: 'repertia_session',
     songsUnsub: null,
     setlistsUnsub: null,
     vocalProfilesUnsub: null,
 
-    // Guardado "con espera" de los repertorios. Para acciones que se repiten
-    // muy seguidas (pulsar ♯ varias veces, escribir el nombre del repertorio),
-    // la pantalla cambia al instante pero la subida a la nube espera a que
-    // pase un momento sin tocar nada. Así 4 toques = 1 sola escritura, y los
-    // móviles del resto del equipo no recargan la lista con cada pulsación.
+    // Guardado "con espera" de los repertorios: la pantalla cambia al instante,
+    // la subida a la nube espera a que pase un segundo sin tocar nada.
+    // Hay un reloj por repertorio (cada uno es su propio documento).
     SETLISTS_SAVE_DELAY_MS: 1000,
-    setlistsSaveTimer: null,
+    saveTimers: {},
 
-    saveSongs() {
+    songsRef() { return db.collection('songs'); },
+    setlistsRef() { return db.collection('teams').doc(AppState.teamId).collection('setlists'); },
+
+    // Firestore no acepta valores "undefined": se limpian antes de guardar.
+    clean(obj) { return JSON.parse(JSON.stringify(obj)); },
+
+    // ---- Canciones (catálogo común, solo el administrador escribe) ----
+    // Cada canción es su propio documento. Se suben por lotes para ir rápido.
+    async saveSongs(list) {
+        if (!AppState.isAdmin) return false;
+        const songs = this.deduplicateSongs(list || []);
+        if (!songs.length) return true;
         try {
-            const deduplicated = this.deduplicateSongs(AppState.songs);
-            AppState.songs = deduplicated;
-            db.collection('appdata').doc('songs').set({ songs: deduplicated })
-                .then(() => this.updateSaveStatus('saved'))
-                .catch(err => { console.error(err); alert('Error al guardar: ' + err.message); });
+            for (let i = 0; i < songs.length; i += 400) {
+                const batch = db.batch();
+                songs.slice(i, i + 400).forEach(s => batch.set(this.songsRef().doc(s.id), this.clean(s)));
+                await batch.commit();
+            }
+            this.updateSaveStatus('saved');
             return true;
-        } catch (error) { console.error(error); return false; }
+        } catch (err) {
+            console.error(err);
+            alert('Error al guardar: ' + err.message);
+            return false;
+        }
+    },
+    saveSong(song) { return this.saveSongs([song]); },
+    deleteSong(songId) {
+        if (!AppState.isAdmin) return Promise.resolve();
+        return this.songsRef().doc(songId).delete()
+            .catch(err => { console.error(err); alert('No se pudo borrar la canción: ' + err.message); });
     },
 
     listenSongs(callback) {
         if (this.songsUnsub) this.songsUnsub();
-        this.songsUnsub = db.collection('appdata').doc('songs').onSnapshot(doc => {
-            AppState.songs = doc.exists ? (doc.data().songs || []) : [];
+        this.songsUnsub = this.songsRef().onSnapshot(snap => {
+            AppState.songs = snap.docs.map(d => d.data());
             // Solo cuenta como "de la nube" si viene del servidor, no de la copia
             // local de Firestore (sin conexión podría estar incompleta).
-            AppState.songsFromCloud = !doc.metadata.fromCache;
+            AppState.songsFromCloud = !snap.metadata.fromCache;
             this.guardarCache(this.CACHE_SONGS, AppState.songs);
             if (callback) callback();
-        }, err => console.error(err));
+        }, err => console.error('Canciones:', err));
     },
 
-    // Guardado inmediato. Si había uno "con espera" pendiente, este ya lo
-    // incluye (sube todos los repertorios tal como están ahora), así que se
-    // cancela para no escribir dos veces.
-    saveSetlists() {
-        if (this.setlistsSaveTimer) { clearTimeout(this.setlistsSaveTimer); this.setlistsSaveTimer = null; }
-        try {
-            db.collection('appdata').doc('setlists').set({ setlists: AppState.setlists })
-                .catch(err => { console.error(err); alert('Error al guardar: ' + err.message); });
-            return true;
-        } catch (error) { console.error(error); return false; }
+    // ---- Repertorios (privados de cada equipo, uno por documento) ----
+    // Solo se sube si quien lo cambia tiene permiso (creador o líder). Para el
+    // resto, lo que toquen se queda solo en su pantalla.
+    saveSetlist(sl) {
+        if (!sl || !AppState.teamId || !Perm.canEditSetlist(sl)) return false;
+        this.cancelSetlistTimer(sl.id);
+        this.cleanOrphans(sl);
+        this.setlistsRef().doc(sl.id).set(this.clean(sl))
+            .catch(err => { console.error(err); alert('No se pudo guardar el repertorio: ' + err.message); });
+        return true;
     },
+    // Guarda el repertorio que está abierto (casi todos los cambios son sobre ese).
+    saveSetlists() { return this.saveSetlist(AppState.currentSetlist); },
 
-    // Programa un guardado para dentro de un momento. Si vuelve a llamarse antes
-    // de que se cumpla, el reloj empieza de nuevo: solo se sube cuando paras.
     scheduleSetlistsSave() {
-        if (this.setlistsSaveTimer) clearTimeout(this.setlistsSaveTimer);
-        this.setlistsSaveTimer = setTimeout(() => {
-            this.setlistsSaveTimer = null;
-            this.saveSetlists();
+        const sl = AppState.currentSetlist;
+        if (!sl || !Perm.canEditSetlist(sl)) return;
+        const id = sl.id;
+        this.cancelSetlistTimer(id);
+        this.saveTimers[id] = setTimeout(() => {
+            delete this.saveTimers[id];
+            this.saveSetlist(AppState.setlists.find(s => s.id === id) || sl);
         }, this.SETLISTS_SAVE_DELAY_MS);
     },
-
-    // Si hay un guardado esperando, lo hace ya. Se usa al salir o esconder la
-    // app, para no perder el último cambio si se cierra justo después de tocar.
+    cancelSetlistTimer(id) {
+        if (this.saveTimers[id]) { clearTimeout(this.saveTimers[id]); delete this.saveTimers[id]; }
+    },
+    // Si hay guardados esperando, los hace ya (al esconder o cerrar la app).
     flushSetlistsSave() {
-        if (this.setlistsSaveTimer) this.saveSetlists();
+        Object.keys(this.saveTimers).forEach(id => {
+            const sl = AppState.setlists.find(s => s.id === id);
+            if (sl) this.saveSetlist(sl); else this.cancelSetlistTimer(id);
+        });
+    },
+    deleteSetlist(setlistId) {
+        this.cancelSetlistTimer(setlistId);
+        return this.setlistsRef().doc(setlistId).delete()
+            .catch(err => { console.error(err); alert('No se pudo borrar el repertorio: ' + err.message); });
+    },
+
+    // Quita del repertorio lo que apunte a canciones que ya no existen (notas,
+    // voz, tono, orden). Seguridad: si las canciones no han llegado bien de la
+    // nube, no toca nada — un fallo de carga no puede borrar datos.
+    cleanOrphans(sl) {
+        if (!sl || !AppState.songsFromCloud || !AppState.songs.length) return;
+        const existing = new Set(AppState.songs.map(s => s.id));
+        sl.songIds = (sl.songIds || []).filter(id => existing.has(id));
+        ['songNotes', 'songLeadVocals', 'songTransposeOverrides', 'songStructures'].forEach(field => {
+            const map = sl[field];
+            if (!map) return;
+            Object.keys(map).forEach(id => { if (!existing.has(id)) delete map[id]; });
+        });
     },
 
     listenSetlists(callback) {
         if (this.setlistsUnsub) this.setlistsUnsub();
-        this.setlistsUnsub = db.collection('appdata').doc('setlists').onSnapshot(doc => {
-            // Si tenemos un cambio propio esperando a subirse y llega una versión de
-            // la nube, NO la aplicamos encima: borraría ese cambio de la memoria antes
-            // de que se guarde. Subimos el nuestro ya, y la nube nos devolverá enseguida
-            // la versión con él incluido (que sí se aplica con normalidad).
-            if (this.setlistsSaveTimer) { this.saveSetlists(); return; }
-            AppState.setlists = doc.exists ? (doc.data().setlists || []) : [];
-            this.guardarCache(this.CACHE_SETLISTS, AppState.setlists);
-            // Si había un repertorio abierto, lo reapuntamos al objeto nuevo correspondiente.
-            // Sin esto, cualquier cambio hecho sobre la referencia vieja (ej. transponer una
-            // canción) se pierde en silencio al guardar, porque esa referencia ya no forma
-            // parte del array que realmente se sube.
+        this.setlistsUnsub = this.setlistsRef().onSnapshot(snap => {
+            // Si tenemos un cambio propio esperando a subirse en algún repertorio,
+            // conservamos NUESTRA versión de ese hasta que se suba (si no, la de la
+            // nube lo borraría de la memoria antes de guardarse).
+            const pending = new Set(Object.keys(this.saveTimers));
+            AppState.setlists = snap.docs.map(d => {
+                const data = d.data();
+                if (pending.has(data.id)) return AppState.setlists.find(s => s.id === data.id) || data;
+                return data;
+            });
+            this.guardarCache(this.CACHE_SETLISTS_PREFIX + AppState.teamId, AppState.setlists);
+            // Si había un repertorio abierto, lo reapuntamos al objeto nuevo.
             if (AppState.currentSetlist) {
                 const fresh = AppState.setlists.find(s => s.id === AppState.currentSetlist.id);
                 if (fresh) AppState.currentSetlist = fresh;
             }
             if (callback) callback();
-        }, err => console.error(err));
+        }, err => console.error('Repertorios:', err));
     },
 
+    // ---- Perfiles de voz (en pausa; se mantienen como estaban) ----
     saveVocalProfiles() {
         try {
             db.collection('appdata').doc('vocalProfiles').set({ profiles: AppState.vocalProfiles })
@@ -909,7 +984,13 @@ const Storage = {
             AppState.vocalProfiles = doc.exists ? (doc.data().profiles || {}) : {};
             this.guardarCache(this.CACHE_VOCALS, AppState.vocalProfiles);
             if (callback) callback();
-        }, err => console.error(err));
+        }, err => { console.error('Perfiles de voz:', err); if (callback) callback(); });
+    },
+
+    stopListening() {
+        [this.songsUnsub, this.setlistsUnsub, this.vocalProfilesUnsub].forEach(u => { if (u) u(); });
+        this.songsUnsub = this.setlistsUnsub = this.vocalProfilesUnsub = null;
+        Object.keys(this.saveTimers).forEach(id => this.cancelSetlistTimer(id));
     },
 
     leerCache(clave) {
@@ -920,13 +1001,15 @@ const Storage = {
         try { localStorage.setItem(clave, JSON.stringify(valor)); }
         catch (e) { /* almacenamiento lleno o bloqueado: seguimos sin copia */ }
     },
+    borrarCache(clave) {
+        try { localStorage.removeItem(clave); } catch (e) { }
+    },
 
-    // Se llama antes de conectar con la nube: pinta lo último conocido enseguida.
-    // Cuando lleguen los datos reales se vuelve a dibujar con ellos.
-    cargarDesdeCache() {
+    // Pinta lo último conocido enseguida (antes de que responda la nube).
+    cargarDesdeCache(teamId) {
         const songs = this.leerCache(this.CACHE_SONGS);
         if (Array.isArray(songs) && songs.length) { AppState.songs = songs; AppState.songsLoaded = true; }
-        const setlists = this.leerCache(this.CACHE_SETLISTS);
+        const setlists = teamId ? this.leerCache(this.CACHE_SETLISTS_PREFIX + teamId) : null;
         if (Array.isArray(setlists)) { AppState.setlists = setlists; AppState.setlistsLoaded = true; }
         const vocals = this.leerCache(this.CACHE_VOCALS);
         if (vocals && typeof vocals === 'object') { AppState.vocalProfiles = vocals; AppState.vocalProfilesLoaded = true; }
@@ -954,96 +1037,477 @@ const Storage = {
 
     deduplicateSongs(songs) {
         const map = new Map();
-        songs.forEach(song => { if (song.id) map.set(song.id, song); });
+        songs.forEach(song => { if (song && song.id) map.set(song.id, song); });
         return Array.from(map.values());
+    }
+};
+
+// ============ EQUIPO ============
+// Cada persona pertenece a un solo equipo. El líder lo crea y la app le da un
+// código (ej. BETA-4821) que los demás escriben una vez para entrar.
+//
+// En Firestore:
+//   teams/{id}                  nombre, código de invitación, líder
+//   teams/{id}/members/{uid}    nombre, email, rol (lider / director / miembro)
+//   teams/{id}/setlists/{id}    los repertorios del equipo
+//   inviteCodes/{código}        para encontrar el equipo a partir del código
+//   users/{uid}                 en qué equipo está cada persona
+const Team = {
+    teamUnsub: null,
+    membersUnsub: null,
+
+    teamRef(teamId) { return db.collection('teams').doc(teamId || AppState.teamId); },
+    membersRef(teamId) { return this.teamRef(teamId).collection('members'); },
+
+    // Busca en qué equipo está la persona que acaba de entrar.
+    // Devuelve { teamId, removedFrom } — removedFrom si la sacaron de su equipo.
+    async resolve(user) {
+        try {
+            const u = await db.collection('users').doc(user.uid).get();
+            const teamId = u.exists ? (u.data().teamId || null) : null;
+            if (!teamId) return { teamId: null };
+            const m = await this.membersRef(teamId).doc(user.uid).get();
+            if (!m.exists) {
+                // El líder la sacó del equipo: se libera para poder unirse a otro.
+                await db.collection('users').doc(user.uid).set({ teamId: null }, { merge: true }).catch(() => { });
+                Storage.borrarCache(Storage.CACHE_SESSION);
+                return { teamId: null, removedFrom: teamId };
+            }
+            return { teamId };
+        } catch (err) {
+            // Sin conexión: usamos lo último conocido en este móvil.
+            const s = Storage.leerCache(Storage.CACHE_SESSION);
+            if (s && s.uid === user.uid && s.teamId) return { teamId: s.teamId, offline: true };
+            throw err;
+        }
     },
 
-    migrateLocalData() {
-        const localSongsRaw = localStorage.getItem('betania_songs_v4');
-        const localSetlistsRaw = localStorage.getItem('betania_setlists_v1');
-        let addedSongs = 0, addedSetlists = 0;
+    // Empieza a escuchar el equipo, sus miembros y todos los datos.
+    start(teamId) {
+        this.stop();
+        AppState.teamId = teamId;
+        const s = Storage.leerCache(Storage.CACHE_SESSION);
+        if (s && s.teamId === teamId) {
+            AppState.team = s.team || null;
+            AppState.member = s.member || null;
+            AppState.members = s.members || [];
+        }
+        Storage.cargarDesdeCache(teamId);
 
-        if (localSongsRaw) {
-            const localSongs = JSON.parse(localSongsRaw);
-            const existingIds = new Set(AppState.songs.map(s => s.id));
-            const newSongs = localSongs.filter(s => !existingIds.has(s.id));
-            if (newSongs.length > 0) { AppState.songs = [...AppState.songs, ...newSongs]; addedSongs = newSongs.length; }
+        this.teamUnsub = this.teamRef(teamId).onSnapshot(doc => {
+            AppState.team = doc.exists ? { id: doc.id, ...doc.data() } : null;
+            this.saveSession();
+            Auth.updateUI();
+            if (AppState.currentView === 'equipo') Router.renderTeamView();
+        }, err => { console.error('Equipo:', err); this.checkStillMember(err); });
+
+        this.membersUnsub = this.membersRef(teamId).onSnapshot(snap => {
+            AppState.members = snap.docs.map(d => ({ uid: d.id, ...d.data() }));
+            const me = AppState.members.find(m => m.uid === Perm.uid());
+            if (!me && !snap.metadata.fromCache) { this.onRemoved(); return; }
+            AppState.member = me || AppState.member;
+            this.saveSession();
+            Auth.updateUI();
+            if (AppState.currentView === 'equipo') Router.renderTeamView();
+        }, err => { console.error('Miembros:', err); this.checkStillMember(err); });
+
+        Storage.listenSongs(() => {
+            AppState.songsLoaded = true;
+            SplashManager.checkReady();
+            if (AppState.currentView === 'canciones') Router.renderSongsList();
+            if (AppState.currentView === 'repertorio') Router.renderSetlistsList();
+            if (AppState.currentView === 'repertorio-detail') Router.renderSetlistDetail();
+            HistoryManager.tryRestoreOnLoad();
+        });
+        Storage.listenSetlists(() => {
+            AppState.setlistsLoaded = true;
+            SplashManager.checkReady();
+            if (AppState.currentView === 'repertorio') Router.renderSetlistsList();
+            if (AppState.currentView === 'repertorio-detail') Router.renderSetlistDetail();
+            HistoryManager.tryRestoreOnLoad();
+        });
+        Storage.listenVocalProfiles(() => {
+            AppState.vocalProfilesLoaded = true;
+            SplashManager.checkReady();
+        });
+    },
+
+    stop() {
+        if (this.teamUnsub) this.teamUnsub();
+        if (this.membersUnsub) this.membersUnsub();
+        this.teamUnsub = this.membersUnsub = null;
+        Storage.stopListening();
+        AppState.teamId = null;
+        AppState.team = null;
+        AppState.member = null;
+        AppState.members = [];
+        AppState.setlists = [];
+        AppState.currentSetlist = null;
+    },
+
+    saveSession() {
+        if (!AppState.currentUser || !AppState.teamId) return;
+        Storage.guardarCache(Storage.CACHE_SESSION, {
+            uid: AppState.currentUser.uid,
+            teamId: AppState.teamId,
+            team: AppState.team,
+            member: AppState.member,
+            members: AppState.members
+        });
+    },
+
+    // Cuando a alguien lo sacan del equipo, Firestore deja de darle permiso y
+    // la escucha falla con un error (en vez de avisar de que ya no está).
+    // Ante ese error comprobamos su propia ficha: si ya no existe, lo sacamos.
+    async checkStillMember(err) {
+        if (!err || err.code !== 'permission-denied' || !AppState.teamId || !AppState.currentUser) return;
+        try {
+            const m = await this.membersRef().doc(AppState.currentUser.uid).get();
+            if (!m.exists) this.onRemoved();
+        } catch (e) { console.error(e); }
+    },
+
+    // Antes de crear o unirse a un equipo: si la ficha dice que está en uno pero
+    // ya no figura en él (lo sacaron), la deja libre. Si sigue dentro, avisa.
+    async ensureFree() {
+        const uid = AppState.currentUser.uid;
+        const u = await db.collection('users').doc(uid).get();
+        const teamId = u.exists ? u.data().teamId : null;
+        if (!teamId) return;
+        const m = await this.membersRef(teamId).doc(uid).get();
+        if (m.exists) throw new Error('Ya perteneces a un equipo. Sal de él antes de unirte a otro.');
+        await db.collection('users').doc(uid).set({ teamId: null }, { merge: true });
+    },
+
+    // Nos sacaron del equipo mientras teníamos la app abierta.
+    onRemovedRunning: false,
+    async onRemoved() {
+        if (this.onRemovedRunning) return;
+        this.onRemovedRunning = true;
+        setTimeout(() => { this.onRemovedRunning = false; }, 2000);
+        const teamName = AppState.team ? AppState.team.name : 'el equipo';
+        this.stop();
+        Storage.borrarCache(Storage.CACHE_SESSION);
+        if (AppState.currentUser) {
+            await db.collection('users').doc(AppState.currentUser.uid).set({ teamId: null }, { merge: true }).catch(() => { });
         }
-        if (localSetlistsRaw) {
-            const localSetlists = JSON.parse(localSetlistsRaw);
-            const existingIds = new Set(AppState.setlists.map(s => s.id));
-            const newSetlists = localSetlists.filter(s => !existingIds.has(s.id));
-            if (newSetlists.length > 0) { AppState.setlists = [...AppState.setlists, ...newSetlists]; addedSetlists = newSetlists.length; }
+        Gate.show('onboarding', `Ya no formas parte de "${teamName}". Puedes unirte a otro equipo con su código.`);
+    },
+
+    // Código a partir del nombre: 4 letras + 4 números (ej. "Betania Manresa" -> BETA-4821).
+    makeCode(teamName) {
+        const letters = ChordParser.normalizeTildes(teamName || '')
+            .toUpperCase()
+            .replace(/Ñ/g, 'N')
+            .replace(/[^A-Z]/g, '');
+        const base = (letters + 'XXXX').slice(0, 4);
+        const num = String(Math.floor(1000 + Math.random() * 9000));
+        return `${base}-${num}`;
+    },
+
+    // Acepta el código escrito de cualquier manera: "beta 4821", "BETA4821"...
+    normalizeCode(raw) {
+        const clean = (raw || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+        if (clean.length !== 8) return null;
+        return `${clean.slice(0, 4)}-${clean.slice(4)}`;
+    },
+
+    async create(teamName, displayName) {
+        const user = AppState.currentUser;
+        await this.ensureFree();
+        const teamId = db.collection('teams').doc().id;
+        // Si por casualidad el código ya existe, Firestore rechaza la escritura
+        // y probamos con otros números.
+        let lastErr = null;
+        for (let attempt = 0; attempt < 5; attempt++) {
+            const code = this.makeCode(teamName);
+            const batch = db.batch();
+            batch.set(this.teamRef(teamId), {
+                name: teamName,
+                inviteCode: code,
+                leaderUid: user.uid,
+                createdAt: new Date().toISOString()
+            });
+            batch.set(db.collection('inviteCodes').doc(code), { teamId, teamName });
+            batch.set(this.membersRef(teamId).doc(user.uid), {
+                name: displayName,
+                email: user.email || '',
+                role: 'lider',
+                joinedAt: new Date().toISOString()
+            });
+            batch.set(db.collection('users').doc(user.uid), { teamId, name: displayName });
+            try {
+                await batch.commit();
+                return teamId;
+            } catch (err) {
+                lastErr = err;
+                if (err.code !== 'permission-denied') break;
+            }
         }
-        if (addedSongs === 0 && addedSetlists === 0) { alert('No se encontraron datos locales nuevos para migrar.'); return; }
-        if (!confirm(`Se subirán ${addedSongs} canción(es) y ${addedSetlists} repertorio(s) locales a la nube. ¿Continuar?`)) return;
-        if (addedSongs > 0) this.saveSongs();
-        if (addedSetlists > 0) this.saveSetlists();
-        alert(`✅ Migración completa: ${addedSongs} canción(es) y ${addedSetlists} repertorio(s) subidos.`);
+        throw lastErr;
+    },
+
+    async join(rawCode, displayName) {
+        const user = AppState.currentUser;
+        const code = this.normalizeCode(rawCode);
+        if (!code) throw new Error('El código tiene 4 letras y 4 números, por ejemplo BETA-4821.');
+        const c = await db.collection('inviteCodes').doc(code).get();
+        if (!c.exists) throw new Error('Ese código no existe o ya no es válido. Pídele a tu líder el código actual.');
+        const { teamId } = c.data();
+        await this.ensureFree();
+        const batch = db.batch();
+        batch.set(this.membersRef(teamId).doc(user.uid), {
+            name: displayName,
+            email: user.email || '',
+            role: 'miembro',
+            joinCode: code,
+            joinedAt: new Date().toISOString()
+        });
+        batch.set(db.collection('users').doc(user.uid), { teamId, name: displayName });
+        await batch.commit();
+        return teamId;
+    },
+
+    // El líder genera un código nuevo: el anterior deja de servir para entrar,
+    // pero quien ya está dentro sigue dentro.
+    async regenerateCode() {
+        if (!Perm.isLeader() || !AppState.team) return;
+        const old = AppState.team.inviteCode;
+        let lastErr = null;
+        for (let attempt = 0; attempt < 5; attempt++) {
+            const code = this.makeCode(AppState.team.name);
+            const batch = db.batch();
+            if (old) batch.delete(db.collection('inviteCodes').doc(old));
+            batch.set(db.collection('inviteCodes').doc(code), { teamId: AppState.teamId, teamName: AppState.team.name });
+            batch.update(this.teamRef(), { inviteCode: code });
+            try { await batch.commit(); return code; }
+            catch (err) { lastErr = err; if (err.code !== 'permission-denied') break; }
+        }
+        throw lastErr;
+    },
+
+    setRole(uid, role) {
+        if (!Perm.isLeader() || uid === Perm.uid()) return Promise.resolve();
+        return this.membersRef().doc(uid).update({ role });
+    },
+
+    removeMember(uid) {
+        if (!Perm.isLeader() || uid === Perm.uid()) return Promise.resolve();
+        return this.membersRef().doc(uid).delete();
+    },
+
+    renameSelf(name) {
+        return this.membersRef().doc(Perm.uid()).update({ name });
+    },
+
+    async leave() {
+        if (Perm.isLeader()) return;
+        const uid = Perm.uid();
+        const batch = db.batch();
+        batch.delete(this.membersRef().doc(uid));
+        batch.set(db.collection('users').doc(uid), { teamId: null }, { merge: true });
+        await batch.commit();
+    },
+
+    // Nombres de las personas del equipo (para voz líder y convocatoria).
+    memberNames() {
+        return (AppState.members || [])
+            .map(m => (m.name || '').trim())
+            .filter(Boolean)
+            .sort((a, b) => a.localeCompare(b, 'es', { sensitivity: 'base' }));
+    }
+};
+
+// ============ PANTALLAS DE ENTRADA ============
+// Antes de ver la app hay que entrar con Google ("login") y pertenecer a un
+// equipo ("onboarding"). Mientras tanto la app queda bloqueada ("gated").
+const Gate = {
+    current: 'loading',
+    show(name, message) {
+        this.current = name;
+        const gated = name !== 'app';
+        document.body.classList.toggle('gated', gated);
+        if (gated) {
+            document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+            const target = document.getElementById(`view-${name}`);
+            if (target) target.classList.add('active');
+            if (name === 'onboarding') this.prepareOnboarding(message);
+            if (name === 'login') this.setMessage('login-message', message || '');
+            SplashManager.hide();
+            return;
+        }
+        Auth.updateUI();
+        Router.navigate('repertorio', false);
+        HistoryManager.tryRestoreOnLoad();
+    },
+    setMessage(id, text, isError) {
+        const el = document.getElementById(id);
+        if (!el) return;
+        el.textContent = text || '';
+        el.classList.toggle('error', !!isError);
+    },
+    prepareOnboarding(message) {
+        const user = AppState.currentUser;
+        const first = user && user.displayName ? user.displayName.split(' ')[0] : '';
+        const hello = document.getElementById('onb-hello');
+        if (hello) hello.textContent = first || 'hola';
+        const nameInput = document.getElementById('onb-name');
+        if (nameInput && !nameInput.value) nameInput.value = first;
+        const email = document.getElementById('onb-email');
+        if (email) email.textContent = user ? (user.email || '') : '';
+        this.setMessage('onb-message', message || '', false);
+    },
+    bindButtons() {
+        Router.bindButton('btn-google-login', () => Auth.signIn());
+        Router.bindButton('btn-onb-logout', () => Auth.signOut());
+        Router.bindButton('btn-join-team', () => this.handleJoin());
+        Router.bindButton('btn-create-team', () => this.handleCreate());
+    },
+    readName() {
+        const name = (document.getElementById('onb-name').value || '').trim();
+        if (!name) { this.setMessage('onb-message', 'Escribe tu nombre (así te verá el resto del equipo).', true); return null; }
+        return name;
+    },
+    setBusy(busy) {
+        ['btn-join-team', 'btn-create-team'].forEach(id => {
+            const b = document.getElementById(id);
+            if (b) b.disabled = busy;
+        });
+    },
+    async handleJoin() {
+        const name = this.readName();
+        if (!name) return;
+        const code = document.getElementById('onb-code').value;
+        this.setBusy(true);
+        this.setMessage('onb-message', 'Entrando en el equipo...');
+        try {
+            const teamId = await Team.join(code, name);
+            Team.start(teamId);
+            this.show('app');
+        } catch (err) {
+            console.error(err);
+            const msg = err.code === 'permission-denied'
+                ? 'No se pudo entrar: el código no es válido o ya perteneces a otro equipo.'
+                : err.message;
+            this.setMessage('onb-message', msg, true);
+        } finally { this.setBusy(false); }
+    },
+    async handleCreate() {
+        const name = this.readName();
+        if (!name) return;
+        const teamName = (document.getElementById('onb-team-name').value || '').trim();
+        if (!teamName) { this.setMessage('onb-message', 'Escribe el nombre del equipo, por ejemplo "Betania Manresa".', true); return; }
+        this.setBusy(true);
+        this.setMessage('onb-message', 'Creando el equipo...');
+        try {
+            const teamId = await Team.create(teamName, name);
+            Team.start(teamId);
+            this.show('app');
+            Router.navigate('equipo');
+        } catch (err) {
+            console.error(err);
+            this.setMessage('onb-message', 'No se pudo crear el equipo: ' + err.message, true);
+        } finally { this.setBusy(false); }
     }
 };
 
 // Autenticación
 const Auth = {
     init() {
-        firebase.auth().onAuthStateChanged(user => {
+        // Vuelta del inicio de sesión por redirección (iPhone con la app instalada).
+        firebase.auth().getRedirectResult().catch(err => {
+            console.error(err);
+            Gate.setMessage('login-message', 'No se pudo iniciar sesión: ' + err.message, true);
+        });
+
+        firebase.auth().onAuthStateChanged(async user => {
+            // Las sesiones anónimas de la versión anterior ya no sirven.
+            if (user && user.isAnonymous) { firebase.auth().signOut(); return; }
+            Team.stop();
             if (!user) {
-                // Nadie ha iniciado sesión: entra como usuario anónimo en segundo plano,
-                // sin mostrar nada, para que request.auth no sea nulo en las reglas de Firestore.
-                firebase.auth().signInAnonymously().catch(err => console.error('Error en sesión anónima:', err));
+                AppState.currentUser = null;
+                AppState.isAdmin = false;
+                Gate.show('login');
                 return;
             }
             AppState.currentUser = user;
             AppState.isAdmin = !!(user.email && user.email === ADMIN_EMAIL);
-            this.updateUI();
+            let result;
+            try {
+                result = await Team.resolve(user);
+            } catch (err) {
+                console.error(err);
+                Gate.show('login', 'No hay conexión y este móvil todavía no tiene los datos guardados. Conéctate a internet e inténtalo de nuevo.');
+                return;
+            }
+            if (!result.teamId) {
+                const msg = result.removedFrom ? 'Ya no formas parte de tu equipo anterior. Puedes unirte a otro con su código.' : '';
+                Gate.show('onboarding', msg);
+                return;
+            }
+            Team.start(result.teamId);
+            Gate.show('app');
         });
         this.bindButtons();
     },
     bindButtons() {
-        const loginBtn = document.getElementById('btn-login');
-        if (loginBtn && !loginBtn.hasAttribute('data-bound')) {
-            loginBtn.addEventListener('click', () => this.signIn());
-            loginBtn.setAttribute('data-bound', 'true');
-        }
         const logoutBtn = document.getElementById('btn-logout');
         if (logoutBtn && !logoutBtn.hasAttribute('data-bound')) {
             logoutBtn.addEventListener('click', () => this.signOut());
             logoutBtn.setAttribute('data-bound', 'true');
         }
+        Gate.bindButtons();
     },
     signIn() {
         const provider = new firebase.auth.GoogleAuthProvider();
-        firebase.auth().signInWithPopup(provider).catch(err => { console.error(err); alert('Error al iniciar sesión: ' + err.message); });
+        provider.setCustomParameters({ prompt: 'select_account' });
+        // En iPhone con la app instalada la ventana emergente no funciona bien:
+        // ahí se usa la redirección (sale de la app un momento y vuelve).
+        const isIOSStandalone = window.navigator.standalone === true;
+        if (isIOSStandalone) { firebase.auth().signInWithRedirect(provider); return; }
+        firebase.auth().signInWithPopup(provider).catch(err => {
+            console.error(err);
+            const needsRedirect = ['auth/popup-blocked', 'auth/operation-not-supported-in-this-environment', 'auth/web-storage-unsupported'];
+            if (needsRedirect.includes(err.code)) { firebase.auth().signInWithRedirect(provider); return; }
+            if (err.code === 'auth/popup-closed-by-user' || err.code === 'auth/cancelled-popup-request') return;
+            Gate.setMessage('login-message', 'No se pudo iniciar sesión: ' + err.message, true);
+        });
     },
-    signOut() { firebase.auth().signOut(); },
+    signOut() {
+        Storage.flushSetlistsSave();
+        Storage.borrarCache(Storage.CACHE_SESSION);
+        firebase.auth().signOut();
+    },
     updateUI() {
         const loginBtn = document.getElementById('btn-login');
         const logoutBtn = document.getElementById('btn-logout');
         const userLabel = document.getElementById('user-email-label');
+        const loggedIn = !!AppState.currentUser;
 
-        if (AppState.isAdmin) {
-            if (loginBtn) loginBtn.style.display = 'none';
-            if (logoutBtn) logoutBtn.style.display = 'inline-flex';
-            if (userLabel) { userLabel.style.display = 'inline'; userLabel.textContent = AppState.currentUser.email; }
-        } else {
-            if (loginBtn) loginBtn.style.display = 'inline-flex';
-            if (logoutBtn) logoutBtn.style.display = 'none';
-            if (userLabel) userLabel.style.display = 'none';
+        if (loginBtn) loginBtn.style.display = 'none';
+        if (logoutBtn) logoutBtn.style.display = loggedIn ? 'inline-flex' : 'none';
+        if (userLabel) {
+            const name = AppState.member ? AppState.member.name : (AppState.currentUser ? AppState.currentUser.email : '');
+            const teamName = AppState.team ? ` · ${AppState.team.name}` : '';
+            userLabel.style.display = loggedIn ? 'inline' : 'none';
+            userLabel.textContent = loggedIn ? `${name}${teamName}` : '';
         }
 
-        const showIfAdmin = (id, displayValue) => {
+        const showIf = (id, condition, displayValue) => {
             const el = document.getElementById(id);
-            if (el) el.style.display = AppState.isAdmin ? displayValue : 'none';
+            if (el) el.style.display = condition ? displayValue : 'none';
         };
-        showIfAdmin('nav-tab-edicion', 'inline-block');
-        showIfAdmin('btn-add-song', 'inline-flex');
-        showIfAdmin('btn-import-pdfs', 'inline-flex');
-        showIfAdmin('btn-bulk-detect-keys', 'inline-flex');
-        showIfAdmin('btn-migrate-local', 'inline-flex');
-        showIfAdmin('btn-edit-song', 'inline-flex');
-        showIfAdmin('btn-vocal-profiles', 'inline-flex');
-        showIfAdmin('btn-backup', 'inline-flex');
+        showIf('nav-tab-edicion', AppState.isAdmin, 'inline-block');
+        showIf('btn-add-song', AppState.isAdmin, 'inline-flex');
+        showIf('btn-import-pdfs', AppState.isAdmin, 'inline-flex');
+        showIf('btn-bulk-detect-keys', AppState.isAdmin, 'inline-flex');
+        showIf('btn-migrate-local', AppState.isAdmin, 'inline-flex');
+        showIf('btn-edit-song', AppState.isAdmin, 'inline-flex');
+        showIf('btn-vocal-profiles', AppState.isAdmin, 'inline-flex');
+        showIf('btn-backup', AppState.isAdmin, 'inline-flex');
+        showIf('btn-new-setlist', Perm.canCreateSetlist(), 'inline-flex');
 
+        if (Gate.current !== 'app') return;
         if (AppState.currentView === 'canciones') Router.renderSongsList();
         if (AppState.currentView === 'repertorio') Router.renderSetlistsList();
         if (AppState.currentView === 'repertorio-detail') Router.renderSetlistDetail();
@@ -1323,6 +1787,8 @@ const Router = {
     },
 
     navigate(view, push = true) {
+        // Mientras no se haya entrado con Google y en un equipo, no se navega.
+        if (document.body.classList.contains('gated')) return;
         if (view === 'edicion' && !AppState.isAdmin) view = 'canciones';
         // Salir del editor por las pestañas guardaba solo al usar "Volver".
         // Ahora guarda siempre, para no perder cambios sin darse cuenta.
@@ -1356,6 +1822,7 @@ const Router = {
         }
         if (view === 'repertorio') this.renderSetlistsList();
         if (view === 'repertorio-detail') this.renderSetlistDetail();
+        if (view === 'equipo') this.renderTeamView();
         if (view === 'edicion' && AppState.isCreatingNew) this.showInitialDialog();
 
         if (push) HistoryManager.push({ view });
@@ -1370,7 +1837,7 @@ const Router = {
         this.bindButton('btn-import-pdfs', () => { if (AppState.isAdmin) this.showBulkPDFImport(); });
         this.bindButton('btn-bulk-detect-keys', () => { if (AppState.isAdmin) this.bulkDetectKeys(); });
         this.bindButton('btn-backup', () => { if (AppState.isAdmin) this.downloadBackup(); });
-        this.bindButton('btn-migrate-local', () => { if (AppState.isAdmin) Storage.migrateLocalData(); });
+        this.bindButton('btn-migrate-local', () => { if (AppState.isAdmin) this.migrateOldData(); });
         this.bindButton('btn-vocal-profiles', () => { if (AppState.isAdmin) this.showVocalProfilesModal(); });
         this.bindButton('btn-back-to-list', () => { history.back(); });
         this.bindButton('btn-back-from-editor', () => { this.saveCurrentSong(); history.back(); });
@@ -1477,7 +1944,7 @@ const Router = {
         }
         // El nombre se sube cuando dejas de escribir, no con cada letra.
         this.bindInput('setlist-name-input', (e) => {
-            if (!AppState.currentSetlist) return;
+            if (!AppState.currentSetlist || !Perm.canEditSetlist(AppState.currentSetlist)) return;
             AppState.currentSetlist.name = e.target.value;
             Storage.scheduleSetlistsSave();
         });
@@ -1485,16 +1952,32 @@ const Router = {
         this.bindButton('btn-next-setlist-song', () => this.gotoSetlistSong(1));
     },
 
-    populateLeadVocalReaderSelect() {
+    // Rellena el desplegable de voz del lector con las personas del equipo.
+    // Se vuelve a llamar cada vez que se abre una canción, porque el equipo
+    // puede haber cambiado. Si la voz guardada es de alguien que ya no está,
+    // se añade igual para no perderla de vista.
+    populateLeadVocalReaderSelect(selected) {
         const select = document.getElementById('lead-vocal-reader-select');
-        if (!select || select.hasAttribute('data-populated')) return;
-        this.LEAD_VOCAL_OPTIONS.forEach(name => {
-            const opt = document.createElement('option');
-            opt.value = name;
-            opt.textContent = name;
-            select.appendChild(opt);
-        });
-        select.setAttribute('data-populated', 'true');
+        if (!select) return;
+        const names = this.leadVocalOptions(selected);
+        select.innerHTML = '<option value="">Sin asignar</option>' +
+            names.map(n => `<option value="${this.escapeAttr(n)}">${this.escapeHtml(n)}</option>`).join('');
+        select.value = selected || '';
+    },
+
+    // Personas que pueden dirigir una canción: todo el equipo (más la ya elegida).
+    leadVocalOptions(selected) {
+        const names = Team.memberNames();
+        if (selected && !names.includes(selected)) names.push(selected);
+        return names;
+    },
+
+    escapeHtml(text) {
+        return String(text == null ? '' : text)
+            .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    },
+    escapeAttr(text) {
+        return this.escapeHtml(text).replace(/"/g, '&quot;').replace(/'/g, '&#39;');
     },
 
     bindButton(id, handler) {
@@ -1535,41 +2018,36 @@ const Router = {
     },
 
     // ============ COPIA DE SEGURIDAD ============
-    // Descarga un archivo .json con TODO lo que hay en la nube: canciones,
-    // repertorios y perfiles de voz. Se lee directamente del servidor (no de lo
-    // que la app tiene en memoria ni de la copia del móvil), para que el archivo
-    // sea exactamente lo que está guardado. De paso dice cuánto ocupa el
-    // documento de canciones respecto al límite de 1 MB de Firestore.
+    // Descarga un archivo .json con todo lo que hay en la nube: el catálogo de
+    // canciones y, del propio equipo, sus datos, integrantes y repertorios. Se lee
+    // directamente del servidor, para que el archivo sea exactamente lo guardado.
     async downloadBackup() {
         const btn = document.getElementById('btn-backup');
         const originalText = btn ? btn.textContent : '';
         if (btn) { btn.disabled = true; btn.textContent = 'Preparando copia...'; }
         try {
-            const ref = db.collection('appdata');
-            const [songsDoc, setlistsDoc, vocalDoc] = await Promise.all([
-                ref.doc('songs').get({ source: 'server' }),
-                ref.doc('setlists').get({ source: 'server' }),
-                ref.doc('vocalProfiles').get({ source: 'server' })
+            const server = { source: 'server' };
+            const hasTeam = !!AppState.teamId;
+            const [songsSnap, setlistsSnap, membersSnap, teamDoc, vocalDoc] = await Promise.all([
+                Storage.songsRef().get(server),
+                hasTeam ? Storage.setlistsRef().get(server) : Promise.resolve(null),
+                hasTeam ? Team.membersRef().get(server) : Promise.resolve(null),
+                hasTeam ? Team.teamRef().get(server) : Promise.resolve(null),
+                db.collection('appdata').doc('vocalProfiles').get(server).catch(() => null)
             ]);
-            const songsData = songsDoc.exists ? songsDoc.data() : { songs: [] };
-            const setlistsData = setlistsDoc.exists ? setlistsDoc.data() : { setlists: [] };
-            const vocalData = vocalDoc.exists ? vocalDoc.data() : { profiles: {} };
-
+            const songs = songsSnap.docs.map(d => d.data());
+            const setlists = setlistsSnap ? setlistsSnap.docs.map(d => d.data()) : [];
+            const members = membersSnap ? membersSnap.docs.map(d => ({ uid: d.id, ...d.data() })) : [];
             const backup = {
                 app: 'Repertia',
+                formatVersion: 2,
                 createdAt: new Date().toISOString(),
-                appdata: { songs: songsData, setlists: setlistsData, vocalProfiles: vocalData }
+                songs,
+                team: teamDoc && teamDoc.exists ? { id: teamDoc.id, ...teamDoc.data() } : null,
+                members,
+                setlists,
+                vocalProfiles: vocalDoc && vocalDoc.exists ? vocalDoc.data() : null
             };
-
-            // Tamaño aproximado de cada documento tal como lo guarda Firestore.
-            const bytes = (obj) => new Blob([JSON.stringify(obj)]).size;
-            const songsBytes = bytes(songsData);
-            const setlistsBytes = bytes(setlistsData);
-            const LIMIT = 1048576; // 1 MB
-            const pct = (b) => Math.round((b / LIMIT) * 100);
-            const kb = (b) => (b / 1024).toFixed(0);
-            const numSongs = (songsData.songs || []).length;
-            const numSetlists = (setlistsData.setlists || []).length;
 
             const d = new Date();
             const pad = (n) => String(n).padStart(2, '0');
@@ -1584,13 +2062,11 @@ const Router = {
             a.remove();
             setTimeout(() => URL.revokeObjectURL(url), 5000);
 
-            const avgSong = numSongs ? songsBytes / numSongs : 0;
-            const roomLeft = avgSong ? Math.floor((LIMIT - songsBytes) / avgSong) : null;
             alert(
                 `✅ Copia descargada: ${fileName}\n\n` +
-                `Canciones: ${numSongs} — ocupan ${kb(songsBytes)} KB (${pct(songsBytes)}% del límite de 1 MB)\n` +
-                `Repertorios: ${numSetlists} — ocupan ${kb(setlistsBytes)} KB (${pct(setlistsBytes)}% del límite)\n` +
-                (roomLeft !== null ? `\nAl ritmo actual caben unas ${roomLeft} canciones más en el documento de canciones.` : '')
+                `Canciones: ${songs.length}\n` +
+                `Repertorios del equipo: ${setlists.length}\n` +
+                `Integrantes: ${members.length}`
             );
         } catch (err) {
             console.error(err);
@@ -1601,15 +2077,193 @@ const Router = {
     },
     // ============ FIN COPIA DE SEGURIDAD ============
 
+    // ============ PASAR LOS DATOS ANTIGUOS AL FORMATO NUEVO ============
+    // Copia las canciones del documento antiguo (appdata/songs) al catálogo común
+    // (una canción por documento), y los repertorios antiguos (appdata/setlists)
+    // a tu equipo. Los datos antiguos NO se borran: si algo sale mal, siguen ahí.
+    // Se puede repetir sin problema (sobrescribe con la versión antigua).
+    async migrateOldData() {
+        if (!AppState.isAdmin) return;
+        if (!Perm.isLeader() || !AppState.team || !AppState.member) {
+            alert('Para pasar los repertorios necesitas ser el líder de tu equipo. Crea primero el equipo.');
+            return;
+        }
+        const btn = document.getElementById('btn-migrate-local');
+        const originalText = btn ? btn.textContent : '';
+        try {
+            const server = { source: 'server' };
+            const ref = db.collection('appdata');
+            const [songsDoc, setlistsDoc] = await Promise.all([ref.doc('songs').get(server), ref.doc('setlists').get(server)]);
+            const oldSongs = songsDoc.exists ? (songsDoc.data().songs || []) : [];
+            const oldSetlists = setlistsDoc.exists ? (setlistsDoc.data().setlists || []) : [];
+            if (!oldSongs.length && !oldSetlists.length) { alert('No hay datos antiguos que pasar.'); return; }
+            if (!confirm(
+                `Se copiarán:\n` +
+                `• ${oldSongs.length} canciones al catálogo común\n` +
+                `• ${oldSetlists.length} repertorios al equipo "${AppState.team.name}"\n\n` +
+                `Los datos antiguos NO se borran. ¿Continuar?`
+            )) return;
+
+            if (btn) { btn.disabled = true; btn.textContent = 'Copiando...'; }
+            const okSongs = await Storage.saveSongs(oldSongs);
+            if (!okSongs) return;
+
+            const uid = Perm.uid();
+            const myName = AppState.member.name || '';
+            for (let i = 0; i < oldSetlists.length; i += 400) {
+                const batch = db.batch();
+                oldSetlists.slice(i, i + 400).forEach(sl => {
+                    if (!sl || !sl.id) return;
+                    const data = Storage.clean({ ...sl, createdBy: uid, createdByName: sl.creatorName || myName });
+                    batch.set(Storage.setlistsRef().doc(sl.id), data);
+                });
+                await batch.commit();
+            }
+            alert(`✅ Listo: ${oldSongs.length} canciones y ${oldSetlists.length} repertorios copiados.`);
+        } catch (err) {
+            console.error(err);
+            alert('No se pudo completar: ' + err.message);
+        } finally {
+            if (btn) { btn.disabled = false; btn.textContent = originalText; }
+        }
+    },
+    // ============ FIN PASAR DATOS ============
+
+    // ============ PANTALLA DE EQUIPO ============
+    renderTeamView() {
+        const panel = document.getElementById('team-panel');
+        if (!panel) return;
+        const team = AppState.team;
+        const me = AppState.member;
+        const title = document.getElementById('team-title');
+        if (!team || !me) {
+            if (title) title.textContent = 'Equipo';
+            panel.innerHTML = '<div class="empty-state"><h3>Cargando el equipo…</h3></div>';
+            return;
+        }
+        if (title) title.textContent = team.name;
+        const esc = (t) => this.escapeHtml(t);
+        const leader = Perm.isLeader();
+        const canInvite = Perm.canCreateSetlist(); // líder y directores ven el código
+        const order = { lider: 0, director: 1, miembro: 2 };
+        const members = [...AppState.members].sort((a, b) =>
+            ((order[a.role] ?? 3) - (order[b.role] ?? 3)) || (a.name || '').localeCompare(b.name || '', 'es', { sensitivity: 'base' }));
+
+        panel.innerHTML = `
+            ${canInvite ? `
+            <div class="team-card">
+                <div class="team-card-label">Código para invitar</div>
+                <div class="team-code">${esc(team.inviteCode || '—')}</div>
+                <p class="team-hint">Pásaselo a cada integrante: entra con su cuenta de Google y lo escribe una sola vez.</p>
+                <div class="team-actions">
+                    <button class="btn btn-sm" onclick="Router.copyTeamCode()">📋 Copiar código</button>
+                    ${leader ? `<button class="btn btn-sm" onclick="Router.regenerateTeamCode()">🔄 Generar código nuevo</button>` : ''}
+                </div>
+            </div>` : ''}
+
+            <div class="team-card">
+                <div class="team-card-label">Tú</div>
+                <div class="team-me"><strong>${esc(me.name)}</strong> <span class="role-badge role-${esc(me.role)}">${Perm.roleLabel(me.role)}</span></div>
+                <div class="team-actions">
+                    <button class="btn btn-sm" onclick="Router.renameMe()">✏️ Cambiar mi nombre</button>
+                    ${!leader ? `<button class="btn btn-sm btn-danger-outline" onclick="Router.leaveTeam()">Salir del equipo</button>` : ''}
+                </div>
+            </div>
+
+            <div class="team-card">
+                <div class="team-card-label">Integrantes (${members.length})</div>
+                ${leader && members.length > 1 ? `<p class="team-hint">Nombra director técnico a quien vaya a preparar repertorios contigo.</p>` : ''}
+                ${leader && members.length <= 1 ? `<p class="team-hint">Todavía no se ha unido nadie. Comparte el código de arriba.</p>` : ''}
+                <div class="team-members">
+                    ${members.map(m => `
+                        <div class="team-member">
+                            <div class="team-member-info">
+                                <div class="team-member-name">${esc(m.name)}${m.uid === Perm.uid() ? ' (tú)' : ''}</div>
+                                <div class="team-member-meta">
+                                    <span class="role-badge role-${esc(m.role)}">${Perm.roleLabel(m.role)}</span>
+                                    ${leader && m.email ? `<span class="team-member-email">${esc(m.email)}</span>` : ''}
+                                </div>
+                            </div>
+                            ${leader && m.uid !== Perm.uid() ? `
+                            <div class="team-member-actions">
+                                <button class="btn btn-sm" onclick="Router.toggleDirector('${m.uid}')">${m.role === 'director' ? 'Quitar director' : 'Hacer director'}</button>
+                                <button class="btn btn-sm btn-danger-outline" onclick="Router.removeTeamMember('${m.uid}')">Sacar</button>
+                            </div>` : ''}
+                        </div>
+                    `).join('')}
+                </div>
+            </div>
+        `;
+    },
+
+    copyTeamCode() {
+        const code = AppState.team && AppState.team.inviteCode;
+        if (!code) return;
+        const text = `Únete a "${AppState.team.name}" en Repertia: entra en ${location.origin}${location.pathname} con tu cuenta de Google y escribe el código ${code}`;
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(text)
+                .then(() => alert('✅ Copiado. Pégalo en el chat del equipo.'))
+                .catch(() => prompt('Copia este texto:', text));
+        } else {
+            prompt('Copia este texto:', text);
+        }
+    },
+
+    async regenerateTeamCode() {
+        if (!Perm.isLeader()) return;
+        if (!confirm('Se creará un código nuevo y el actual dejará de servir para entrar. Quien ya está en el equipo sigue dentro. ¿Continuar?')) return;
+        try {
+            const code = await Team.regenerateCode();
+            alert(`✅ Código nuevo: ${code}`);
+        } catch (err) { console.error(err); alert('No se pudo cambiar el código: ' + err.message); }
+    },
+
+    async renameMe() {
+        const current = AppState.member ? AppState.member.name : '';
+        const name = (prompt('¿Cómo quieres que te vea el resto del equipo?', current) || '').trim();
+        if (!name || name === current) return;
+        try { await Team.renameSelf(name); }
+        catch (err) { console.error(err); alert('No se pudo cambiar el nombre: ' + err.message); }
+    },
+
+    async leaveTeam() {
+        const teamName = AppState.team ? AppState.team.name : 'el equipo';
+        if (!confirm(`¿Seguro que quieres salir de "${teamName}"? Para volver necesitarás el código del equipo.`)) return;
+        try {
+            await Team.leave();
+            Team.stop();
+            Storage.borrarCache(Storage.CACHE_SESSION);
+            Gate.show('onboarding', `Has salido de "${teamName}".`);
+        } catch (err) { console.error(err); alert('No se pudo salir del equipo: ' + err.message); }
+    },
+
+    async toggleDirector(uid) {
+        const m = AppState.members.find(x => x.uid === uid);
+        if (!m) return;
+        const newRole = m.role === 'director' ? 'miembro' : 'director';
+        try { await Team.setRole(uid, newRole); }
+        catch (err) { console.error(err); alert('No se pudo cambiar el rol: ' + err.message); }
+    },
+
+    async removeTeamMember(uid) {
+        const m = AppState.members.find(x => x.uid === uid);
+        if (!m) return;
+        if (!confirm(`¿Sacar a ${m.name} del equipo?\n\nSi no quieres que pueda volver a entrar con el mismo código, genera después un código nuevo.`)) return;
+        try { await Team.removeMember(uid); }
+        catch (err) { console.error(err); alert('No se pudo sacar del equipo: ' + err.message); }
+    },
+    // ============ FIN PANTALLA DE EQUIPO ============
+
     bulkDetectKeys() {
         if (AppState.songs.length === 0) { alert('No hay canciones cargadas todavía.'); return; }
         if (!confirm(`Se recalculará la tonalidad de las ${AppState.songs.length} canciones cargadas según sus acordes. ¿Continuar?`)) return;
         let updatedCount = 0;
+        const changed = [];
         AppState.songs.forEach(song => {
             const detected = KeyDetector.detectKey(song.sections);
-            if (detected && detected !== song.keyBase) { song.keyBase = detected; updatedCount++; }
+            if (detected && detected !== song.keyBase) { song.keyBase = detected; updatedCount++; changed.push(song); }
         });
-        Storage.saveSongs();
+        Storage.saveSongs(changed);
         this.renderSongsList();
         alert(`✅ Listo. Se actualizó la tonalidad de ${updatedCount} de ${AppState.songs.length} canción(es).`);
     },
@@ -1721,14 +2375,14 @@ const Router = {
             const artistInput = document.getElementById('song-artist-editor');
             if (artistInput) AppState.currentSong.artist = artistInput.value.trim();
 
-            if (AppState.editingSongId) {
-                const index = AppState.songs.findIndex(s => s.id === AppState.editingSongId);
-                if (index !== -1) { AppState.currentSong.updatedAt = new Date().toISOString(); AppState.songs[index] = AppState.currentSong; }
-            } else {
-                const exists = AppState.songs.find(s => s.id === AppState.currentSong.id);
-                if (!exists) AppState.songs.push(AppState.currentSong);
-            }
-            Storage.saveSongs();
+            AppState.currentSong.updatedAt = new Date().toISOString();
+            const index = AppState.songs.findIndex(s => s.id === AppState.currentSong.id);
+            if (index !== -1) AppState.songs[index] = AppState.currentSong;
+            else AppState.songs.push(AppState.currentSong);
+            // Una canción nueva, una vez guardada, pasa a editarse como existente.
+            AppState.editingSongId = AppState.currentSong.id;
+            // Cada canción es su propio documento: solo se sube la que se editó.
+            Storage.saveSong(AppState.currentSong);
         } finally {
             setTimeout(() => {
                 AppState.isSaving = false;
@@ -1876,9 +2530,12 @@ const Router = {
     // Guarda (o borra) el ajuste manual de tonalidad de esta canción dentro del repertorio actual.
     // La pantalla ya cambió al instante; la subida a la nube espera a que dejes de pulsar
     // ♯/♭, para que varios toques seguidos se guarden de una sola vez.
+    // Solo el creador del repertorio o el líder fijan el tono para todos. Si
+    // transpone un miembro, el cambio se queda en su pantalla (no se guarda).
     persistSetlistTransposeOverride() {
         if (!AppState.currentSetlist || !AppState.currentSong) return;
         const sl = AppState.currentSetlist;
+        if (!Perm.canEditSetlist(sl)) return;
         if (!sl.songTransposeOverrides) sl.songTransposeOverrides = {};
         sl.songTransposeOverrides[AppState.currentSong.id] = AppState.currentTranspose;
         Storage.scheduleSetlistsSave();
@@ -1887,12 +2544,13 @@ const Router = {
     clearSetlistTransposeOverride() {
         if (!AppState.currentSetlist || !AppState.currentSong) return;
         const sl = AppState.currentSetlist;
+        if (!Perm.canEditSetlist(sl)) return;
         if (sl.songTransposeOverrides) delete sl.songTransposeOverrides[AppState.currentSong.id];
         Storage.scheduleSetlistsSave();
     },
 
     showVocalProfilesModal() {
-        const names = this.LEAD_VOCAL_OPTIONS;
+        const names = Team.memberNames();
         const profiles = AppState.vocalProfiles || {};
         this.createModal({
             title: '🎚️ Perfiles de voz',
@@ -2069,6 +2727,7 @@ const Router = {
     showSetlistStructureModal() {
         if (!AppState.currentSetlist || !AppState.currentSong) return;
         const sl = AppState.currentSetlist;
+        if (!Perm.canEditSetlist(sl)) return;
         const song = AppState.currentSong;
         const override = (sl.songStructures && sl.songStructures[song.id]) || [];
         const prefill = override.length > 0
@@ -2092,7 +2751,7 @@ const Router = {
     },
 
     saveSetlistStructure() {
-        if (!AppState.currentSetlist || !AppState.currentSong) { this.closeModal(); return; }
+        if (!AppState.currentSetlist || !AppState.currentSong || !Perm.canEditSetlist(AppState.currentSetlist)) { this.closeModal(); return; }
         const textarea = document.getElementById('setlist-structure-textarea');
         const lines = (textarea ? textarea.value : '').split('\n').map(l => l.trim()).filter(l => l.length > 0);
         if (!AppState.currentSetlist.songStructures) AppState.currentSetlist.songStructures = {};
@@ -2104,8 +2763,6 @@ const Router = {
     // ============ FIN ORDEN DE CANCIÓN ============
 
     // ============ NOTA DE BLOQUE Y VOZ LÍDER POR CANCIÓN, DENTRO DE UN REPERTORIO ============
-    LEAD_VOCAL_OPTIONS: ['Sarah', 'Aleja', 'Lady', 'Cristina', 'Samuel'],
-
     getSongBlockNote(song) {
         if (!song || !AppState.currentSetlist || !AppState.currentSetlist.songNotes) return '';
         return AppState.currentSetlist.songNotes[song.id] || '';
@@ -2119,6 +2776,7 @@ const Router = {
     showSongNoteModal(songId) {
         if (!AppState.currentSetlist) return;
         const sl = AppState.currentSetlist;
+        if (!Perm.canEditSetlist(sl)) return;
         const song = AppState.songs.find(s => s.id === songId);
         if (!song) return;
         const existingNote = (sl.songNotes && sl.songNotes[songId]) || '';
@@ -2143,7 +2801,7 @@ const Router = {
 
     saveSongNote(songId, text) {
         const sl = AppState.currentSetlist;
-        if (!sl) { this.closeModal(); return; }
+        if (!sl || !Perm.canEditSetlist(sl)) { this.closeModal(); return; }
         if (!sl.songNotes) sl.songNotes = {};
         if (text) sl.songNotes[songId] = text;
         else delete sl.songNotes[songId];
@@ -2158,7 +2816,7 @@ const Router = {
     // Asigna (o quita) la voz líder de una canción dentro del repertorio actual, al instante — sin modal.
     setSongLeadVocal(songId, name) {
         const sl = AppState.currentSetlist;
-        if (!sl) return;
+        if (!sl || !Perm.canEditSetlist(sl)) return;
         if (!sl.songLeadVocals) sl.songLeadVocals = {};
         if (name) sl.songLeadVocals[songId] = name;
         else delete sl.songLeadVocals[songId];
@@ -2247,18 +2905,23 @@ const Router = {
 
         AppState.cameFromSetlistId = AppState.currentSetlist.id;
         AppState.currentSong = song;
+        const canEdit = Perm.canEditSetlist(AppState.currentSetlist);
         const effectiveOffset = this.computeEffectiveOffset(song, AppState.currentSetlist);
         const defaultOffset = this.computeDefaultOffset(song, AppState.currentSetlist);
         AppState.currentTranspose = effectiveOffset;
-        AppState.baseTransposeOffset = defaultOffset;
+        // Para quien gestiona el repertorio, "Base" quita el ajuste guardado.
+        // Para un miembro, "Base" vuelve al tono que fijó el equipo.
+        AppState.baseTransposeOffset = canEdit ? defaultOffset : effectiveOffset;
         AppState.notationMode = 'chords';
         AppState.voiceMode = false;
         this.resetReaderControlsUI();
 
+        // Orden propio y voz líder: solo quien gestiona el repertorio. Los demás
+        // ven quién dirige en la etiqueta de arriba.
         const structureSetlistBtn = document.getElementById('btn-song-structure-setlist');
-        if (structureSetlistBtn) structureSetlistBtn.style.display = 'inline-flex';
+        if (structureSetlistBtn) structureSetlistBtn.style.display = canEdit ? 'inline-flex' : 'none';
         const leadVocalWrap = document.getElementById('lead-vocal-controls-wrap');
-        if (leadVocalWrap) leadVocalWrap.classList.remove('lv-hidden');
+        if (leadVocalWrap) leadVocalWrap.classList.toggle('lv-hidden', !canEdit);
 
         document.getElementById('reader-title').textContent = song.title;
         const metaText = this.formatReaderMeta(song);
@@ -2275,8 +2938,7 @@ const Router = {
         this.renderStructureBar();
         this.updateReaderBlockNote();
         this.updateReaderLeadVocal();
-        const leadVocalSelect = document.getElementById('lead-vocal-reader-select');
-        if (leadVocalSelect) leadVocalSelect.value = (AppState.currentSetlist.songLeadVocals && AppState.currentSetlist.songLeadVocals[song.id]) || '';
+        this.populateLeadVocalReaderSelect((AppState.currentSetlist.songLeadVocals && AppState.currentSetlist.songLeadVocals[song.id]) || '');
         this.updateSetlistNavControls();
         this.navigate('song-reader', false);
         WakeLockManager.request();
@@ -2358,38 +3020,12 @@ const Router = {
         if (!AppState.isAdmin) return;
         if (confirm('¿Estás seguro de que quieres eliminar esta canción?')) {
             AppState.songs = AppState.songs.filter(s => s.id !== songId);
-            Storage.saveSongs();
-            // Además de sacarla de las listas, se borra todo lo que los repertorios
-            // guardaban sobre ella (notas, voz, tono, orden). Aprovecha para limpiar
-            // también lo que hubiera quedado suelto de canciones borradas antes.
-            this.cleanOrphanSetlistData();
-            Storage.saveSetlists();
+            Storage.deleteSong(songId);
+            // Los restos que quedan en los repertorios (notas, voz, tono, orden) se
+            // limpian solos la próxima vez que quien gestiona cada repertorio lo
+            // guarde. Mientras tanto la canción simplemente no aparece.
             this.renderSongsList();
         }
-    },
-
-    // Quita de todos los repertorios cualquier dato que apunte a una canción que
-    // ya no existe. Seguridad: si la lista de canciones está vacía o no ha llegado
-    // todavía de la nube (ej. solo está la copia guardada en el móvil), NO toca
-    // nada — si no, un fallo de carga borraría las notas de todos los repertorios.
-    cleanOrphanSetlistData() {
-        if (!AppState.songsFromCloud || !AppState.songs.length) return 0;
-        const existing = new Set(AppState.songs.map(s => s.id));
-        const mapFields = ['songNotes', 'songLeadVocals', 'songTransposeOverrides', 'songStructures'];
-        let removed = 0;
-        AppState.setlists.forEach(sl => {
-            const before = (sl.songIds || []).length;
-            sl.songIds = (sl.songIds || []).filter(id => existing.has(id));
-            removed += before - sl.songIds.length;
-            mapFields.forEach(field => {
-                const map = sl[field];
-                if (!map) return;
-                Object.keys(map).forEach(id => {
-                    if (!existing.has(id)) { delete map[id]; removed++; }
-                });
-            });
-        });
-        return removed;
     },
 
     // Versión sin DOM de la misma idea que usa el teleprompter para "anclas": separa
@@ -2599,6 +3235,7 @@ const Router = {
 
     // ============ REPERTORIO — sin cambios, abierto a todos ============
     showNewSetlistModal() {
+        if (!Perm.canCreateSetlist()) return;
         const days = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'];
         const today = new Date();
         const defaultName = `${days[today.getDay()].charAt(0).toUpperCase() + days[today.getDay()].slice(1)} ${today.getDate()}/${today.getMonth() + 1}`;
@@ -2606,7 +3243,6 @@ const Router = {
             title: 'Nuevo repertorio',
             content: `
                 <div class="form-group"><label class="form-label">Nombre *</label><input type="text" class="form-input" id="modal-setlist-name" value="${defaultName}"></div>
-                <div class="form-group"><label class="form-label">Tu nombre (opcional, para identificar quién lo creó)</label><input type="text" class="form-input" id="modal-setlist-creator" placeholder="Ej: Alexis"></div>
             `,
             actions: [
                 { text: 'Cancelar', action: () => this.closeModal() },
@@ -2615,14 +3251,22 @@ const Router = {
         });
     },
 
+    // Solo el líder y los directores técnicos crean repertorios. Quien lo crea
+    // queda como su "creador" y puede gestionarlo (además del líder).
     createSetlist() {
+        if (!Perm.canCreateSetlist()) { this.closeModal(); return; }
         const name = document.getElementById('modal-setlist-name').value.trim();
         if (!name) { alert('El nombre es obligatorio'); return; }
-        const creatorName = document.getElementById('modal-setlist-creator').value.trim();
-        const setlist = { id: this.generateId(), name, creatorName: creatorName || '', uniformKey: null, songStructures: {}, songNotes: {}, songLeadVocals: {}, songTransposeOverrides: {}, songIds: [], createdAt: new Date().toISOString() };
+        const setlist = {
+            id: this.generateId(), name,
+            createdBy: Perm.uid(),
+            createdByName: AppState.member ? AppState.member.name : '',
+            uniformKey: null, songStructures: {}, songNotes: {}, songLeadVocals: {}, songTransposeOverrides: {},
+            convocados: {}, songIds: [], createdAt: new Date().toISOString()
+        };
         AppState.setlists.push(setlist);
-        Storage.saveSetlists();
         AppState.currentSetlist = setlist;
+        Storage.saveSetlist(setlist);
         this.closeModal();
         this.openSetlist(setlist.id);
     },
@@ -2660,7 +3304,8 @@ const Router = {
         const parts = [this.formatSongCount((sl.songIds || []).length)];
         const date = this.formatShortDate(sl.createdAt);
         if (date) parts.push(date);
-        if (sl.creatorName) parts.push(`por ${sl.creatorName}`);
+        const creator = sl.createdByName || sl.creatorName;
+        if (creator) parts.push(`por ${this.escapeHtml(creator)}`);
         return parts.join(' • ');
     },
 
@@ -2677,10 +3322,11 @@ const Router = {
         grid.innerHTML = sorted.map(sl => `
             <div class="song-item setlist-item" onclick="Router.openSetlist('${sl.id}')">
                 <div class="song-info">
-                    <div class="song-title">${sl.name}</div>
-                    <div class="setlist-preview">${this.formatSetlistPreview(sl)}</div>
+                    <div class="song-title">${this.escapeHtml(sl.name)}</div>
+                    <div class="setlist-preview">${this.escapeHtml(this.formatSetlistPreview(sl))}</div>
                     <div class="song-meta">${this.formatSetlistMeta(sl)}</div>
                 </div>
+                ${Perm.canEditSetlist(sl) ? `
                 <div class="song-actions" onclick="event.stopPropagation()">
                     <button class="action-btn delete-btn btn-delete-compact" onclick="Router.deleteSetlist('${sl.id}')" title="Eliminar">
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -2688,7 +3334,7 @@ const Router = {
                             <path d="m19,6v14a2,2 0 0,1 -2,2H7a2,2 0 0,1 -2,-2V6m3,0V4a2,2 0 0,1 2,-2h4a2,2 0 0,1 2,2v2"></path>
                         </svg>
                     </button>
-                </div>
+                </div>` : ''}
             </div>
         `).join('');
     },
@@ -2707,9 +3353,11 @@ const Router = {
     },
 
     deleteSetlist(setlistId) {
-        if (confirm('¿Eliminar este repertorio?')) {
+        const sl = AppState.setlists.find(s => s.id === setlistId);
+        if (!sl || !Perm.canEditSetlist(sl)) return;
+        if (confirm(`¿Eliminar el repertorio "${sl.name}"? No se puede deshacer.`)) {
             AppState.setlists = AppState.setlists.filter(s => s.id !== setlistId);
-            Storage.saveSetlists();
+            Storage.deleteSetlist(setlistId);
             this.renderSetlistsList();
         }
     },
@@ -2727,6 +3375,7 @@ const Router = {
     // tocarlo. Por eso esos botones viven en un modo aparte: así el domingo la
     // lista es solo la lista y cabe mucho más en pantalla.
     toggleSetlistEditMode() {
+        if (!Perm.canEditSetlist(AppState.currentSetlist)) { AppState.setlistEditMode = false; return; }
         AppState.setlistEditMode = !AppState.setlistEditMode;
         this.renderSetlistDetail();
     },
@@ -2746,8 +3395,18 @@ const Router = {
     renderSetlistDetail() {
         if (!AppState.currentSetlist) { this.navigate('repertorio'); return; }
         const sl = AppState.currentSetlist;
+        // Quien no gestiona este repertorio lo ve y lo usa, pero no lo modifica:
+        // sin menú de opciones, nombre bloqueado y voz líder solo como etiqueta.
+        const canEdit = Perm.canEditSetlist(sl);
+        if (!canEdit) AppState.setlistEditMode = false;
         const nameInput = document.getElementById('setlist-name-input');
-        if (nameInput) nameInput.value = sl.name;
+        if (nameInput) {
+            if (document.activeElement !== nameInput) nameInput.value = sl.name;
+            nameInput.readOnly = !canEdit;
+        }
+        const menuWrap = document.querySelector('#view-repertorio-detail .setlist-menu-wrap');
+        if (menuWrap) menuWrap.style.display = canEdit ? '' : 'none';
+        if (!canEdit) this.closeSetlistMenu();
         this.renderConvocadosDisplay();
 
         const badge = document.getElementById('uniform-key-badge');
@@ -2785,13 +3444,14 @@ const Router = {
             return `
             <div class="song-item" onclick="Router.viewSetlistSong('${song.id}')">
                 <div class="song-info">
-                    ${note ? `<div class="song-block-note">${note}</div>` : ''}
+                    ${note ? `<div class="song-block-note">${this.escapeHtml(note)}</div>` : ''}
                     <div class="song-title">${idx + 1}. ${song.title}</div>
                     <div class="song-meta">${metaParts.join(' • ')}</div>
+                    ${canEdit ? `
                     <select class="lead-vocal-select" onclick="event.stopPropagation()" onchange="event.stopPropagation(); Router.setSongLeadVocal('${song.id}', this.value)">
                         <option value="">🎤 Sin asignar</option>
-                        ${this.LEAD_VOCAL_OPTIONS.map(name => `<option value="${name}" ${name === leadVocal ? 'selected' : ''}>🎤 ${name}</option>`).join('')}
-                    </select>
+                        ${this.leadVocalOptions(leadVocal).map(name => `<option value="${this.escapeAttr(name)}" ${name === leadVocal ? 'selected' : ''}>🎤 ${this.escapeHtml(name)}</option>`).join('')}
+                    </select>` : (leadVocal ? `<div class="lead-vocal-tag">🎤 ${this.escapeHtml(leadVocal)}</div>` : '')}
                 </div>
                 <div class="song-actions" onclick="event.stopPropagation()">
                     <button class="action-btn note-btn ${note ? 'has-note' : ''}" onclick="Router.showSongNoteModal('${song.id}')" title="${note ? 'Editar nota' : 'Añadir nota'}">
@@ -2826,7 +3486,7 @@ const Router = {
 
     moveSetlistSong(index, direction) {
         const sl = AppState.currentSetlist;
-        if (!sl) return;
+        if (!sl || !Perm.canEditSetlist(sl)) return;
         const newIndex = index + direction;
         if (newIndex < 0 || newIndex >= sl.songIds.length) return;
         const id = sl.songIds.splice(index, 1)[0];
@@ -2837,14 +3497,14 @@ const Router = {
 
     removeSetlistSong(songId) {
         const sl = AppState.currentSetlist;
-        if (!sl) return;
+        if (!sl || !Perm.canEditSetlist(sl)) return;
         sl.songIds = sl.songIds.filter(id => id !== songId);
         Storage.saveSetlists();
         this.renderSetlistDetail();
     },
 
     showAddSongsToSetlistModal() {
-        if (!AppState.currentSetlist) return;
+        if (!AppState.currentSetlist || !Perm.canEditSetlist(AppState.currentSetlist)) return;
         const currentIds = AppState.currentSetlist.songIds || [];
         const available = AppState.songs.filter(s => !currentIds.includes(s.id));
         if (available.length === 0) { alert('Todas las canciones ya están en este repertorio.'); return; }
@@ -2879,7 +3539,7 @@ const Router = {
     confirmAddSongsToSetlist() {
         const checked = document.querySelectorAll('.setlist-add-checkbox:checked');
         const sl = AppState.currentSetlist;
-        if (!sl) return;
+        if (!sl || !Perm.canEditSetlist(sl)) { this.closeModal(); return; }
         checked.forEach(cb => { const id = cb.dataset.songId; if (!sl.songIds.includes(id)) sl.songIds.push(id); });
         Storage.saveSetlists();
         this.closeModal();
@@ -2887,7 +3547,7 @@ const Router = {
     },
 
     showUniformKeyModal() {
-        if (!AppState.currentSetlist) return;
+        if (!AppState.currentSetlist || !Perm.canEditSetlist(AppState.currentSetlist)) return;
         const currentKey = AppState.currentSetlist.uniformKey || '';
         const keys = ['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
         this.createModal({
@@ -2911,7 +3571,7 @@ const Router = {
     applyUniformKey() {
         const val = document.getElementById('modal-uniform-key').value;
         const sl = AppState.currentSetlist;
-        if (!sl) return;
+        if (!sl || !Perm.canEditSetlist(sl)) { this.closeModal(); return; }
         sl.uniformKey = val || null;
         // La tonalidad uniforme debe aplicarse a TODAS las canciones por igual —
         // si alguna tenía un ajuste manual guardado de antes, ese ajuste le ganaba
@@ -2924,24 +3584,32 @@ const Router = {
 
     clearUniformKey() {
         const sl = AppState.currentSetlist;
-        if (!sl) return;
+        if (!sl || !Perm.canEditSetlist(sl)) return;
         sl.uniformKey = null;
         Storage.saveSetlists();
         this.renderSetlistDetail();
     },
 
-    // ============ EQUIPO (quién toca/canta qué en este repertorio) ============
+    // ============ CONVOCATORIA (quién toca/canta qué en este repertorio) ============
+    // Los nombres salen de las personas del equipo. Si alguien que estaba
+    // convocado ya no está en el equipo, se sigue mostrando para no perderlo.
     CONVOCADOS_ROLES: [
-        { key: 'bateria', label: 'Batería', color: '#dc2626', options: ['Rubén', 'Alex'] },
-        { key: 'bajo', label: 'Bajo', color: '#1e3a8a', options: ['Pau'] },
-        { key: 'guitarra', label: 'Guitarra', color: '#d97706', options: ['Ale', 'Rubén'] },
-        { key: 'piano', label: 'Piano', color: '#7c3aed', options: ['Sarah', 'Samuel'] },
-        { key: 'voces', label: 'Voces', color: '#0d9488', options: ['Sarah', 'Aleja', 'Cristina', 'Lady', 'Samuel', 'Pau'], multi: true },
-        { key: 'sonido', label: 'Sonido', color: '#64748b', options: ['Felipe', 'Alexi', 'Julián', 'Leandro'], multi: true }
+        { key: 'bateria', label: 'Batería', color: '#dc2626' },
+        { key: 'bajo', label: 'Bajo', color: '#1e3a8a' },
+        { key: 'guitarra', label: 'Guitarra', color: '#d97706' },
+        { key: 'piano', label: 'Piano', color: '#7c3aed' },
+        { key: 'voces', label: 'Voces', color: '#0d9488', multi: true },
+        { key: 'sonido', label: 'Sonido', color: '#64748b', multi: true }
     ],
 
+    convocatoriaOptions(selected) {
+        const names = Team.memberNames();
+        (selected || []).forEach(n => { if (!names.includes(n)) names.push(n); });
+        return names;
+    },
+
     showEquipoModal() {
-        if (!AppState.currentSetlist) return;
+        if (!AppState.currentSetlist || !Perm.canEditSetlist(AppState.currentSetlist)) return;
         this.createModal({
             title: 'Convocatoria',
             content: `<div id="equipo-modal-body">${this.buildEquipoRowsHTML()}</div>`,
@@ -2960,8 +3628,8 @@ const Router = {
                     <summary>${role.label}${selected.length ? ` (${selected.length})` : ''}</summary>
                     <div class="convocatoria-role-body">
                         <div class="convocatoria-name-list">
-                            ${role.options.map(name => `
-                                <button type="button" class="convocatoria-name-btn${selected.includes(name) ? ' added' : ''}" data-role="${role.key}" data-name="${name}">${name}</button>
+                            ${this.convocatoriaOptions(selected).map(name => `
+                                <button type="button" class="convocatoria-name-btn${selected.includes(name) ? ' added' : ''}" data-role="${role.key}" data-name="${this.escapeAttr(name)}">${this.escapeHtml(name)}</button>
                             `).join('')}
                         </div>
                         <div class="convocatoria-selected" id="conv-selected-${role.key}">
@@ -2975,7 +3643,7 @@ const Router = {
 
     renderConvocadoTags(roleKey, selected) {
         if (!selected.length) return '<span class="convocatoria-empty">Nadie asignado todavía</span>';
-        return selected.map(name => `<span class="convocatoria-selected-tag" data-role="${roleKey}" data-name="${name}">${name} ✕</span>`).join('');
+        return selected.map(name => `<span class="convocatoria-selected-tag" data-role="${roleKey}" data-name="${this.escapeAttr(name)}">${this.escapeHtml(name)} ✕</span>`).join('');
     },
 
     bindEquipoSelects() {
@@ -2991,7 +3659,7 @@ const Router = {
     // que ya estaban abiertos no se cierran solos al elegir un nombre.
     toggleConvocadoPerson(roleKey, name) {
         const sl = AppState.currentSetlist;
-        if (!sl) return;
+        if (!sl || !Perm.canEditSetlist(sl)) return;
         if (!sl.convocados) sl.convocados = {};
         if (!sl.convocados[roleKey]) sl.convocados[roleKey] = [];
         const idx = sl.convocados[roleKey].indexOf(name);
@@ -3030,7 +3698,7 @@ const Router = {
         el.innerHTML = entries.map(e => `
             <span class="convocado-chip">
                 <span class="instrumento">${e.label}:</span>
-                <span class="persona">${e.names.join(', ')}</span>
+                <span class="persona">${this.escapeHtml(e.names.join(', '))}</span>
             </span>
         `).join('');
     },
@@ -3321,10 +3989,11 @@ const Router = {
         if (!AppState.isAdmin) return;
         const checkboxes = document.querySelectorAll('.import-checkbox');
         let savedCount = 0;
+        const toSave = [];
         checkboxes.forEach(cb => {
-            if (cb.checked) { const idx = parseInt(cb.dataset.idx); AppState.songs.push(AppState.pendingImports[idx]); savedCount++; }
+            if (cb.checked) { const idx = parseInt(cb.dataset.idx); AppState.songs.push(AppState.pendingImports[idx]); toSave.push(AppState.pendingImports[idx]); savedCount++; }
         });
-        Storage.saveSongs();
+        Storage.saveSongs(toSave);
         AppState.pendingImports = [];
         this.closeModal();
         this.renderSongsList();
@@ -3814,32 +4483,14 @@ const Editor = {
 // Inicialización
 document.addEventListener('DOMContentLoaded', () => {
     Storage.loadSettings();
-    Storage.cargarDesdeCache();
     ConnectionBanner.init();
+    // La app arranca bloqueada (pantalla de entrada) hasta saber quién entra y
+    // en qué equipo está. Los datos se empiezan a escuchar en Team.start().
+    document.body.classList.add('gated');
 
     if (typeof pdfjsLib !== 'undefined') {
         pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
     }
-
-    Storage.listenSongs(() => {
-        AppState.songsLoaded = true;
-        SplashManager.checkReady();
-        if (AppState.currentView === 'canciones') Router.renderSongsList();
-        if (AppState.currentView === 'repertorio-detail') Router.renderSetlistDetail();
-        HistoryManager.tryRestoreOnLoad();
-    });
-    Storage.listenSetlists(() => {
-        AppState.setlistsLoaded = true;
-        SplashManager.checkReady();
-        if (AppState.currentView === 'repertorio') Router.renderSetlistsList();
-        if (AppState.currentView === 'repertorio-detail') Router.renderSetlistDetail();
-        HistoryManager.tryRestoreOnLoad();
-    });
-    Storage.listenVocalProfiles(() => {
-        AppState.vocalProfilesLoaded = true;
-        SplashManager.checkReady();
-        if (AppState.currentView === 'repertorio-detail') Router.renderSetlistDetail();
-    });
 
     SplashManager.startSafetyTimeout();
 
@@ -3852,8 +4503,8 @@ document.addEventListener('DOMContentLoaded', () => {
     window.addEventListener('pagehide', () => Storage.flushSetlistsSave());
 
     HistoryManager.init();
-    Auth.init();
     Router.init();
+    Auth.init();
     StickyStructureBar.init();
     HorizontalStructureSync.bindOnce();
     Teleprompter.bindInteractionListeners();
