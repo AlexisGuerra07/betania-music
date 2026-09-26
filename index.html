@@ -51,6 +51,7 @@
         <img src="logo-splash-dark.webp" alt="Repertia" class="splash-logo splash-logo-dark">
     </div>
 
+    <div id="pending-banner" hidden>Tu equipo está pendiente de aprobación: cuando el administrador lo apruebe verás las canciones.</div>
     <div id="offline-banner" hidden>Sin conexión — viendo la última copia guardada</div>
 
     <button id="btn-fullscreen-exit">✕</button>
@@ -179,6 +180,7 @@
                 <div class="section-header">
                     <h2 class="section-title">Canciones</h2>
                     <div style="display:flex; gap:0.75rem; flex-wrap: wrap;">
+                        <button class="btn" id="btn-admin-teams" style="display:none;">🛡️ Equipos</button>
                         <button class="btn" id="btn-backup" style="display:none;">💾 Copia de seguridad</button>
                         <button class="btn" id="btn-migrate-local" style="display:none;">📦 Pasar datos antiguos</button>
                         <button class="btn" id="btn-vocal-profiles" style="display:none;">🎚️ Perfiles de voz</button>
