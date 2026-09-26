@@ -1527,3 +1527,15 @@ body.gated #user-email-label { display: none !important; }
 .role-badge.role-pending { background: rgba(217, 119, 6, 0.12); color: var(--warning-color); border-color: rgba(217, 119, 6, 0.4); }
 .role-badge.role-approved { background: rgba(22, 163, 74, 0.12); color: var(--success-color); border-color: rgba(22, 163, 74, 0.4); }
 .btn-attention { border-color: var(--warning-color); color: var(--warning-color); font-weight: 700; }
+
+/* Línea de créditos al final de cada canción (solo si tiene datos). */
+.song-credits {
+    margin-top: 1.5rem;
+    padding-top: 0.75rem;
+    border-top: 1px solid var(--border-color);
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    font-size: 0.72rem;
+    line-height: 1.5;
+    color: var(--text-muted);
+    white-space: normal;
+}
