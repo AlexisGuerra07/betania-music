@@ -1508,3 +1508,6 @@ body.gated #user-email-label { display: none !important; }
     .team-member-actions { justify-content: flex-start; }
     .team-code { font-size: 1.6rem; }
 }
+
+/* Aclaración debajo del campo del nombre en la pantalla de entrada. */
+.onb-help-below { margin: 0.45rem 0 0; line-height: 1.4; }
