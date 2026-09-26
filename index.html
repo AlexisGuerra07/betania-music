@@ -43,7 +43,7 @@
 
     <link rel="stylesheet" href="styles.css">
 </head>
-<body>
+<body class="gated">
     <!-- Dos versiones del logo de arranque: el CSS muestra una u otra según el
          tema. La clara lleva el fondo crema incrustado; la oscura es transparente. -->
     <div id="app-splash">
@@ -95,6 +95,7 @@
                         <button class="nav-tab" data-route="repertorio">Repertorio</button>
                         <button class="nav-tab active" data-route="canciones">Canciones</button>
                         <button class="nav-tab" data-route="edicion" id="nav-tab-edicion" style="display:none;">Edición</button>
+                        <button class="nav-tab" data-route="equipo" id="nav-tab-equipo">Equipo</button>
                     </div>
                 </nav>
                 <div class="auth-section" style="display:flex; align-items:center; gap:0.5rem;">
@@ -103,7 +104,7 @@
                         <svg id="theme-icon-moon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
                         <svg id="theme-icon-sun" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none;"><circle cx="12" cy="12" r="4"></circle><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"></path></svg>
                     </button>
-                    <button class="btn btn-sm" id="btn-login">🔑 Iniciar sesión</button>
+                    <button class="btn btn-sm" id="btn-login" style="display:none;">🔑 Iniciar sesión</button>
                     <button class="btn btn-sm" id="btn-logout" style="display:none;">Cerrar sesión</button>
                 </div>
             </div>
@@ -111,6 +112,65 @@
     </header>
 
     <div class="app-container">
+        <!-- Pantalla de entrada: iniciar sesión con Google -->
+        <div class="view" id="view-login">
+            <div class="auth-card">
+                <img src="logo.webp" alt="" class="auth-logo">
+                <h2 class="auth-title">Repert<span class="logo-i" aria-hidden="true">&#305;</span>a</h2>
+                <p class="auth-tagline">Tu repertorio, siempre contigo</p>
+                <button class="btn btn-primary btn-google" id="btn-google-login">
+                    <svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="true"><path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.7 32.7 29.2 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34 6.1 29.3 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.4-.4-3.5z"/><path fill="#FF3D00" d="m6.3 14.7 6.6 4.8C14.7 15.1 19 12 24 12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34 6.1 29.3 4 24 4 16.3 4 9.7 8.3 6.3 14.7z"/><path fill="#4CAF50" d="M24 44c5.2 0 9.9-2 13.4-5.2l-6.2-5.2C29.2 35.1 26.7 36 24 36c-5.2 0-9.6-3.3-11.3-8l-6.5 5C9.5 39.6 16.2 44 24 44z"/><path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.2-2.2 4.2-4.1 5.6l6.2 5.2C37 39.2 44 34 44 24c0-1.3-.1-2.4-.4-3.5z"/></svg>
+                    Entrar con Google
+                </button>
+                <p class="auth-note" id="login-message"></p>
+            </div>
+        </div>
+
+        <!-- Pantalla de entrada: unirse a un equipo con su código o crear uno -->
+        <div class="view" id="view-onboarding">
+            <div class="auth-card auth-card-wide">
+                <h2 class="auth-title-sm">¡Hola, <span id="onb-hello"></span>!</h2>
+                <p class="auth-tagline">Únete a tu equipo con el código que te haya pasado tu líder, o crea un equipo nuevo.</p>
+
+                <div class="form-group onb-field">
+                    <label class="form-label" for="onb-name">Tu nombre en el equipo</label>
+                    <input type="text" class="form-input" id="onb-name" placeholder="Ej: Ale" autocomplete="given-name">
+                </div>
+
+                <div class="onb-block">
+                    <h3 class="onb-block-title">Tengo un código</h3>
+                    <div class="onb-row">
+                        <input type="text" class="form-input onb-code" id="onb-code" placeholder="BETA-4821" autocapitalize="characters" autocomplete="off" spellcheck="false">
+                        <button class="btn btn-primary" id="btn-join-team">Unirme</button>
+                    </div>
+                </div>
+
+                <div class="onb-divider"><span>o</span></div>
+
+                <div class="onb-block">
+                    <h3 class="onb-block-title">Crear un equipo nuevo</h3>
+                    <p class="onb-help">Serás su líder. La app te dará un código para invitar a los demás.</p>
+                    <div class="onb-row">
+                        <input type="text" class="form-input" id="onb-team-name" placeholder="Ej: Betania Manresa">
+                        <button class="btn" id="btn-create-team">Crear equipo</button>
+                    </div>
+                </div>
+
+                <p class="auth-note" id="onb-message"></p>
+                <button class="btn btn-sm onb-logout" id="btn-onb-logout">Cerrar sesión · <span id="onb-email"></span></button>
+            </div>
+        </div>
+
+        <!-- Equipo: código de invitación, integrantes y roles -->
+        <div class="view" id="view-equipo">
+            <div class="songs-container">
+                <div class="section-header section-header-inline">
+                    <h2 class="section-title" id="team-title">Equipo</h2>
+                </div>
+                <div id="team-panel"></div>
+            </div>
+        </div>
+
         <!-- Songs List View -->
         <div class="view active" id="view-canciones">
             <div class="songs-container">
@@ -118,7 +178,7 @@
                     <h2 class="section-title">Canciones</h2>
                     <div style="display:flex; gap:0.75rem; flex-wrap: wrap;">
                         <button class="btn" id="btn-backup" style="display:none;">💾 Copia de seguridad</button>
-                        <button class="btn" id="btn-migrate-local" style="display:none;">☁️ Migrar datos locales</button>
+                        <button class="btn" id="btn-migrate-local" style="display:none;">📦 Pasar datos antiguos</button>
                         <button class="btn" id="btn-vocal-profiles" style="display:none;">🎚️ Perfiles de voz</button>
                         <button class="btn" id="btn-bulk-detect-keys" style="display:none;">🔍 Detectar tonalidades</button>
                         <button class="btn" id="btn-import-pdfs" style="display:none;">📄 Importar PDFs/Word</button>
@@ -141,7 +201,7 @@
 
                 <div class="empty-state" id="empty-state">
                     <h3>Aún no hay canciones</h3>
-                    <p>Inicia sesión como líder para añadir canciones, o espera a que se sincronicen.</p>
+                    <p>El catálogo todavía está vacío o se está cargando.</p>
                 </div>
 
                 <div class="songs-grid" id="songs-grid" style="display: none;"></div>
