@@ -1042,6 +1042,7 @@ const Auth = {
         showIfAdmin('btn-migrate-local', 'inline-flex');
         showIfAdmin('btn-edit-song', 'inline-flex');
         showIfAdmin('btn-vocal-profiles', 'inline-flex');
+        showIfAdmin('btn-backup', 'inline-flex');
 
         if (AppState.currentView === 'canciones') Router.renderSongsList();
         if (AppState.currentView === 'repertorio') Router.renderSetlistsList();
@@ -1368,6 +1369,7 @@ const Router = {
         this.bindButton('btn-add-song', () => { if (!AppState.isAdmin) return; AppState.isCreatingNew = true; this.navigate('edicion'); });
         this.bindButton('btn-import-pdfs', () => { if (AppState.isAdmin) this.showBulkPDFImport(); });
         this.bindButton('btn-bulk-detect-keys', () => { if (AppState.isAdmin) this.bulkDetectKeys(); });
+        this.bindButton('btn-backup', () => { if (AppState.isAdmin) this.downloadBackup(); });
         this.bindButton('btn-migrate-local', () => { if (AppState.isAdmin) Storage.migrateLocalData(); });
         this.bindButton('btn-vocal-profiles', () => { if (AppState.isAdmin) this.showVocalProfilesModal(); });
         this.bindButton('btn-back-to-list', () => { history.back(); });
@@ -1531,6 +1533,73 @@ const Router = {
         StickyStructureBar.reset();
         setTimeout(() => HorizontalStructureSync.update(), 50);
     },
+
+    // ============ COPIA DE SEGURIDAD ============
+    // Descarga un archivo .json con TODO lo que hay en la nube: canciones,
+    // repertorios y perfiles de voz. Se lee directamente del servidor (no de lo
+    // que la app tiene en memoria ni de la copia del móvil), para que el archivo
+    // sea exactamente lo que está guardado. De paso dice cuánto ocupa el
+    // documento de canciones respecto al límite de 1 MB de Firestore.
+    async downloadBackup() {
+        const btn = document.getElementById('btn-backup');
+        const originalText = btn ? btn.textContent : '';
+        if (btn) { btn.disabled = true; btn.textContent = 'Preparando copia...'; }
+        try {
+            const ref = db.collection('appdata');
+            const [songsDoc, setlistsDoc, vocalDoc] = await Promise.all([
+                ref.doc('songs').get({ source: 'server' }),
+                ref.doc('setlists').get({ source: 'server' }),
+                ref.doc('vocalProfiles').get({ source: 'server' })
+            ]);
+            const songsData = songsDoc.exists ? songsDoc.data() : { songs: [] };
+            const setlistsData = setlistsDoc.exists ? setlistsDoc.data() : { setlists: [] };
+            const vocalData = vocalDoc.exists ? vocalDoc.data() : { profiles: {} };
+
+            const backup = {
+                app: 'Repertia',
+                createdAt: new Date().toISOString(),
+                appdata: { songs: songsData, setlists: setlistsData, vocalProfiles: vocalData }
+            };
+
+            // Tamaño aproximado de cada documento tal como lo guarda Firestore.
+            const bytes = (obj) => new Blob([JSON.stringify(obj)]).size;
+            const songsBytes = bytes(songsData);
+            const setlistsBytes = bytes(setlistsData);
+            const LIMIT = 1048576; // 1 MB
+            const pct = (b) => Math.round((b / LIMIT) * 100);
+            const kb = (b) => (b / 1024).toFixed(0);
+            const numSongs = (songsData.songs || []).length;
+            const numSetlists = (setlistsData.setlists || []).length;
+
+            const d = new Date();
+            const pad = (n) => String(n).padStart(2, '0');
+            const fileName = `repertia-copia-${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}_${pad(d.getHours())}${pad(d.getMinutes())}.json`;
+            const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = fileName;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            setTimeout(() => URL.revokeObjectURL(url), 5000);
+
+            const avgSong = numSongs ? songsBytes / numSongs : 0;
+            const roomLeft = avgSong ? Math.floor((LIMIT - songsBytes) / avgSong) : null;
+            alert(
+                `✅ Copia descargada: ${fileName}\n\n` +
+                `Canciones: ${numSongs} — ocupan ${kb(songsBytes)} KB (${pct(songsBytes)}% del límite de 1 MB)\n` +
+                `Repertorios: ${numSetlists} — ocupan ${kb(setlistsBytes)} KB (${pct(setlistsBytes)}% del límite)\n` +
+                (roomLeft !== null ? `\nAl ritmo actual caben unas ${roomLeft} canciones más en el documento de canciones.` : '')
+            );
+        } catch (err) {
+            console.error(err);
+            alert('No se pudo hacer la copia (¿hay conexión?): ' + err.message);
+        } finally {
+            if (btn) { btn.disabled = false; btn.textContent = originalText; }
+        }
+    },
+    // ============ FIN COPIA DE SEGURIDAD ============
 
     bulkDetectKeys() {
         if (AppState.songs.length === 0) { alert('No hay canciones cargadas todavía.'); return; }
