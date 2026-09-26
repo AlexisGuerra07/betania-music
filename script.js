@@ -1001,7 +1001,7 @@ const Perm = {
         return this.isLeader() || (!!sl.createdBy && sl.createdBy === this.uid());
     },
     roleLabel(role) {
-        return role === 'lider' ? 'Líder' : role === 'director' ? 'Director técnico' : 'Miembro';
+        return role === 'lider' ? 'Coordinador' : role === 'director' ? 'Director técnico' : 'Integrante';
     }
 };
 
@@ -1465,7 +1465,7 @@ const Team = {
         const code = this.normalizeCode(rawCode);
         if (!code) throw new Error('El código tiene 4 letras y 4 números, por ejemplo ABCD-1234.');
         const c = await db.collection('inviteCodes').doc(code).get();
-        if (!c.exists) throw new Error('Ese código no existe o ya no es válido. Pídele a tu líder el código actual.');
+        if (!c.exists) throw new Error('Ese código no existe o ya no es válido. Pídele al coordinador de tu equipo el código actual.');
         const { teamId } = c.data();
         await this.ensureFree();
         const batch = db.batch();
@@ -1710,7 +1710,7 @@ const AdminTeams = {
                         <div class="team-member-name">${esc(t.name || '(sin nombre)')}</div>
                         <div class="team-member-meta">
                             <span class="role-badge ${ok ? 'role-approved' : 'role-pending'}">${ok ? 'Aprobado' : 'Pendiente'}</span>
-                            <span class="team-member-email">${t.leaderName ? 'Líder: ' + esc(t.leaderName) : ''}${date ? ' · ' + esc(date) : ''}</span>
+                            <span class="team-member-email">${t.leaderName ? 'Coordinador: ' + esc(t.leaderName) : ''}${date ? ' · ' + esc(date) : ''}</span>
                         </div>
                     </div>
                     <div class="team-member-actions">
@@ -2482,7 +2482,7 @@ const Router = {
                     <select class="form-select" id="migrate-owner">
                         ${members.map(m => `<option value="${m.uid}">${esc(m.name)} — ${Perm.roleLabel(m.role)}</option>`).join('')}
                     </select>
-                    <p class="team-hint">Esa persona podrá gestionarlos, igual que el líder.</p>
+                    <p class="team-hint">Esa persona podrá gestionarlos, igual que el coordinador.</p>
                 </div>` : ''}
             `,
             actions: [
@@ -2552,63 +2552,93 @@ const Router = {
         }
         if (title) title.textContent = team.name;
         const esc = (t) => this.escapeHtml(t);
-        const leader = Perm.isLeader();
-        const canInvite = Perm.canCreateSetlist(); // líder y directores ven el código
+        const coordinator = Perm.isLeader();
+        const canInvite = Perm.canCreateSetlist(); // coordinador y directores ven el código
         const order = { lider: 0, director: 1, miembro: 2 };
         const members = [...AppState.members].sort((a, b) =>
             ((order[a.role] ?? 3) - (order[b.role] ?? 3)) || (a.name || '').localeCompare(b.name || '', 'es', { sensitivity: 'base' }));
+        const count = members.length;
 
         panel.innerHTML = `
+            <p class="team-count">${count === 1 ? '1 integrante' : `${count} integrantes`}</p>
+
             ${Team.isPending() ? `
-            <div class="team-card team-card-pending">
-                <div class="team-card-label">Pendiente de aprobación</div>
-                <p class="team-hint" style="margin:0;">El administrador de Repertia tiene que aprobar este equipo antes de que podáis ver las canciones. Ya podéis ir uniéndoos con el código.</p>
+            <div class="team-notice">
+                <strong>Pendiente de aprobación.</strong> El administrador de Repertia tiene que aprobar este equipo antes de que podáis ver las canciones. Ya podéis ir uniéndoos con el código.
             </div>` : ''}
+
             ${canInvite ? `
-            <div class="team-card">
-                <div class="team-card-label">Código para invitar</div>
-                <div class="team-code">${esc(team.inviteCode || '—')}</div>
-                <p class="team-hint">"Copiar invitación" copia un mensaje con el enlace de la app y este código, listo para pegar en el chat del equipo. Cada integrante entra con su cuenta de Google y escribe el código una sola vez.</p>
-                <div class="team-actions">
-                    <button class="btn btn-sm" onclick="Router.copyTeamCode()">📋 Copiar invitación</button>
-                    ${leader ? `<button class="btn btn-sm" onclick="Router.regenerateTeamCode()">🔄 Generar código nuevo</button>` : ''}
+            <div class="team-invite">
+                <div class="team-invite-main">
+                    <div class="team-invite-label">Código para invitar</div>
+                    <div class="team-code">${esc(team.inviteCode || '—')}</div>
                 </div>
-            </div>` : ''}
-
-            <div class="team-card">
-                <div class="team-card-label">Tú</div>
-                <div class="team-me"><strong>${esc(me.name)}</strong> <span class="role-badge role-${esc(me.role)}">${Perm.roleLabel(me.role)}</span></div>
-                <div class="team-actions">
-                    <button class="btn btn-sm" onclick="Router.renameMe()">✏️ Cambiar mi nombre</button>
-                    ${!leader ? `<button class="btn btn-sm btn-danger-outline" onclick="Router.leaveTeam()">Salir del equipo</button>` : ''}
-                </div>
+                <button class="btn btn-sm btn-primary" onclick="Router.copyTeamCode()">📋 Copiar invitación</button>
             </div>
+            <p class="team-hint team-invite-hint">Se copia un mensaje con el enlace de la app y el código, listo para pegar en el chat del equipo.${coordinator ? ' Si hace falta, puedes <button type="button" class="link-btn" onclick="Router.regenerateTeamCode()">generar un código nuevo</button>.' : ''}</p>` : ''}
 
-            <div class="team-card">
-                <div class="team-card-label">Integrantes (${members.length})</div>
-                ${leader && members.length > 1 ? `<p class="team-hint">Nombra director técnico a quien vaya a preparar repertorios contigo.</p>` : ''}
-                ${leader && members.length <= 1 ? `<p class="team-hint">Todavía no se ha unido nadie. Comparte el código de arriba.</p>` : ''}
-                <div class="team-members">
-                    ${members.map(m => `
-                        <div class="team-member">
-                            <div class="team-member-info">
-                                <div class="team-member-name">${esc(m.name)}${m.uid === Perm.uid() ? ' (tú)' : ''}</div>
-                                <div class="team-member-meta">
-                                    <span class="role-badge role-${esc(m.role)}">${Perm.roleLabel(m.role)}</span>
-                                    ${leader && m.email ? `<span class="team-member-email">${esc(m.email)}</span>` : ''}
-                                </div>
-                            </div>
-                            ${leader && m.uid !== Perm.uid() ? `
-                            <div class="team-member-actions">
-                                <button class="btn btn-sm" onclick="Router.toggleDirector('${m.uid}')">${m.role === 'director' ? 'Quitar director' : 'Hacer director'}</button>
-                                <button class="btn btn-sm" onclick="Router.makeLeader('${m.uid}')">Hacer líder</button>
-                                <button class="btn btn-sm btn-danger-outline" onclick="Router.removeTeamMember('${m.uid}')">Sacar</button>
-                            </div>` : ''}
+            <div class="member-list">
+                ${members.map(m => {
+                    const isMe = m.uid === Perm.uid();
+                    const hasMenu = isMe || coordinator;
+                    return `
+                    <div class="member-row">
+                        <span class="member-avatar" style="background:${this.avatarColor(m.name || m.uid)}">${esc(this.initialOf(m.name))}</span>
+                        <div class="member-main">
+                            <div class="member-name">${esc(m.name)}${isMe ? ' <span class="member-you">(tú)</span>' : ''}</div>
+                            ${coordinator && m.email && !isMe ? `<div class="member-email">${esc(m.email)}</div>` : ''}
                         </div>
-                    `).join('')}
-                </div>
+                        <span class="role-badge role-${esc(m.role)}">${Perm.roleLabel(m.role)}</span>
+                        ${hasMenu ? `<button type="button" class="member-menu-btn" aria-label="Opciones de ${esc(m.name)}" onclick="Router.showMemberMenu('${m.uid}')">⋯</button>` : '<span class="member-menu-spacer"></span>'}
+                    </div>`;
+                }).join('')}
             </div>
+            ${coordinator && count <= 1 ? `<p class="team-hint">Todavía no se ha unido nadie. Comparte la invitación de arriba.</p>` : ''}
+            ${coordinator && count > 1 && !members.some(m => m.role === 'director') ? `<p class="team-hint">Si alguien va a preparar repertorios contigo, pulsa ⋯ junto a su nombre y asígnale como director técnico.</p>` : ''}
         `;
+    },
+
+    initialOf(name) {
+        const t = (name || '').trim();
+        return t ? t.charAt(0).toUpperCase() : '?';
+    },
+
+    // Un color estable para cada persona (sale siempre el mismo para el mismo nombre).
+    avatarColor(seed) {
+        const colors = ['#0d9488', '#2563eb', '#7c3aed', '#db2777', '#ea580c', '#16a34a', '#0891b2', '#b45309', '#4f46e5', '#be123c'];
+        let h = 0;
+        for (const ch of String(seed || '')) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
+        return colors[h % colors.length];
+    },
+
+    // Menú ⋯ de cada persona: tus propias opciones, o las del coordinador sobre los demás.
+    showMemberMenu(uid) {
+        const m = AppState.members.find(x => x.uid === uid);
+        if (!m) return;
+        const isMe = uid === Perm.uid();
+        const coordinator = Perm.isLeader();
+        const items = [];
+        if (isMe) {
+            items.push({ text: '✏️ Cambiar mi nombre', action: 'Router.renameMe()' });
+            if (!coordinator) items.push({ text: 'Salir del equipo', action: 'Router.leaveTeam()', danger: true });
+        } else if (coordinator) {
+            items.push({ text: m.role === 'director' ? 'Volver a integrante' : 'Asignar como director técnico', action: `Router.toggleDirector('${uid}')` });
+            items.push({ text: 'Asignar como coordinador', action: `Router.makeLeader('${uid}')` });
+            items.push({ text: 'Quitar del equipo', action: `Router.removeTeamMember('${uid}')`, danger: true });
+        }
+        if (!items.length) return;
+        const esc = (t) => this.escapeHtml(t);
+        this.createModal({
+            title: `${esc(m.name)}${isMe ? ' (tú)' : ''}`,
+            content: `
+                <div class="member-menu-role"><span class="role-badge role-${esc(m.role)}">${Perm.roleLabel(m.role)}</span></div>
+                <div class="menu-list">
+                    ${items.map(it => `<button type="button" class="menu-item${it.danger ? ' menu-item-danger' : ''}" onclick="Router.closeModal(); ${it.action}">${it.text}</button>`).join('')}
+                </div>
+                ${isMe && coordinator ? '<p class="team-hint" style="margin-top:0.75rem;">Como coordinador no puedes salir del equipo. Si quieres dejarlo, primero asigna como coordinador a otra persona.</p>' : ''}
+            `,
+            actions: [{ text: 'Cerrar', action: () => this.closeModal() }]
+        });
     },
 
     copyTeamCode() {
@@ -2663,22 +2693,22 @@ const Router = {
     async makeLeader(uid) {
         const m = AppState.members.find(x => x.uid === uid);
         if (!m || !Perm.isLeader()) return;
-        if (!confirm(`¿Quieres que ${m.name} pase a ser el líder del equipo?\n\n` +
+        if (!confirm(`¿Asignar a ${m.name} como coordinador del equipo?\n\n` +
             `• ${m.name} podrá gestionar el equipo y todos los repertorios.\n` +
             `• Tú pasarás a ser director técnico.\n` +
-            `• Solo el nuevo líder podrá devolverte el puesto.`)) return;
+            `• Solo el nuevo coordinador podrá devolverte el puesto.`)) return;
         try {
             await Team.transferLeadership(uid);
-            alert(`✅ ${m.name} es ahora el líder del equipo.`);
-        } catch (err) { console.error(err); alert('No se pudo cambiar el líder: ' + err.message); }
+            alert(`✅ ${m.name} coordina ahora el equipo. Tú quedas como director técnico.`);
+        } catch (err) { console.error(err); alert('No se pudo cambiar el coordinador: ' + err.message); }
     },
 
     async removeTeamMember(uid) {
         const m = AppState.members.find(x => x.uid === uid);
         if (!m) return;
-        if (!confirm(`¿Sacar a ${m.name} del equipo?\n\nSi no quieres que pueda volver a entrar con el mismo código, genera después un código nuevo.`)) return;
+        if (!confirm(`¿Quitar a ${m.name} del equipo?\n\nDejará de ver los repertorios. Si no quieres que pueda volver a entrar con el mismo código, genera después un código nuevo.`)) return;
         try { await Team.removeMember(uid); }
-        catch (err) { console.error(err); alert('No se pudo sacar del equipo: ' + err.message); }
+        catch (err) { console.error(err); alert('No se pudo quitar del equipo: ' + err.message); }
     },
     // ============ FIN PANTALLA DE EQUIPO ============
 
@@ -3918,7 +3948,7 @@ const Router = {
             grid.style.display = 'none';
             emptyState.style.display = 'block';
             emptyState.innerHTML = '<h3>Aún no hay repertorios</h3><p>' +
-                (Perm.canCreateSetlist() ? 'Crea uno con "+ Nuevo" para armar la lista del domingo.' : 'Cuando el líder o un director técnico cree uno, aparecerá aquí.') + '</p>';
+                (Perm.canCreateSetlist() ? 'Crea uno con "+ Nuevo" para armar la lista del domingo.' : 'Cuando el coordinador o un director técnico cree uno, aparecerá aquí.') + '</p>';
             return;
         }
         emptyState.style.display = 'none';
