@@ -769,7 +769,184 @@ const HistoryManager = {
             Router.navigate(state.view || 'repertorio', false);
         }
     },
-    handlePopState(e) { this.restoreFromState(e.state); }
+    handlePopState(e) {
+        // Si el editor a pantalla completa está abierto, "atrás" solo lo cierra.
+        if (VersionEditor.handleBack()) return;
+        this.restoreFromState(e.state);
+    }
+};
+
+
+// ============ EDITOR A PANTALLA COMPLETA (versión propia en un repertorio) ============
+const VersionEditor = {
+    el: null,
+    state: null,
+    skipNextPop: false,
+    FONT_KEY: 'repertia_version_editor_font',
+    SNIPPETS: ['#', 'b', 'm', '7', 'sus4', 'sus2', 'add9', '/', 'maj7', 'dim'],
+    SECTIONS: ['Intro', 'Estrofa', 'Pre-Coro', 'Coro', 'Puente', 'Instrumental', 'Final'],
+
+    isOpen() { return !!this.el; },
+
+    open({ song, setlist, transpose, hasVersion }) {
+        if (this.el) this.close(true);
+        const esc = (t) => Router.escapeHtml(t);
+        const text = Router.sectionsToTextInKey(song.sections, transpose);
+        const key = Transposer.cleanChord(Transposer.transpose(song.keyBase, transpose || 0));
+        this.state = { initialText: text, transpose: transpose || 0 };
+
+        const el = document.createElement('div');
+        el.className = 'version-editor';
+        el.innerHTML = `
+            <div class="ve-bar">
+                <button type="button" class="btn btn-sm" data-ve="cancel">Cancelar</button>
+                <div class="ve-title">
+                    <div class="ve-title-main">${esc(song.title)}</div>
+                    <div class="ve-title-sub">Solo en «${esc(setlist.name)}» · tono ${esc(key)}</div>
+                </div>
+                <button type="button" class="btn btn-sm btn-primary" data-ve="save">Guardar</button>
+            </div>
+            <div class="ve-tools" aria-label="Atajos">
+                ${this.SNIPPETS.map(t => `<button type="button" class="ve-chip" data-insert="${esc(t)}">${esc(t)}</button>`).join('')}
+                <span class="ve-sep"></span>
+                ${this.SECTIONS.map(t => `<button type="button" class="ve-chip ve-chip-section" data-section="${esc(t)}">${esc(t)}</button>`).join('')}
+                <span class="ve-sep"></span>
+                <button type="button" class="ve-chip" data-ve="smaller" aria-label="Letra más pequeña">A−</button>
+                <button type="button" class="ve-chip" data-ve="bigger" aria-label="Letra más grande">A+</button>
+            </div>
+            <textarea class="ve-text" id="setlist-version-textarea" wrap="off" spellcheck="false"
+                autocapitalize="off" autocorrect="off" autocomplete="off"></textarea>
+            <div class="ve-foot">
+                <span>Acordes en la línea de encima de la letra. Cada parte en su propia línea.</span>
+                ${hasVersion ? `<button type="button" class="ve-link" data-ve="revert">Volver a la original</button>` : ''}
+            </div>`;
+        document.body.appendChild(el);
+        document.body.classList.add('ve-open');
+        this.el = el;
+        const ta = el.querySelector('.ve-text');
+        ta.value = text;
+        this.applyFont();
+
+        // Los atajos no deben quitar el foco del texto (si no, se cierra el teclado).
+        el.querySelectorAll('.ve-chip').forEach(b => {
+            b.addEventListener('pointerdown', (e) => e.preventDefault());
+            b.addEventListener('mousedown', (e) => e.preventDefault());
+        });
+        el.addEventListener('click', (e) => {
+            const btn = e.target.closest('button');
+            if (!btn) return;
+            if (btn.dataset.insert) return this.insert(btn.dataset.insert);
+            if (btn.dataset.section) return this.insertSection(btn.dataset.section);
+            const a = btn.dataset.ve;
+            if (a === 'cancel') this.requestClose();
+            else if (a === 'save') this.save();
+            else if (a === 'revert') { this.close(); Router.revertSetlistVersion(); }
+            else if (a === 'smaller') this.changeFont(-1);
+            else if (a === 'bigger') this.changeFont(1);
+        });
+
+        // El teclado del móvil no debe tapar el texto: el editor se ajusta al
+        // espacio que queda visible.
+        this.onViewport = () => {
+            if (!this.el || !window.visualViewport) return;
+            this.el.style.height = window.visualViewport.height + 'px';
+            this.el.style.top = window.visualViewport.offsetTop + 'px';
+        };
+        if (window.visualViewport) {
+            window.visualViewport.addEventListener('resize', this.onViewport);
+            window.visualViewport.addEventListener('scroll', this.onViewport);
+            this.onViewport();
+        }
+
+        // El botón "atrás" del móvil cierra el editor en vez de salir de la canción.
+        HistoryManager.push({ ...(history.state || {}), versionEditor: true });
+    },
+
+    // Escribe el texto donde está el cursor.
+    insert(snippet) {
+        const ta = this.el && this.el.querySelector('.ve-text');
+        if (!ta) return;
+        const start = ta.selectionStart, end = ta.selectionEnd;
+        ta.setRangeText(snippet, start, end, 'end');
+        ta.focus();
+    },
+
+    // Añade el nombre de una parte en una línea propia.
+    insertSection(name) {
+        const ta = this.el && this.el.querySelector('.ve-text');
+        if (!ta) return;
+        const pos = ta.selectionStart;
+        const before = ta.value.slice(0, pos);
+        const lineStart = before.lastIndexOf('\n') + 1;
+        const atLineStart = pos === lineStart;
+        const prefix = atLineStart ? '' : '\n';
+        ta.setRangeText(`${prefix}${name}\n`, pos, ta.selectionEnd, 'end');
+        ta.focus();
+    },
+
+    fontSize() {
+        let v = 16;
+        try { v = parseInt(localStorage.getItem(this.FONT_KEY), 10) || 16; } catch (e) { }
+        return Math.max(12, Math.min(24, v));
+    },
+    applyFont() {
+        const ta = this.el && this.el.querySelector('.ve-text');
+        // 16 px por defecto. Si se elige menos, en iPhone la pantalla puede
+        // acercarse sola al tocar el texto (se aleja pellizcando).
+        if (ta) ta.style.fontSize = this.fontSize() + 'px';
+    },
+    changeFont(delta) {
+        const v = Math.max(12, Math.min(24, this.fontSize() + delta));
+        try { localStorage.setItem(this.FONT_KEY, String(v)); } catch (e) { }
+        this.applyFont();
+    },
+
+    hasChanges() {
+        const ta = this.el && this.el.querySelector('.ve-text');
+        return !!(ta && this.state && ta.value !== this.state.initialText);
+    },
+
+    requestClose() {
+        if (this.hasChanges() && !confirm('¿Salir sin guardar? Se perderán los cambios.')) return false;
+        this.close();
+        return true;
+    },
+
+    save() {
+        const ta = this.el && this.el.querySelector('.ve-text');
+        if (!ta || !this.state) return;
+        const ok = Router.saveSetlistVersion(ta.value, this.state.transpose, this.state.initialText);
+        if (ok) this.close();
+    },
+
+    // fromPop: se cierra porque el usuario pulsó "atrás" (el historial ya retrocedió).
+    close(fromPop) {
+        if (!this.el) return;
+        if (window.visualViewport && this.onViewport) {
+            window.visualViewport.removeEventListener('resize', this.onViewport);
+            window.visualViewport.removeEventListener('scroll', this.onViewport);
+        }
+        this.el.remove();
+        this.el = null;
+        this.state = null;
+        document.body.classList.remove('ve-open');
+        if (!fromPop && history.state && history.state.versionEditor) {
+            this.skipNextPop = true;
+            history.back();
+        }
+    },
+
+    // Llamado desde el historial al pulsar "atrás". Devuelve true si lo gestionó.
+    handleBack() {
+        if (this.skipNextPop) { this.skipNextPop = false; return true; }
+        if (!this.el) return false;
+        if (this.hasChanges() && !confirm('¿Salir sin guardar? Se perderán los cambios.')) {
+            HistoryManager.push({ ...(history.state || {}), versionEditor: true });
+            return true;
+        }
+        this.close(true);
+        return true;
+    }
 };
 
 // Estado global
@@ -948,7 +1125,7 @@ const Storage = {
         if (!sl || !AppState.songsFromCloud || !AppState.songs.length) return;
         const existing = new Set(AppState.songs.map(s => s.id));
         sl.songIds = (sl.songIds || []).filter(id => existing.has(id));
-        ['songNotes', 'songLeadVocals', 'songTransposeOverrides', 'songStructures'].forEach(field => {
+        ['songNotes', 'songLeadVocals', 'songTransposeOverrides', 'songStructures', 'songVersions'].forEach(field => {
             const map = sl[field];
             if (!map) return;
             Object.keys(map).forEach(id => { if (!existing.has(id)) delete map[id]; });
@@ -2027,6 +2204,7 @@ const Router = {
         this.bindButton('btn-detect-key', () => Editor.detectKey());
         this.bindButton('btn-edit-song-structure', () => Editor.showStructureModal());
         this.bindButton('btn-song-structure-setlist', () => this.showSetlistStructureModal());
+        this.bindButton('btn-setlist-version', () => this.showSetlistVersionEditor());
         const structureBarInner = document.getElementById('structure-bar-inner');
         if (structureBarInner && !structureBarInner.hasAttribute('data-bound')) {
             structureBarInner.addEventListener('click', (e) => {
@@ -2058,7 +2236,9 @@ const Router = {
         [['credits-authors-input', 'authors'], ['credits-copyright-input', 'copyright'], ['credits-ccli-input', 'ccliNumber']]
             .forEach(([id, field]) => this.bindInput(id, (e) => {
                 if (!AppState.currentSong) return;
-                AppState.currentSong[field] = e.target.value.trim();
+                const value = e.target.value.trim();
+                // En el número CCLI solo cuentan las cifras ("CCLI 7065049" -> 7065049).
+                AppState.currentSong[field] = field === 'ccliNumber' ? value.replace(/[^\d]/g, '') : value;
                 Storage.updateSaveStatus('unsaved');
             }));
         // Abre la búsqueda gratuita de SongSelect con el título de la canción,
@@ -3151,8 +3331,11 @@ const Router = {
 
     viewSetlistSong(songId, push = true) {
         if (!AppState.currentSetlist) return;
-        const song = AppState.songs.find(s => s.id === songId);
-        if (!song) return;
+        const catalogSong = AppState.songs.find(s => s.id === songId);
+        if (!catalogSong) return;
+        // Si este repertorio tiene su propia versión de la canción (acordes y
+        // letra cambiados solo aquí), se muestra esa. El catálogo no cambia.
+        const song = this.applySetlistVersion(catalogSong, AppState.currentSetlist);
         window.scrollTo(0, 0);
 
         AppState.cameFromSetlistId = AppState.currentSetlist.id;
@@ -3190,6 +3373,7 @@ const Router = {
         this.renderStructureBar();
         this.updateReaderBlockNote();
         this.updateReaderLeadVocal();
+        this.updateReaderVersionNote(canEdit);
         this.populateLeadVocalReaderSelect((AppState.currentSetlist.songLeadVocals && AppState.currentSetlist.songLeadVocals[song.id]) || '');
         this.updateSetlistNavControls();
         this.navigate('song-reader', false);
@@ -3197,6 +3381,141 @@ const Router = {
 
         if (push) HistoryManager.push({ view: 'song-reader', songId: song.id, setlistId: AppState.currentSetlist.id });
     },
+
+    // ============ VERSIÓN PROPIA DE UNA CANCIÓN EN UN REPERTORIO ============
+    // El creador del repertorio o el líder pueden cambiar acordes y letra de
+    // una canción SOLO para ese repertorio. Se guarda dentro del repertorio
+    // (songVersions[idCanción]); el catálogo y los demás repertorios no cambian.
+    getSetlistVersion(songId, setlist) {
+        const sl = setlist || AppState.currentSetlist;
+        return (sl && sl.songVersions && sl.songVersions[songId]) || null;
+    },
+
+    // Devuelve la canción tal como se ve en este repertorio: igual que la del
+    // catálogo, pero con las secciones de su versión propia si la tiene.
+    applySetlistVersion(song, setlist) {
+        const version = this.getSetlistVersion(song.id, setlist);
+        if (!version || !Array.isArray(version.sections) || !version.sections.length) return song;
+        return { ...song, sections: version.sections, _setlistVersion: version };
+    },
+
+    // Pasa las secciones a texto (acordes encima de la letra), para editarlas.
+    sectionsToText(sections) {
+        return (sections || []).map(section => {
+            const lines = [section.label || ''];
+            (section.pairs || []).forEach(pair => {
+                if (pair.acordes && pair.acordes.trim()) lines.push(pair.acordes.replace(/\s+$/, ''));
+                if (pair.letra && pair.letra.trim()) lines.push(pair.letra.replace(/\s+$/, ''));
+            });
+            return lines.join('\n');
+        }).join('\n\n');
+    },
+
+    updateReaderVersionNote(canEdit) {
+        const btn = document.getElementById('btn-setlist-version');
+        if (btn) btn.style.display = canEdit ? 'inline-flex' : 'none';
+        const el = document.getElementById('reader-version-note');
+        if (!el) return;
+        const version = AppState.currentSong && AppState.currentSong._setlistVersion;
+        if (!version) { el.style.display = 'none'; el.innerHTML = ''; return; }
+        const who = version.updatedByName ? ` · por ${this.escapeHtml(version.updatedByName)}` : '';
+        el.innerHTML = `✏️ Versión de este repertorio${who}` +
+            (canEdit ? ` <button type="button" class="version-revert-btn" onclick="Router.revertSetlistVersion()">Volver a la original</button>` : '');
+        el.style.display = 'inline-flex';
+    },
+
+    // Editor a pantalla completa, pensado sobre todo para móvil y tablet:
+    // barra fija con Cancelar/Guardar, atajos para #, b, m, 7… (que en el
+    // teclado del móvil están escondidos), letra de 16 px (en iPhone, con
+    // menos, la pantalla hace zoom sola) y sin autocorrector (cambiaría "Em"
+    // por "Me"). Se edita en el tono que se está viendo; al guardar se
+    // devuelve al tono base de la canción.
+    showSetlistVersionEditor() {
+        const sl = AppState.currentSetlist;
+        const song = AppState.currentSong;
+        if (!sl || !song || !Perm.canEditSetlist(sl)) return;
+        VersionEditor.open({
+            song,
+            setlist: sl,
+            transpose: AppState.notationMode === 'degrees' ? 0 : (AppState.currentTranspose || 0),
+            hasVersion: !!this.getSetlistVersion(song.id, sl)
+        });
+    },
+
+    // Pasa las secciones a texto en el tono indicado (solo cambian los acordes).
+    sectionsToTextInKey(sections, semitones) {
+        if (!semitones) return this.sectionsToText(sections);
+        const moved = (sections || []).map(sec => ({
+            label: sec.label,
+            pairs: (sec.pairs || []).map(p => ({
+                acordes: p.acordes && p.acordes.trim() ? Transposer.cleanChord(Transposer.transpose(p.acordes, semitones)) : p.acordes,
+                letra: p.letra
+            }))
+        }));
+        return this.sectionsToText(moved);
+    },
+
+    // text: lo escrito en el editor; semitones: tono en el que se editó.
+    saveSetlistVersion(text, semitones, initialText) {
+        const sl = AppState.currentSetlist;
+        const song = AppState.currentSong;
+        if (!sl || !song || !Perm.canEditSetlist(sl)) return false;
+        if (!text || !text.trim()) {
+            alert('La canción no puede quedar vacía. Si quieres volver a la del catálogo, usa "Volver a la original".');
+            return false;
+        }
+        // Sin cambios: no se toca nada.
+        if (text === initialText) return true;
+        let sections = ChordParser.detectAndParse(text, true);
+        if (!sections.length) { alert('No se ha podido leer la canción. Revisa el texto.'); return false; }
+        // Se guarda siempre en el tono base de la canción.
+        if (semitones) {
+            sections = sections.map(sec => ({
+                label: sec.label,
+                pairs: sec.pairs.map(p => ({
+                    acordes: p.acordes && p.acordes.trim() ? Transposer.cleanChord(Transposer.transpose(p.acordes, -semitones)) : p.acordes,
+                    letra: p.letra
+                }))
+            }));
+        }
+        const original = AppState.songs.find(s => s.id === song.id);
+        if (!sl.songVersions) sl.songVersions = {};
+        // Si ha quedado igual que la del catálogo, no hace falta guardar una versión.
+        if (original && this.sectionsToText(sections) === this.sectionsToText(original.sections)) {
+            delete sl.songVersions[song.id];
+        } else {
+            sl.songVersions[song.id] = {
+                sections,
+                updatedAt: new Date().toISOString(),
+                updatedBy: Perm.uid(),
+                updatedByName: AppState.member ? (AppState.member.name || '') : ''
+            };
+        }
+        Storage.saveSetlist(sl);
+        const keepTranspose = AppState.currentTranspose;
+        this.viewSetlistSong(song.id, false);
+        if (keepTranspose !== AppState.currentTranspose) {
+            AppState.currentTranspose = keepTranspose;
+            document.getElementById('current-key-reader').textContent =
+                Transposer.cleanChord(Transposer.transpose(AppState.currentSong.keyBase, keepTranspose));
+            this.renderSongContent();
+        }
+        this.renderSetlistDetail();
+        return true;
+    },
+
+    revertSetlistVersion() {
+        const sl = AppState.currentSetlist;
+        const song = AppState.currentSong;
+        if (!sl || !song || !Perm.canEditSetlist(sl)) return;
+        if (!this.getSetlistVersion(song.id, sl)) return;
+        if (!confirm('¿Volver a la versión del catálogo? Se perderán los cambios hechos en este repertorio.')) return;
+        delete sl.songVersions[song.id];
+        Storage.saveSetlist(sl);
+        this.viewSetlistSong(song.id, false);
+        this.renderSetlistDetail();
+    },
+    // ============ FIN VERSIÓN PROPIA ============
 
     resetReaderControlsUI() {
         const toggleBtn = document.getElementById('btn-toggle-notation');
@@ -3215,6 +3534,10 @@ const Router = {
         if (extraEl) { extraEl.style.display = 'none'; extraEl.innerHTML = ''; }
         const blockNoteEl = document.getElementById('reader-block-note');
         if (blockNoteEl) { blockNoteEl.style.display = 'none'; blockNoteEl.textContent = ''; }
+        const versionNoteEl = document.getElementById('reader-version-note');
+        if (versionNoteEl) { versionNoteEl.style.display = 'none'; versionNoteEl.innerHTML = ''; }
+        const versionBtn = document.getElementById('btn-setlist-version');
+        if (versionBtn) versionBtn.style.display = 'none';
         const leadVocalEl = document.getElementById('reader-lead-vocal');
         if (leadVocalEl) { leadVocalEl.style.display = 'none'; leadVocalEl.textContent = ''; }
         const leadVocalSelect = document.getElementById('lead-vocal-reader-select');
@@ -3716,6 +4039,7 @@ const Router = {
             // Tonalidad, BPM (abre el metrónomo) y vídeo, sin salir de la lista:
             // en un ensayo son las tres referencias que se piden a cada rato.
             const metaParts = [`${displayKey}${offset !== 0 ? ` (orig. ${song.keyBase})` : ''}`];
+            if (this.getSetlistVersion(song.id, sl)) metaParts.push('<span class="version-tag">✏️ versión propia</span>');
             if (song.bpm) {
                 metaParts.push(`<span class="reader-bpm-clickable" title="Abrir metrónomo" onclick="event.stopPropagation(); Router.openMetronomeForSong('${song.id}')">${song.bpm} BPM</span>`);
             }
@@ -4257,12 +4581,12 @@ const Router = {
     },
     // ============ FIN IMPORTACIÓN MASIVA ============
 
-    createModal({ title, content, actions = [] }) {
+    createModal({ title, content, actions = [], wide = false }) {
         const overlay = document.createElement('div');
         overlay.className = 'modal-overlay';
         overlay.id = 'modal-overlay';
         overlay.innerHTML = `
-            <div class="modal">
+            <div class="modal${wide ? ' modal-wide' : ''}">
                 <div class="modal-header"><h3 class="modal-title">${title}</h3><button class="btn-xs" onclick="Router.closeModal()">✕</button></div>
                 <div class="modal-content">${content}</div>
                 <div class="modal-footer">${actions.map((a, i) => `<button class="btn ${a.primary ? 'btn-primary' : ''}" onclick="Router.executeModalAction(${i})">${a.text}</button>`).join('')}</div>
