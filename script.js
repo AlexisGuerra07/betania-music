@@ -1111,6 +1111,18 @@ const Team = {
             if (AppState.currentView === 'equipo') Router.renderTeamView();
         }, err => { console.error('Miembros:', err); this.checkStillMember(err); });
 
+        this.listenCatalog();
+        Storage.listenSetlists(() => {
+            AppState.setlistsLoaded = true;
+            SplashManager.checkReady();
+            if (AppState.currentView === 'repertorio') Router.renderSetlistsList();
+            if (AppState.currentView === 'repertorio-detail') Router.renderSetlistDetail();
+            HistoryManager.tryRestoreOnLoad();
+        });
+    },
+
+    // Catálogo de canciones y perfiles de voz (no dependen del equipo).
+    listenCatalog() {
         Storage.listenSongs(() => {
             AppState.songsLoaded = true;
             SplashManager.checkReady();
@@ -1119,17 +1131,27 @@ const Team = {
             if (AppState.currentView === 'repertorio-detail') Router.renderSetlistDetail();
             HistoryManager.tryRestoreOnLoad();
         });
-        Storage.listenSetlists(() => {
-            AppState.setlistsLoaded = true;
-            SplashManager.checkReady();
-            if (AppState.currentView === 'repertorio') Router.renderSetlistsList();
-            if (AppState.currentView === 'repertorio-detail') Router.renderSetlistDetail();
-            HistoryManager.tryRestoreOnLoad();
-        });
         Storage.listenVocalProfiles(() => {
             AppState.vocalProfilesLoaded = true;
             SplashManager.checkReady();
         });
+    },
+
+    // Solo para el administrador: entra a la app aunque no esté en ningún
+    // equipo, porque el catálogo de canciones es suyo. Sin equipo no hay
+    // repertorios; Repertorio y Equipo le muestran un aviso para unirse.
+    startNoTeam() {
+        this.stop();
+        // Sin equipo no hay repertorios: si al recargar tocaba volver a uno, se
+        // abre Canciones en su lugar.
+        const st = history.state;
+        if (!st || ['repertorio', 'repertorio-detail', 'equipo'].includes(st.view) || st.setlistId) {
+            history.replaceState({ view: 'canciones' }, '', location.href);
+        }
+        Storage.cargarDesdeCache(null);
+        AppState.setlists = [];
+        AppState.setlistsLoaded = true;
+        this.listenCatalog();
     },
 
     stop() {
@@ -1367,6 +1389,8 @@ const Gate = {
         const first = user && user.displayName ? user.displayName.trim().split(/\s+/)[0] : '';
         const nameInput = document.getElementById('onb-name');
         if (nameInput && !nameInput.value) nameInput.value = first;
+        const back = document.getElementById('btn-onb-back');
+        if (back) back.style.display = AppState.isAdmin ? 'inline-flex' : 'none';
         const email = document.getElementById('onb-email');
         if (email) email.textContent = user ? (user.email || '') : '';
         this.setMessage('onb-message', message || '', false);
@@ -1374,8 +1398,19 @@ const Gate = {
     bindButtons() {
         Router.bindButton('btn-google-login', () => Auth.signIn());
         Router.bindButton('btn-onb-logout', () => Auth.signOut());
+        Router.bindButton('btn-onb-back', () => this.backToAppAsAdmin());
         Router.bindButton('btn-join-team', () => this.handleJoin());
         Router.bindButton('btn-create-team', () => this.handleCreate());
+    },
+    // El administrador puede volver a la app sin unirse a ningún equipo.
+    backToAppAsAdmin() {
+        if (!AppState.isAdmin) return;
+        Team.startNoTeam();
+        this.show('app');
+        Router.navigate('canciones', false);
+    },
+    goToOnboarding() {
+        this.show('onboarding');
     },
     readName() {
         const name = (document.getElementById('onb-name').value || '').trim();
@@ -1455,6 +1490,12 @@ const Auth = {
                 return;
             }
             if (!result.teamId) {
+                if (AppState.isAdmin) {
+                    Team.startNoTeam();
+                    Gate.show('app');
+                    Router.navigate('canciones', false);
+                    return;
+                }
                 const msg = result.removedFrom ? 'Ya no formas parte de tu equipo anterior. Puedes unirte a otro con su código.' : '';
                 Gate.show('onboarding', msg);
                 return;
@@ -2101,10 +2142,9 @@ const Router = {
     // Los datos antiguos no se borran.
     async migrateOldData() {
         if (!AppState.isAdmin) return;
-        if (!AppState.team || !AppState.member) {
-            alert('Primero tienes que estar dentro de un equipo (únete con su código).');
-            return;
-        }
+        // Sin equipo se pueden pasar las canciones al catálogo; los repertorios
+        // se pasarán después, ya dentro del equipo.
+        const inTeam = !!(AppState.teamId && AppState.team && AppState.member);
         let oldSongs = [], oldSetlists = [];
         try {
             const server = { source: 'server' };
@@ -2120,9 +2160,11 @@ const Router = {
         const existingSongs = new Set(AppState.songs.map(s => s.id));
         const existingSetlists = new Set(AppState.setlists.map(s => s.id));
         const newSongs = oldSongs.filter(s => s && s.id && !existingSongs.has(s.id));
-        const newSetlists = oldSetlists.filter(s => s && s.id && !existingSetlists.has(s.id));
+        const newSetlists = inTeam ? oldSetlists.filter(s => s && s.id && !existingSetlists.has(s.id)) : [];
         if (!newSongs.length && !newSetlists.length) {
-            alert('Ya está todo pasado: no queda ninguna canción ni repertorio antiguo por copiar.');
+            alert(inTeam
+                ? 'Ya está todo pasado: no queda ninguna canción ni repertorio antiguo por copiar.'
+                : `Las canciones ya están todas en el catálogo.${oldSetlists.length ? ` Los ${oldSetlists.length} repertorios antiguos se pasan desde dentro de un equipo: únete al equipo y vuelve a pulsar este botón.` : ''}`);
             return;
         }
 
@@ -2135,10 +2177,12 @@ const Router = {
             title: 'Pasar datos antiguos',
             content: `
                 <p style="margin-bottom:1rem; color:var(--text-secondary); font-size:0.9rem; line-height:1.5;">
-                    Se añadirán <strong>${newSongs.length}</strong> canciones al catálogo y
-                    <strong>${newSetlists.length}</strong> repertorios al equipo <strong>${esc(AppState.team.name)}</strong>.
+                    Se añadirán <strong>${newSongs.length}</strong> canciones al catálogo${inTeam
+                        ? ` y <strong>${newSetlists.length}</strong> repertorios al equipo <strong>${esc(AppState.team.name)}</strong>`
+                        : ''}.
                     Lo que ya estaba en el formato nuevo no se toca, y los datos antiguos no se borran.
                 </p>
+                ${!inTeam && oldSetlists.length ? `<p class="team-hint">Los ${oldSetlists.length} repertorios antiguos se pasarán cuando estés dentro de un equipo.</p>` : ''}
                 ${newSetlists.length ? `
                 <div class="form-group">
                     <label class="form-label" for="migrate-owner">¿A nombre de quién quedan los repertorios?</label>
@@ -2201,6 +2245,13 @@ const Router = {
         const team = AppState.team;
         const me = AppState.member;
         const title = document.getElementById('team-title');
+        if (!AppState.teamId) {
+            if (title) title.textContent = 'Equipo';
+            panel.innerHTML = `<div class="empty-state"><h3>Todavía no estás en ningún equipo</h3>
+                <p>Como administrador puedes gestionar el catálogo sin equipo. Para ver y usar repertorios, únete al equipo con su código.</p>
+                <button class="btn btn-primary" style="margin-top:1rem;" onclick="Gate.goToOnboarding()">Unirme o crear un equipo</button></div>`;
+            return;
+        }
         if (!team || !me) {
             if (title) title.textContent = 'Equipo';
             panel.innerHTML = '<div class="empty-state"><h3>Cargando el equipo…</h3></div>';
@@ -3394,7 +3445,21 @@ const Router = {
         // Si se llama antes de que la vista exista en la página, no hacemos nada:
         // vendrá otra llamada en cuanto esté lista.
         if (!grid || !emptyState) return;
-        if (AppState.setlists.length === 0) { grid.style.display = 'none'; emptyState.style.display = 'block'; return; }
+        if (!AppState.teamId) {
+            grid.style.display = 'none';
+            emptyState.style.display = 'block';
+            emptyState.innerHTML = `<h3>Todavía no estás en ningún equipo</h3>
+                <p>Los repertorios son de cada equipo. Cuando tengas el código de tu equipo, únete desde aquí.</p>
+                <button class="btn btn-primary" style="margin-top:1rem;" onclick="Gate.goToOnboarding()">Unirme o crear un equipo</button>`;
+            return;
+        }
+        if (AppState.setlists.length === 0) {
+            grid.style.display = 'none';
+            emptyState.style.display = 'block';
+            emptyState.innerHTML = '<h3>Aún no hay repertorios</h3><p>' +
+                (Perm.canCreateSetlist() ? 'Crea uno con "+ Nuevo" para armar la lista del domingo.' : 'Cuando el líder o un director técnico cree uno, aparecerá aquí.') + '</p>';
+            return;
+        }
         emptyState.style.display = 'none';
         grid.style.display = 'block';
         const sorted = [...AppState.setlists].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
