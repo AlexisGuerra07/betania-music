@@ -2054,6 +2054,20 @@ const Router = {
             AppState.currentSong.originalKey = e.target.value;
             Storage.updateSaveStatus('unsaved');
         });
+        // Créditos de la canción (opcionales). Se muestran al final de la letra.
+        [['credits-authors-input', 'authors'], ['credits-copyright-input', 'copyright'], ['credits-ccli-input', 'ccliNumber']]
+            .forEach(([id, field]) => this.bindInput(id, (e) => {
+                if (!AppState.currentSong) return;
+                AppState.currentSong[field] = e.target.value.trim();
+                Storage.updateSaveStatus('unsaved');
+            }));
+        // Abre la búsqueda gratuita de SongSelect con el título de la canción,
+        // para copiar de ahí el número CCLI, los autores y el copyright.
+        this.bindButton('btn-search-songselect', () => {
+            const titleInput = document.getElementById('song-title-editor');
+            const title = (titleInput && titleInput.value.trim()) || (AppState.currentSong ? AppState.currentSong.title : '');
+            window.open('https://songselect.ccli.com/search/results?search=' + encodeURIComponent(title || ''), '_blank', 'noopener');
+        });
         this.bindInput('youtube-link-editor-input', (e) => {
             if (!AppState.currentSong) return;
             AppState.currentSong.youtubeLink = e.target.value.trim();
@@ -3354,7 +3368,23 @@ const Router = {
             </div>
         `;
         }).join('');
+        // Línea de créditos al final, solo con los datos que tenga la canción.
+        const credits = this.formatSongCredits(song);
+        if (credits) content.insertAdjacentHTML('beforeend', `<div class="song-credits">${credits}</div>`);
         content.classList.toggle('voice-mode', !!AppState.voiceMode);
+    },
+
+    // "Autores: … · © … · CCLI Canción # …" — cada parte solo si existe.
+    formatSongCredits(song) {
+        if (!song) return '';
+        const parts = [];
+        const authors = (song.authors || '').trim();
+        const copyright = (song.copyright || '').trim();
+        const ccli = (song.ccliNumber || '').trim();
+        if (authors) parts.push(`Autores: ${this.escapeHtml(authors)}`);
+        if (copyright) parts.push(this.escapeHtml(/^(©|\(c\))/i.test(copyright) ? copyright : `© ${copyright}`));
+        if (ccli) parts.push(`CCLI Canción # ${this.escapeHtml(ccli)}`);
+        return parts.join(' · ');
     },
 
     // Sincroniza el valor mostrado en el desplegable de tonalidad con el estado actual
@@ -4369,6 +4399,11 @@ const Editor = {
         if (originalKeySelect) originalKeySelect.value = AppState.currentSong.originalKey || '';
         const youtubeInput = document.getElementById('youtube-link-editor-input');
         if (youtubeInput) youtubeInput.value = AppState.currentSong.youtubeLink || '';
+        const creditsFields = { 'credits-authors-input': 'authors', 'credits-copyright-input': 'copyright', 'credits-ccli-input': 'ccliNumber' };
+        Object.entries(creditsFields).forEach(([id, field]) => {
+            const el = document.getElementById(id);
+            if (el) el.value = AppState.currentSong[field] || '';
+        });
     },
 
     detectKey() {
